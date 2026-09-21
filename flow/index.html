@@ -3535,11 +3535,26 @@ var Destino = {
   }
 };
 
+/* =====================================================================
+   NA SUÍTE O MÓDULO NÃO TEM LOGIN PRÓPRIO
+   Quem autentica é o portal. Sem sessão, o módulo devolve a pessoa para
+   lá — se ele mostrasse a própria tela de entrada, o login deixaria de
+   ser único na prática, mesmo sendo único no banco.
+   O recado (cadastro pendente, acesso desativado) viaja no endereço e
+   é o portal que mostra.
+   ===================================================================== */
+var PORTAL = '../';
+
 function telaLogin(msg){
   Destino.guardar();
-  $('carregando').classList.add('oculto');
-  $('tela-login').classList.remove('oculto');
-  if(msg) $('msg-login').innerHTML = msg;
+  if(location.hash.indexOf('type=recovery') >= 0){   // definindo senha nova: a tela é aqui
+    $('carregando').classList.add('oculto');
+    $('tela-login').classList.remove('oculto');
+    if(msg) $('msg-login').innerHTML = msg;
+    return;
+  }
+  var texto = msg ? String(msg).replace(/<[^>]*>/g, '').trim() : '';
+  location.replace(PORTAL + (texto ? '?aviso=' + encodeURIComponent(texto) : ''));
 }
 
 /* =====================================================================
@@ -3669,7 +3684,7 @@ document.getElementById('form-perfil').addEventListener('submit', function(e){
 
 document.getElementById('btn-sair').addEventListener('click', function(){
   if(confirm('Sair do sistema neste aparelho?'))
-    sb.auth.signOut().then(function(){ location.reload(); });
+    sb.auth.signOut().then(function(){ location.replace(PORTAL); });
 });
 
 /* Na versão publicada não existe "apagar tudo" nem cópia local:

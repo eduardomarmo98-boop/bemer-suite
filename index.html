@@ -163,6 +163,15 @@ function mostrar(tela){
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
+/* Um módulo pode devolver a pessoa para cá com um recado no endereço
+   (sessão expirada, cadastro pendente). O módulo não tem login próprio:
+   quem autentica é o portal. */
+function avisoDoEndereco(){
+  var m = /[?&]aviso=([^&]+)/.exec(location.search);
+  if(!m) return null;
+  try { return decodeURIComponent(m[1].split('+').join(' ')); } catch(e){ return null; }
+}
+
 function telaLogin(msg){
   mostrar('tela-login');
   var r = $('recado');
@@ -267,7 +276,7 @@ if(SUPABASE_URL.indexOf('COLE-AQUI') >= 0){
   telaLogin('Falta preencher o endereço e a chave do Supabase no início do arquivo.');
 } else {
   sb.auth.getSession().then(function(s){
-    if(s.data.session) abrir(); else telaLogin('');
+    if(s.data.session) abrir(); else telaLogin(esc(avisoDoEndereco() || ''));
   });
 }
 </script>
