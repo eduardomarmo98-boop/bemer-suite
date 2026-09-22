@@ -84,6 +84,10 @@
       display:inline-flex;align-items:center;justify-content:center}
   .eu:hover{background:rgba(255,255,255,.3)}
 
+  .voltar-portal{font-size:13px;color:#fff;background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:5px 10px;
+    white-space:nowrap;cursor:pointer;font-family:inherit;margin-right:4px}
+  .voltar-portal:hover{background:rgba(255,255,255,.26)}
   .link-topo{font-size:13px;color:#fff;opacity:.78;padding:4px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.35)}
   .link-topo:hover{opacity:1;border-color:var(--laranja)}
 
@@ -592,6 +596,10 @@
 
 
 <header>
+  <!-- Voltar para o portal. Na suíte o módulo é uma sala, não a casa:
+       tem que haver uma porta visível para o corredor. -->
+  <button class="voltar-portal" id="btn-portal" title="Voltar ao portal"
+          onclick="location.href='../'">&#8249; Portal</button>
   <div class="marca">
     <div class="marca-icone icone-bm" role="img" aria-label="BeMer FLOW"></div>
     <div class="marca-txt"><b>BeMer</b> FLOW</div>
@@ -3631,7 +3639,8 @@ document.getElementById('form-login').addEventListener('submit', function(e){
 
   /* ---- recuperar senha ---- */
   if(MODO === 'recuperar'){
-    sb.auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] })
+    /* volta para o PORTAL, não para o módulo — ver PORTAL lá em cima */
+    sb.auth.resetPasswordForEmail(email, { redirectTo: new URL(PORTAL, location.href).href })
       .then(function(r){
         fim();
         msgLogin(r.error ? traduzErro(r.error.message)

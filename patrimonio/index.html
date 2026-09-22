@@ -465,8 +465,10 @@ const Auth = {
   },
   async enviarRecuperacao(email) {
     if (!SB) throw new Error('Supabase não inicializado');
-    // O Supabase envia o e-mail e devolve a pessoa para cá, com os tokens no #hash.
-    const redirectTo = window.location.origin + window.location.pathname;
+    /* O link do e-mail volta para o PORTAL, não para o módulo: é lá que
+       a pessoa entra, e de lá ela escolhe para onde ir. Mandar para o
+       módulo fazia a senha nova cair numa tela que ela nem pediu. */
+    const redirectTo = new URL('../', window.location.href).href;
     const { error } = await SB.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) throw error;
   },
@@ -1100,6 +1102,11 @@ function render() {
     return;
   }
   if (!DB.currentUser) {
+    /* Na suíte quem autentica é o portal. O módulo é uma sala, não a
+       casa: sem sessão, devolve a pessoa para o corredor. A tela de
+       login daqui só aparece quando a pessoa está definindo senha
+       nova, porque o link do e-mail cai direto nela. */
+    if (location.hash.indexOf('type=recovery') < 0) { location.replace('../'); return; }
     app.innerHTML = renderLogin();
     bindLogin();
     return;
@@ -1427,6 +1434,9 @@ function renderTopbar() {
         <div class="tag">CONTROLE DE PATRIMÔNIO</div>
       </div>
       <div class="right">
+        <button class="icon-btn" id="btn-portal" title="Voltar ao portal"
+                style="width:auto; padding:0 10px; font-size:13px; font-weight:700; gap:4px;"
+                onclick="location.href='../'">&#8249; Portal</button>
         <button class="icon-btn" id="btn-refresh" title="Atualizar"><span class="ic">⟳</span></button>
         <button class="icon-btn" id="btn-pending" title="Aceites pendentes">
           🔔
