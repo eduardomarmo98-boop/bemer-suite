@@ -3,130 +3,318 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>BeMer — Brandão & Marmo</title>
+<title>BeMer — Sua obra em ordem</title>
+<meta name="theme-color" content="#00296B">
+<link rel="icon" type="image/png" sizes="192x192" href="marca/icon-192.png">
+<link rel="apple-touch-icon" href="marca/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* ---------------------------------------------------------------------
+   Identidade BeMer (canvas "Portal BeMer — layout", 23/09/2026).
+   Laranja NUNCA em texto sobre branco: só faixas, pílulas e botões com
+   texto azul por cima — laranja com texto branco não passa em contraste.
+   --------------------------------------------------------------------- */
 :root{
-  --azul:#00296B; --azul-claro:#1a4a9c; --laranja:#FE9400;
-  --texto:#1a1a1a; --texto2:#5f6368; --borda:#e3e5e8; --fundo:#f5f6f8; --branco:#fff;
-  --erro:#b3261e;
+  --azul:#00296B; --azul-escuro:#001B4D; --laranja:#FE9400; --laranja-claro:#FFF1DC;
+  --grifo:#FFE0B0;
+  --texto:#0F1B2D; --texto2:#4F5B6D; --borda:#E3E7ED; --borda-forte:#C9D1DD;
+  --fundo:#F5F7FA; --branco:#fff; --campo:#F7F9FC;
+  --erro-fundo:#FDECEB; --erro:#9B1C14; --ok-fundo:#E7F5EC; --ok:#1B5E34;
+  --azul-texto-claro:#C9D6EE; --azul-texto-fraco:#A9BCE0;
+  /* grade isométrica: conversa com o prédio do símbolo */
+  --iso-azul:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='32.33'%3E%3Cpath d='M0 0L56 32.33M56 0L0 32.33' stroke='%2300296B' stroke-opacity='.06'/%3E%3C/svg%3E");
+  --iso-branco:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='32.33'%3E%3Cpath d='M0 0L56 32.33M56 0L0 32.33' stroke='%23FFFFFF' stroke-opacity='.06'/%3E%3C/svg%3E");
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
 body{font-family:Poppins,system-ui,sans-serif;background:var(--fundo);color:var(--texto);
-     min-height:100vh;-webkit-font-smoothing:antialiased}
+     -webkit-font-smoothing:antialiased}
 .oculto{display:none!important}
+a{color:var(--azul)}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--laranja);outline-offset:2px}
 
-/* ---------- barra ---------- */
-.barra{background:var(--azul);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px}
-.marca{width:32px;height:32px;border-radius:7px;background:var(--laranja);color:#4a2b00;
-       display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex:none}
-.barra h1{font-size:15px;font-weight:500;letter-spacing:.2px}
+/* a assinatura BeMer: símbolo + palavra */
+.marca{display:flex;align-items:center;gap:10px;text-decoration:none}
+.marca img{display:block;height:38px;width:auto}
+.palavra{font-weight:700;line-height:1;letter-spacing:-.03em;font-size:26px}
+.palavra .be{color:var(--azul)} .palavra .mer{color:var(--laranja)}
+
+/* ============================ LOGIN ============================ */
+.login{min-height:100vh;display:grid;grid-template-columns:minmax(0,58fr) minmax(0,42fr)}
+.palco{position:relative;overflow:hidden;background:#fff var(--iso-azul);
+       padding:64px clamp(32px,6vw,80px) 40px;display:flex;flex-direction:column;justify-content:center}
+.palco .arco{position:absolute;right:-150px;top:-120px;width:560px;height:300px;pointer-events:none}
+.palco-marca{position:relative;display:flex;align-items:center;gap:22px}
+.palco-marca img{height:112px;width:auto;display:block}
+.palco-marca .palavra{font-size:76px;letter-spacing:-2.5px;line-height:.95}
+.descritor{display:block;margin-top:8px;font-size:16px;font-weight:500;color:var(--texto2)}
+.slogan{position:relative;margin-top:44px;font-size:40px;line-height:1.15;font-weight:600;letter-spacing:-.8px;color:var(--texto)}
+.grifo{color:var(--azul);box-shadow:inset 0 -.3em 0 var(--grifo)}
+.pilares{position:relative;display:flex;flex-wrap:wrap;gap:14px;margin-top:36px;list-style:none}
+.pilares li{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 8px;border-radius:999px;
+            background:#fff;border:1px solid var(--borda);font-size:15px;font-weight:600;color:var(--azul)}
+.pilares .ic{width:36px;height:36px;border-radius:18px;background:var(--laranja-claro);display:flex;
+             align-items:center;justify-content:center}
+
+.lado-form{position:relative;overflow:hidden;background:var(--azul) var(--iso-branco);
+           display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 48px 150px}
+.cartao{position:relative;width:100%;max-width:400px;background:#fff;border-radius:20px;padding:40px;
+        box-shadow:0 24px 60px rgba(0,12,40,.35)}
+.cartao h2{font-size:26px;font-weight:600;color:var(--azul)}
+.cartao .sub{margin:6px 0 24px;font-size:14px;color:var(--texto2);line-height:1.5}
+label{display:block;font-size:13px;font-weight:500;margin:0 0 6px;color:var(--texto)}
+input{width:100%;height:50px;border:1px solid var(--borda-forte);border-radius:12px;padding:0 14px;
+      font:inherit;font-size:16px;background:var(--campo);color:var(--texto);margin-bottom:16px}
+input:focus{outline:none;border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0,41,107,.12)}
+.linha-link{display:flex;justify-content:flex-end;margin:-6px 0 18px}
+.link{background:none;border:0;padding:10px 0;font:inherit;font-size:13px;font-weight:500;color:var(--azul);
+      text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.botao{width:100%;height:52px;border:0;border-radius:12px;background:var(--laranja);color:var(--azul);
+       font:inherit;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.botao:hover{filter:brightness(1.05)}
+.botao:disabled{opacity:.6;cursor:default;filter:none}
+.recado{font-size:14px;line-height:1.5;margin-bottom:18px;padding:12px 14px;border-radius:10px;
+        background:var(--erro-fundo);color:var(--erro)}
+.recado.ok{background:var(--ok-fundo);color:var(--ok)}
+.pe-form{position:absolute;bottom:28px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:12px}
+.pe-form img{height:40px;width:auto;display:block}
+.versao{font-size:12px;color:var(--azul-texto-fraco)}
+
+/* ============================ PORTAL ============================ */
+.topo{height:72px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;
+      gap:14px;padding:0 clamp(16px,3vw,40px)}
+.fio{width:1px;height:32px;background:var(--borda);margin:0 6px}
+.cliente{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px 0 8px;border-radius:12px;background:var(--fundo)}
+.cliente img{height:28px;width:auto;display:block}
+.cliente span{font-size:14px;font-weight:600;color:var(--texto)}
 .espaco{flex:1}
-.quem{font-size:13px;color:#b9cdf0;text-align:right;line-height:1.3}
-.quem b{display:block;color:#fff;font-weight:500}
-.sair{background:none;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:7px;
-      padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
-.sair:hover{background:rgba(255,255,255,.12)}
+.icone-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--borda);background:#fff;
+           display:flex;align-items:center;justify-content:center;color:var(--azul);cursor:pointer;text-decoration:none}
+.icone-btn[aria-disabled="true"]{opacity:.45;cursor:default}
+.pessoa{display:flex;align-items:center;gap:10px;padding:0 4px}
+.avatar{width:40px;height:40px;border-radius:20px;background:var(--azul);color:#fff;display:flex;
+        align-items:center;justify-content:center;font-size:15px;font-weight:600;flex:none}
+.pessoa b{display:block;font-size:14px;font-weight:600;color:var(--texto);line-height:1.3}
+.pessoa small{display:block;font-size:12px;color:var(--texto2);line-height:1.3}
+.sair{height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--borda-forte);background:#fff;
+      color:var(--azul);font:inherit;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;cursor:pointer}
 
-/* ---------- conteúdo ---------- */
-main{max-width:940px;margin:0 auto;padding:28px 20px 60px}
-.saudacao{font-size:14px;color:var(--texto2);margin-bottom:18px}
+.faixa{position:relative;overflow:hidden;background:var(--azul) var(--iso-branco);height:250px}
+.faixa .marca-agua{position:absolute;right:70px;top:22px;height:260px;width:auto;opacity:.1}
+.faixa-conteudo{position:relative;max-width:1100px;margin:0 auto;padding:36px 20px 0;display:flex;flex-direction:column;gap:8px}
+/* align-self: sem ele o flex da coluna estica a imagem na largura toda */
+.faixa .cliente-branco{display:none;height:26px;width:auto;max-width:60%;object-fit:contain;
+                       align-self:flex-start;margin-bottom:6px}
+.chip{align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,.14);
+      border-radius:999px;padding:5px 12px}
+.faixa h1{font-size:36px;font-weight:600;color:#fff;letter-spacing:-.5px}
+.faixa p{font-size:15px;color:var(--azul-texto-claro)}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-.card{background:var(--branco);border:1px solid var(--borda);border-radius:12px;padding:18px;
-      text-align:left;font:inherit;cursor:pointer;transition:border-color .15s,transform .15s}
-.card:hover{border-color:var(--azul);transform:translateY(-2px)}
-.card:disabled{cursor:default;opacity:.55}
-.card:disabled:hover{border-color:var(--borda);transform:none}
-.sigla{width:40px;height:40px;border-radius:9px;background:#e8eefa;color:var(--azul);
-       display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;margin-bottom:12px}
-.card h2{font-size:16px;font-weight:500;margin-bottom:3px}
-.card p{font-size:13px;color:var(--texto2);line-height:1.4}
-.tag{display:inline-block;margin-top:10px;font-size:11px;padding:3px 9px;border-radius:20px;
-     background:#f0f1f3;color:var(--texto2)}
+.cards{position:relative;max-width:1100px;margin:-64px auto 0;padding:0 20px;display:grid;
+       grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:28px;min-height:252px;
+      display:flex;flex-direction:column;gap:18px;color:var(--texto);text-decoration:none;text-align:left;
+      font:inherit;box-shadow:0 12px 32px rgba(0,27,77,.10);cursor:pointer;
+      transition:transform .15s,box-shadow .15s,border-color .15s}
+a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16);border-color:#C4D2EA}
+/* apagado por dentro, não o cartão: com opacidade no cartão a faixa azul
+   aparece através dele */
+.card[aria-disabled="true"]{cursor:default}
+.card[aria-disabled="true"] > *{opacity:.55}
+.tile{width:56px;height:56px;border-radius:14px;background:var(--azul);display:flex;align-items:center;
+      justify-content:center;color:#fff;flex:none}
+.card h2{font-size:22px;font-weight:600;color:var(--azul);margin-bottom:6px}
+.card p{font-size:14px;line-height:1.5;color:var(--texto2)}
+.card .rodape-card{margin-top:auto;display:flex;align-items:center;justify-content:space-between}
+.card .abrir{font-size:14px;font-weight:600;color:var(--azul)}
+.seta{width:36px;height:36px;border-radius:18px;background:var(--laranja);color:var(--azul);display:flex;
+      align-items:center;justify-content:center;flex:none}
+.tag{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--fundo);color:var(--texto2)}
+.vazio{grid-column:1/-1;background:#fff;border:1px solid var(--borda);border-radius:18px;padding:28px;
+       font-size:15px;color:var(--texto2);box-shadow:0 12px 32px rgba(0,27,77,.10)}
 
-/* ---------- login ---------- */
-.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.caixa{background:var(--branco);border:1px solid var(--borda);border-radius:14px;padding:32px;width:100%;max-width:380px}
-.logo-login{width:46px;height:46px;border-radius:10px;background:var(--azul);color:var(--laranja);
-            display:flex;align-items:center;justify-content:center;font-weight:600;margin-bottom:18px}
-.caixa h2{font-size:19px;font-weight:500;margin-bottom:4px}
-.caixa .sub{font-size:13px;color:var(--texto2);margin-bottom:22px}
-label{display:block;font-size:13px;font-weight:500;margin:0 0 6px}
-input{width:100%;border:1px solid var(--borda);border-radius:9px;padding:11px 13px;font:inherit;
-      font-size:15px;margin-bottom:14px;background:#fafbfc}
-input:focus{outline:none;border-color:var(--azul);background:#fff}
-.botao{width:100%;background:var(--azul);color:#fff;border:0;border-radius:9px;padding:12px;
-       font:inherit;font-size:15px;font-weight:500;cursor:pointer}
-.botao:hover{background:var(--azul-claro)}
-.botao:disabled{opacity:.6;cursor:default}
-.recado{font-size:13px;line-height:1.5;margin-bottom:16px;padding:11px 13px;border-radius:9px;
-        background:#fdeceb;color:var(--erro)}
+.rodape{max-width:1100px;margin:48px auto 0;padding:24px 20px 28px;display:flex;align-items:center;
+        justify-content:space-between;gap:12px;border-top:1px solid var(--borda)}
+.rodape b{font-size:13px;font-weight:600;color:var(--azul)}
+.rodape span{font-size:12px;color:var(--texto2)}
 
-/* ---------- fornecedor ---------- */
-.aviso{background:var(--branco);border:1px solid var(--borda);border-radius:12px;padding:22px;font-size:14px;line-height:1.6}
-.aviso h2{font-size:17px;font-weight:500;margin-bottom:8px}
+/* ========================= FORNECEDOR ========================= */
+.aviso{max-width:1100px;margin:32px auto 0;padding:0 20px}
+.aviso div{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:28px;font-size:15px;line-height:1.6}
+.aviso h2{font-size:20px;font-weight:600;color:var(--azul);margin-bottom:8px}
 
-.rodape{text-align:center;font-size:12px;color:var(--texto2);padding:24px}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--texto2);font-size:14px}
+
+/* ========================== CELULAR ========================== */
+@media (max-width: 760px){
+  .login{grid-template-columns:1fr;grid-template-rows:auto 1fr;background:#fff}
+  .palco{padding:36px 24px 30px;align-items:center;text-align:center}
+  .palco .arco{display:none}
+  .palco-marca{flex-direction:column;gap:12px}
+  .palco-marca img{height:96px}
+  .palco-marca .palavra{font-size:48px;letter-spacing:-1.5px}
+  .slogan{margin-top:22px;font-size:24px;letter-spacing:-.4px}
+  .pilares{display:none}
+  .lado-form{border-radius:28px 28px 0 0;justify-content:flex-start;padding:28px 24px 20px;background-position:0 0}
+  .cartao{background:none;box-shadow:none;padding:0;max-width:none}
+  .cartao h2{color:#fff;font-size:22px}
+  .cartao .sub{color:var(--azul-texto-claro);margin-bottom:18px}
+  .cartao label{color:#DCE5F5}
+  .cartao input{border:0;background:#fff}
+  .cartao .link{color:#fff}
+  .pe-form{position:static;margin-top:28px}
+  .pe-form img{height:30px}
+
+  .topo{height:64px;gap:4px;padding:0 10px 0 16px}
+  .topo .marca img{height:32px}
+  .topo .palavra{font-size:22px}
+  .fio,.cliente,.pessoa{display:none}
+  .icone-btn{border:0}
+  .sair{border:0;padding:0;width:44px;justify-content:center}
+  .sair .rotulo{display:none}
+  .faixa{height:210px}
+  .faixa .marca-agua{right:-20px;top:10px;height:170px}
+  .faixa-conteudo{padding:22px 20px 0;gap:6px}
+  .faixa .cliente-branco{display:block}
+  .faixa h1{font-size:26px}
+  .faixa p{font-size:13px}
+  .faixa .chip{order:9;font-size:11px;padding:3px 10px}
+  .cards{margin-top:-44px;padding:0 16px;grid-template-columns:1fr;gap:12px}
+  .card{min-height:92px;padding:16px;flex-direction:row;align-items:center;gap:14px;border-radius:16px;
+        box-shadow:0 8px 24px rgba(0,27,77,.08)}
+  .tile{width:50px;height:50px;border-radius:13px}
+  .tile svg{width:24px;height:24px}
+  .card .texto-card{flex:1}
+  .card h2{font-size:17px;margin-bottom:2px}
+  .card p{font-size:13px;line-height:1.4}
+  .card .rodape-card{margin:0}
+  .card .abrir{display:none}
+  .seta{width:32px;height:32px}
+  .rodape{flex-direction:column;margin-top:28px;text-align:center}
+}
 </style>
 </head>
 <body>
 
-<!-- ============ LOGIN ============ -->
-<div id="tela-login" class="centro oculto">
-  <form class="caixa" id="form-login">
-    <div class="logo-login">BM</div>
-    <h2>BeMer</h2>
-    <p class="sub">Brandão &amp; Marmo Engenharia</p>
-    <div id="recado" class="recado oculto"></div>
-    <label for="email">E-mail</label>
-    <input id="email" type="email" autocomplete="username" required>
-    <label for="senha">Senha</label>
-    <input id="senha" type="password" autocomplete="current-password" required>
-    <button class="botao" id="btn-entrar" type="submit">Entrar</button>
-  </form>
-</div>
-
 <!-- ============ CARREGANDO ============ -->
-<div id="tela-carregando" class="centro">
-  <p style="color:var(--texto2);font-size:14px">Carregando…</p>
+<div id="tela-carregando" class="centro" role="status">Carregando…</div>
+
+<!-- ============ LOGIN / ESQUECI / NOVA SENHA ============ -->
+<div id="tela-login" class="login oculto">
+  <section class="palco">
+    <svg class="arco" viewBox="0 0 560 300" fill="none" aria-hidden="true"><path d="M10 290C220 270 430 170 550 10" stroke="#FE9400" stroke-width="20" stroke-linecap="round"/></svg>
+    <div class="palco-marca">
+      <img src="marca/bemer-simbolo.png" alt="">
+      <div>
+        <div class="palavra" aria-label="BeMer"><span class="be">Be</span><span class="mer">Mer</span></div>
+        <span class="descritor">Gestão integrada de obras</span>
+      </div>
+    </div>
+    <p class="slogan">Sua obra <span class="grifo">em ordem.</span></p>
+    <ul class="pilares">
+      <li><span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>Tudo conectado</li>
+      <li><span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h20"/><path d="M4 18v-3a8 8 0 0 1 16 0v3"/><path d="M10 7V4h4v3"/></svg></span>Do canteiro ao escritório</li>
+      <li><span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Em tempo real</li>
+    </ul>
+  </section>
+
+  <section class="lado-form">
+    <!-- entrar -->
+    <form class="cartao" id="form-login" novalidate>
+      <h2>Entrar</h2>
+      <p class="sub">Acesse com seu e-mail e senha.</p>
+      <div id="recado" class="recado oculto" role="alert"></div>
+      <label for="email">E-mail</label>
+      <input id="email" type="email" autocomplete="username" placeholder="nome@empresa.com.br" required>
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" autocomplete="current-password" required>
+      <div class="linha-link"><button type="button" class="link" onclick="modoEsqueci()">Esqueci minha senha</button></div>
+      <button class="botao" id="btn-entrar" type="submit">Entrar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    </form>
+
+    <!-- esqueci -->
+    <form class="cartao oculto" id="form-esqueci" novalidate>
+      <h2>Recuperar acesso</h2>
+      <p class="sub">Informe seu e-mail. Enviamos um link para você criar uma senha nova.</p>
+      <div id="recado-esqueci" class="recado oculto" role="alert"></div>
+      <label for="email-esqueci">E-mail</label>
+      <input id="email-esqueci" type="email" autocomplete="username" placeholder="nome@empresa.com.br" required>
+      <button class="botao" id="btn-esqueci" type="submit">Enviar link</button>
+      <div class="linha-link" style="justify-content:center;margin:12px 0 0"><button type="button" class="link" onclick="modoEntrar()">Voltar para entrar</button></div>
+    </form>
+
+    <!-- nova senha (chega pelo link do e-mail: #type=recovery) -->
+    <form class="cartao oculto" id="form-nova" novalidate>
+      <h2>Criar senha nova</h2>
+      <p class="sub">Use pelo menos 8 caracteres.</p>
+      <div id="recado-nova" class="recado oculto" role="alert"></div>
+      <label for="nova1">Senha nova</label>
+      <input id="nova1" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="nova2">Repita a senha</label>
+      <input id="nova2" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="botao" id="btn-nova" type="submit">Salvar e entrar</button>
+    </form>
+
+    <div class="pe-form">
+      <img id="cliente-logo-login" alt="">
+      <span class="versao" id="versao-login"></span>
+    </div>
+  </section>
 </div>
 
 <!-- ============ PORTAL ============ -->
 <div id="tela-portal" class="oculto">
-  <div class="barra">
-    <div class="marca">BM</div>
-    <h1>Brandão &amp; Marmo</h1>
+  <header class="topo">
+    <a class="marca" href="./" aria-label="BeMer — início">
+      <img src="marca/bemer-simbolo.png" alt="">
+      <span class="palavra"><span class="be">Be</span><span class="mer">Mer</span></span>
+    </a>
+    <span class="fio" aria-hidden="true"></span>
+    <div class="cliente"><img id="cliente-icone" alt=""><span id="cliente-nome"></span></div>
     <div class="espaco"></div>
-    <div class="quem"><b id="p-nome">—</b><span id="p-perfil">—</span></div>
-    <button class="sair" onclick="sair()">Sair</button>
-  </div>
-  <main>
-    <p class="saudacao" id="saudacao">O que você vai abrir?</p>
-    <div class="cards" id="cards"></div>
-  </main>
+    <a id="btn-config" class="icone-btn oculto" aria-label="Configurações" title="Configurações">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </a>
+    <div class="pessoa"><span class="avatar" id="p-inicial" aria-hidden="true">·</span><div><b id="p-nome">—</b><small id="p-perfil">—</small></div></div>
+    <button class="sair" type="button" onclick="sair()" aria-label="Sair">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="rotulo">Sair</span>
+    </button>
+  </header>
+
+  <section class="faixa">
+    <img class="marca-agua" src="marca/bemer-simbolo-branco.png" alt="">
+    <div class="faixa-conteudo">
+      <img class="cliente-branco" id="cliente-logo-faixa" alt="">
+      <span class="chip" id="chip-perfil">—</span>
+      <h1 id="saudacao">Olá.</h1>
+      <p id="hoje"></p>
+    </div>
+  </section>
+
+  <main class="cards" id="cards"></main>
+
+  <footer class="rodape"><b>Sua obra em ordem.</b><span id="versao-portal"></span></footer>
 </div>
 
 <!-- ============ FORNECEDOR ============ -->
 <div id="tela-externo" class="oculto">
-  <div class="barra">
-    <div class="marca">BM</div>
-    <h1 id="ext-titulo">Documentação</h1>
+  <header class="topo">
+    <span class="marca"><img src="marca/bemer-simbolo.png" alt=""><span class="palavra"><span class="be">Be</span><span class="mer">Mer</span></span></span>
     <div class="espaco"></div>
-    <button class="sair" onclick="sair()">Sair</button>
-  </div>
-  <main>
-    <div class="aviso">
-      <h2>Sua documentação</h2>
-      <p>Esta área ainda não está ligada em homologação. Quando o módulo de
-         documentação entrar, é aqui que você vê e envia os documentos da sua empresa.</p>
-    </div>
-  </main>
+    <button class="sair" type="button" onclick="sair()" aria-label="Sair">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="rotulo">Sair</span>
+    </button>
+  </header>
+  <div class="aviso"><div>
+    <h2>Sua documentação</h2>
+    <p>Esta área ainda não está ligada em homologação. Quando o módulo de
+       documentação entrar, é aqui que você vê e envia os documentos da sua empresa.</p>
+  </div></div>
 </div>
-
-<p class="rodape">BeMer · homologação · <span id="versao">v0.1</span></p>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
 <script>
@@ -138,20 +326,52 @@ input:focus{outline:none;border-color:var(--azul);background:#fff}
    ===================================================================== */
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
+var VERSAO   = 'v0.2';
+var AMBIENTE = 'homologação';   // '' em produção
+
+/* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
+   Tudo o que identifica o cliente mora AQUI, e só aqui — é o que permite
+   entregar o BeMer para outra construtora sem mexer no resto do arquivo.
+   (Quando houver mais de um cliente, isto sai do arquivo e vem do banco.) */
+var CLIENTE = {
+  nome:        'Brandão & Marmo',
+  logoBranco:  'marca/cliente/bm-logo-branco.png',  // sobre o azul: login e faixa do celular
+  icone:       'marca/cliente/bm-icone.png'         // etiqueta no cabeçalho
+};
 
 /* Os módulos da suíte. `url` nulo = ainda não conectado (card fica apagado).
    Quando o Flow for publicado em homologação, é só preencher a url dele.   */
 var MODULOS = {
-  docs:       {sigla:'DC', nome:'Docs',       desc:'Acesso e documentação',   url:null},
-  flow:       {sigla:'FL', nome:'Flow',       desc:'Pendências e atividades', url:'flow/'},
-  patrimonio: {sigla:'PT', nome:'Patrimônio', desc:'Bens e movimentações',    url:'patrimonio/'},
-  bemer:      {sigla:'BM', nome:'BeMer',      desc:'Contratos e medições',    url:null},
-  manutencao: {sigla:'MN', nome:'Manutenção', desc:'Ordens de serviço',       url:null},
+  docs:       {nome:'Docs',       desc:'Documentação de SESMT e FOPAG e acesso às obras.', url:null,                              icone:'docs'},
+  flow:       {nome:'Flow',       desc:'Pendências e atividades por obra e por setor.',   url:'flow/',       icone:'flow'},
+  patrimonio: {nome:'Patrimônio', desc:'Bens, movimentações e inventário.',               url:'patrimonio/', icone:'patrimonio'},
+  bemer:      {nome:'Financeiro', desc:'Contratos, pedidos e medições.',                  url:null,                              icone:'financeiro'},
+  manutencao: {nome:'Manutenção', desc:'Ordens de serviço.',                               url:null,                              icone:'manutencao'},
   /* Não é um sistema: é onde mora o que é da suíte inteira — chaves de IA,
      compactador, garimpador de arquivos mortos, matriz de permissões.
-     Só diretoria e TI recebem este módulo (ver migração 0008).            */
-  configuracoes: {sigla:'CF', nome:'Configurações', desc:'Chaves, manutenção e permissões', url:null}
+     Só diretoria e TI recebem este módulo (ver migração 0008). Desde o
+     layout de 23/09/2026 ele é a ENGRENAGEM do cabeçalho, não um card. */
+  configuracoes: {nome:'Configurações', url:null, engrenagem:true}
 };
+
+var ICONES = {
+  docs:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/>',
+  flow:'<path d="M10 6h10"/><path d="M10 12h10"/><path d="M10 18h10"/><path d="M3.5 6l1.5 1.5L7.5 5"/><path d="M3.5 12l1.5 1.5 2.5-2.5"/><path d="M3.5 18l1.5 1.5 2.5-2.5"/>',
+  patrimonio:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  financeiro:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+  manutencao:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'
+};
+function svg(nome, tam){
+  return '<svg width="'+(tam||28)+'" height="'+(tam||28)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+       + 'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONES[nome]||'')+'</svg>';
+}
+var SETA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+
+/* Guardado ANTES de criar o cliente: o supabase-js lê o #... do endereço
+   e limpa, e aí não daria mais para saber que era um link de senha nova. */
+var HASH_INICIAL = location.hash || '';
+var RECUPERANDO  = HASH_INICIAL.indexOf('type=recovery') >= 0;
+var LINK_VENCIDO = /error_code=otp_expired|error=access_denied/.test(HASH_INICIAL);
 
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 function $(id){ return document.getElementById(id); }
@@ -162,6 +382,22 @@ function mostrar(tela){
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function recado(id, msg, ok){
+  var r = $(id);
+  if(msg){ r.innerHTML = msg; r.classList.remove('oculto'); r.classList.toggle('ok', !!ok); }
+  else   { r.classList.add('oculto'); }
+}
+function limparEndereco(){ history.replaceState(null, '', location.pathname + location.search); }
+
+/* ---------- identidade do cliente e versão ---------- */
+(function(){
+  var ver = 'BeMer · ' + VERSAO + (AMBIENTE ? ' · ' + AMBIENTE : '');
+  $('versao-login').textContent = ver;
+  $('versao-portal').textContent = ver;
+  [['cliente-logo-login', CLIENTE.logoBranco], ['cliente-logo-faixa', CLIENTE.logoBranco], ['cliente-icone', CLIENTE.icone]]
+    .forEach(function(p){ var el = $(p[0]); el.src = p[1]; el.alt = CLIENTE.nome; });
+  $('cliente-nome').textContent = CLIENTE.nome;
+})();
 
 /* Um módulo pode devolver a pessoa para cá com um recado no endereço
    (sessão expirada, cadastro pendente). O módulo não tem login próprio:
@@ -172,26 +408,77 @@ function avisoDoEndereco(){
   try { return decodeURIComponent(m[1].split('+').join(' ')); } catch(e){ return null; }
 }
 
-function telaLogin(msg){
+/* ---------- as três caixas da tela de login ---------- */
+function caixa(qual){
+  ['form-login','form-esqueci','form-nova'].forEach(function(f){ $(f).classList.toggle('oculto', f !== qual); });
   mostrar('tela-login');
-  var r = $('recado');
-  if(msg){ r.innerHTML = msg; r.classList.remove('oculto'); }
-  else   { r.classList.add('oculto'); }
-  $('btn-entrar').disabled = false;
-  $('btn-entrar').textContent = 'Entrar';
 }
+function telaLogin(msg){
+  caixa('form-login');
+  recado('recado', msg);
+  $('btn-entrar').disabled = false;
+}
+function modoEsqueci(){
+  caixa('form-esqueci'); recado('recado-esqueci', '');
+  $('email-esqueci').value = $('email').value; $('email-esqueci').focus();
+}
+function modoEntrar(){ telaLogin(''); $('email').focus(); }
+function telaNovaSenha(msg){ caixa('form-nova'); recado('recado-nova', msg); $('nova1').focus(); }
 
 /* ---------- entrar ---------- */
 $('form-login').addEventListener('submit', function(e){
   e.preventDefault();
+  var email = $('email').value.trim(), senha = $('senha').value;
+  if(!email || !senha) return recado('recado', 'Preencha e-mail e senha.');
   $('btn-entrar').disabled = true;
-  $('btn-entrar').textContent = 'Entrando…';
-  sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('senha').value })
+  sb.auth.signInWithPassword({ email: email, password: senha })
     .then(function(r){
       if(r.error) return telaLogin('E-mail ou senha não conferem.');
       abrir();
     })
     .catch(function(){ telaLogin('Não foi possível conectar. Tente de novo.'); });
+});
+
+/* ---------- esqueci minha senha ----------
+   A resposta é a mesma exista o e-mail ou não: dizer "esse e-mail não
+   está cadastrado" entrega a lista de quem tem conta para quem quiser. */
+$('form-esqueci').addEventListener('submit', function(e){
+  e.preventDefault();
+  var email = $('email-esqueci').value.trim();
+  if(!email) return recado('recado-esqueci', 'Informe o seu e-mail.');
+  $('btn-esqueci').disabled = true;
+  sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname })
+    .then(function(r){
+      if(r.error && /rate|limit|seconds/i.test(r.error.message||''))
+        return recado('recado-esqueci', 'Muitos pedidos seguidos. Espere um minuto e tente de novo.');
+      recado('recado-esqueci', 'Se esse e-mail tiver cadastro, o link chega em instantes. Confira também a caixa de spam.', true);
+    })
+    .catch(function(){ recado('recado-esqueci', 'Não foi possível conectar. Tente de novo.'); })
+    .then(function(){ $('btn-esqueci').disabled = false; });
+});
+
+/* ---------- senha nova (chegou pelo link do e-mail) ----------
+   Serve para o "esqueci" e para o primeiro acesso de quem foi cadastrado
+   pela tela de pessoas (a edge `criar-usuario` manda o mesmo link). */
+$('form-nova').addEventListener('submit', function(e){
+  e.preventDefault();
+  var s1 = $('nova1').value, s2 = $('nova2').value;
+  if(s1.length < 8) return recado('recado-nova', 'A senha precisa de pelo menos 8 caracteres.');
+  if(s1 !== s2)     return recado('recado-nova', 'As duas senhas não são iguais.');
+  $('btn-nova').disabled = true;
+  sb.auth.getSession().then(function(s){
+    if(!s.data.session) throw new Error('sem-sessao');
+    return sb.auth.updateUser({ password: s1 });
+  }).then(function(r){
+    if(r.error) throw r.error;
+    RECUPERANDO = false; limparEndereco(); abrir();
+  }).catch(function(err){
+    if(err && err.message === 'sem-sessao')
+      return telaLogin('O link expirou ou já foi usado. Peça outro em "Esqueci minha senha".');
+    recado('recado-nova', /different|same/i.test(err && err.message || '')
+      ? 'A senha nova precisa ser diferente da anterior.'
+      : 'Não foi possível salvar a senha. Tente de novo.');
+  }).then(function(){ $('btn-nova').disabled = false; });
 });
 
 function sair(){ sb.auth.signOut().then(function(){ telaLogin(''); }); }
@@ -230,50 +517,88 @@ function abrir(){
   });
 }
 
+/* ---------- saudação e data: do relógio de quem abre ---------- */
+function saudacao(nome){
+  var h = new Date().getHours();
+  var s = h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  var primeiro = String(nome || '').trim().split(/\s+/)[0];
+  return s + (primeiro ? ', ' + primeiro : '') + '.';
+}
+function hoje(){
+  var t = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 /* ---------- portal ---------- */
 function montarPortal(pessoa){
-  return sb.schema('core').from('perfil_modulos')
-    .select('modulo').eq('perfil', pessoa.perfil)
-    .then(function(r){
-      if(r.error) throw r.error;
-      var meus = (r.data||[]).map(function(x){ return x.modulo; })
-                             .filter(function(m){ return MODULOS[m]; });
+  return Promise.all([
+    sb.schema('core').from('perfil_modulos').select('modulo').eq('perfil', pessoa.perfil),
+    sb.schema('core').from('perfis').select('nome').eq('codigo', pessoa.perfil).maybeSingle()
+  ]).then(function(rs){
+    if(rs[0].error) throw rs[0].error;
+    var meus = (rs[0].data||[]).map(function(x){ return x.modulo; })
+                               .filter(function(m){ return MODULOS[m]; });
+    var perfilNome = (rs[1].data && rs[1].data.nome) || pessoa.perfil;
 
-      $('p-nome').textContent   = pessoa.nome || 'Sem nome';
-      $('p-perfil').textContent = pessoa.perfil;
+    $('p-nome').textContent    = pessoa.nome || 'Sem nome';
+    $('p-perfil').textContent  = perfilNome;
+    $('chip-perfil').textContent = perfilNome;
+    $('p-inicial').textContent = (String(pessoa.nome||'?').trim().charAt(0) || '?').toUpperCase();
+    $('saudacao').textContent  = saudacao(pessoa.nome);
+    $('hoje').textContent      = hoje();
 
-      if(!meus.length){
-        $('saudacao').textContent = 'Nenhum módulo liberado para o seu perfil ainda.';
-        $('cards').innerHTML = '';
-        mostrar('tela-portal');
-        return;
-      }
+    /* Configurações é a engrenagem, não um card. */
+    var cfg = MODULOS.configuracoes, temCfg = meus.indexOf('configuracoes') >= 0;
+    var g = $('btn-config');
+    g.classList.toggle('oculto', !temCfg);
+    if(cfg.url){ g.href = cfg.url; g.removeAttribute('aria-disabled'); g.title = 'Configurações'; }
+    else       { g.removeAttribute('href'); g.setAttribute('aria-disabled','true'); g.title = 'Configurações (em breve)'; }
 
-      /* Quem tem um módulo só e ele já está ligado entra direto.
-         É o ponto de aderência: o pessoal de obra não escolhe card.        */
-      var ligados = meus.filter(function(m){ return MODULOS[m].url; });
-      if(meus.length === 1 && ligados.length === 1){
-        location.replace(MODULOS[meus[0]].url);
-        return;
-      }
+    var cards = meus.filter(function(m){ return !MODULOS[m].engrenagem; });
 
-      $('saudacao').textContent = 'O que você vai abrir?';
-      $('cards').innerHTML = meus.map(function(m){
-        var mod = MODULOS[m];
-        return '<button class="card" '+(mod.url ? 'onclick="location.href=\''+mod.url+'\'"' : 'disabled')+'>'
-             +   '<div class="sigla">'+esc(mod.sigla)+'</div>'
-             +   '<h2>'+esc(mod.nome)+'</h2>'
-             +   '<p>'+esc(mod.desc)+'</p>'
-             +   (mod.url ? '' : '<span class="tag">ainda não conectado</span>')
-             + '</button>';
-      }).join('');
+    /* Quem tem um módulo só e ele já está ligado entra direto.
+       É o ponto de aderência: o pessoal de obra não escolhe card.        */
+    var ligados = cards.filter(function(m){ return MODULOS[m].url; });
+    if(cards.length === 1 && ligados.length === 1 && !temCfg){
+      location.replace(MODULOS[cards[0]].url);
+      return;
+    }
+
+    if(!cards.length){
+      $('cards').innerHTML = '<div class="vazio">Nenhum sistema liberado para o seu perfil ainda. Fale com a diretoria.</div>';
       mostrar('tela-portal');
-    });
+      return;
+    }
+
+    $('cards').innerHTML = cards.map(function(m){
+      var mod = MODULOS[m], abre = !!mod.url;
+      var inicio = abre ? '<a class="card" href="'+esc(mod.url)+'">' : '<div class="card" aria-disabled="true">';
+      var fim    = abre ? '</a>' : '</div>';
+      return inicio
+           +   '<span class="tile">'+svg(mod.icone)+'</span>'
+           +   '<div class="texto-card"><h2>'+esc(mod.nome)+'</h2><p>'+esc(mod.desc)+'</p></div>'
+           +   '<div class="rodape-card">'
+           +     (abre ? '<span class="abrir">Abrir</span><span class="seta">'+SETA+'</span>'
+                       : '<span class="tag">Em breve</span>')
+           +   '</div>'
+           + fim;
+    }).join('');
+    mostrar('tela-portal');
+  });
 }
 
 /* ---------- início ---------- */
+sb.auth.onAuthStateChange(function(evento){
+  if(evento === 'PASSWORD_RECOVERY'){ RECUPERANDO = true; telaNovaSenha(''); }
+});
+
 if(SUPABASE_URL.indexOf('COLE-AQUI') >= 0){
   telaLogin('Falta preencher o endereço e a chave do Supabase no início do arquivo.');
+} else if(LINK_VENCIDO){
+  limparEndereco();
+  telaLogin('O link expirou ou já foi usado. Peça outro em "Esqueci minha senha".');
+} else if(RECUPERANDO){
+  telaNovaSenha('');
 } else {
   sb.auth.getSession().then(function(s){
     if(s.data.session) abrir(); else telaLogin(esc(avisoDoEndereco() || ''));
