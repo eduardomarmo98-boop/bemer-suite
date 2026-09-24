@@ -597,7 +597,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.09.24.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.24.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -617,7 +617,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.09.24.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.24.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -638,7 +638,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.09.24.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.24.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -768,7 +768,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.09.24.1';
+var APP_VERSAO = '2026.09.24.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3808,16 +3808,20 @@ function iniciar(sessao){
           'Procure a diretoria.</span>');
         return sb.auth.signOut();
       }
-      return carregarTudo().then(function(){
-        $('carregando').classList.add('oculto');
-        $('app-todo').classList.remove('oculto');
-        desenhar();
-        Sino.atualizar();
-        ligarTempoReal();
-        Rota.ouvir();
-        Destino.restaurar();   // veio de um link e teve que entrar? volta para lá
-        Rota.retomar();        // ou já entrou com #/p/124 no endereço
-      });
+      /* Tela de Permissões do portal (0025): o perfil sem o Flow marcado não
+         entra, mesmo com o link. Se a consulta falhar, deixa entrar — quem
+         protege os dados é o RLS; isto é o "não é pra você" da tela. */
+      return sb.schema('core').from('perfil_modulos').select('modulo')
+        .eq('perfil', perfil.perfil).eq('modulo', 'flow')
+        .then(function(pm){
+          if(pm && !pm.error && Array.isArray(pm.data) && pm.data.length === 0){
+            $('carregando').innerHTML = '<div class="caixa-aviso"><h1>Sem acesso ao Flow</h1>'+
+              '<p>Seu perfil não tem o Flow liberado. Se precisar, peça à diretoria ou à TI.</p>'+
+              '<p style="margin-top:12px"><a href="../">Voltar ao portal</a></p></div>';
+            return;
+          }
+          return abrirApp();
+        }, abrirApp);
     })
     .catch(function(e){
       $('carregando').innerHTML = '<div class="caixa-aviso"><h1>Não consegui carregar</h1>'+
@@ -3828,6 +3832,19 @@ function iniciar(sessao){
         '<button class="btn btn-s" style="margin-top:14px" onclick="location.reload()">Tentar de novo</button>'+
         '</div>';
     });
+
+  function abrirApp(){
+      return carregarTudo().then(function(){
+        $('carregando').classList.add('oculto');
+        $('app-todo').classList.remove('oculto');
+        desenhar();
+        Sino.atualizar();
+        ligarTempoReal();
+        Rota.ouvir();
+        Destino.restaurar();   // veio de um link e teve que entrar? volta para lá
+        Rota.retomar();        // ou já entrou com #/p/124 no endereço
+      });
+  }
 }
 
 /* =====================================================================

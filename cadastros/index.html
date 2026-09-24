@@ -94,6 +94,20 @@ select{padding-right:28px}
 .setor .nome{flex:1 1 auto}
 .setor input[type=number]{width:80px;flex:0 0 auto}
 
+/* ---- permissões ---- */
+.tabela-rolagem{background:#fff;border:1px solid var(--borda);border-radius:12px;overflow-x:auto}
+table.perm{border-collapse:collapse;width:100%;min-width:640px}
+table.perm th,table.perm td{padding:10px 12px;border-top:1px solid var(--borda);text-align:center;vertical-align:middle}
+table.perm thead th{border-top:0;font-size:12px;color:var(--texto2);font-weight:600;background:#FAFBFD}
+table.perm th.perfil,table.perm td.perfil{text-align:left;position:sticky;left:0;background:#fff;min-width:170px;box-shadow:1px 0 0 var(--borda)}
+table.perm thead th.perfil{background:#FAFBFD}
+table.perm td.perfil b{display:block;font-weight:600}
+table.perm td.perfil small{color:var(--texto2);font-size:11.5px}
+table.perm tr.travado td{background:#FAFBFD}
+table.perm input[type=checkbox]{width:20px;height:20px;accent-color:var(--azul);cursor:pointer}
+table.perm select{min-width:170px;width:auto}
+table.perm .trava{font-size:11px;color:var(--texto2)}
+
 /* ---- formulário ---- */
 .cartao{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:18px}
 .grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
@@ -159,7 +173,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.24.1';
+var APP_VERSION = '2026.09.24.3';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha).
    Vai ser RENOMEADA antes do passo 8 da virada (o Docs em produção tem uma
@@ -209,15 +223,13 @@ $('btn-sair').addEventListener('click', function(){ sb.auth.signOut().then(funct
    --------------------------------------------------------------------- */
 var EU = null;
 var PODE = { admin:false, pessoas:false, empresas:false, folha:false };
-var D = { pessoas:[], perfis:[], setores:[], obras:[], empresas:[], pessoaObras:[], empresaObras:[], construtora:null };
+var D = { pessoas:[], perfis:[], setores:[], obras:[], empresas:[], pessoaObras:[], empresaObras:[], construtora:null, perfilModulos:[], nivelPatrimonio:[] };
 var ABA = 'pessoas';
-var F = { pessoas:{ busca:'', sit:'ativos', tipo:'' }, obras:{ busca:'', sit:'ativas' }, empresas:{ busca:'', sit:'ativas' } };
+var F = { pessoas:{ busca:'', sit:'ativos', tipo:'' } };
 
 function perfilNome(c){ var p = D.perfis.find(function(x){ return x.codigo === c; }); return p ? p.nome : (c || '—'); }
 function empresaNome(id){ var e = D.empresas.find(function(x){ return x.id === id; }); return e ? (e.nome_fantasia || e.razao_social) : '—'; }
 function obrasDaPessoa(id){ return D.pessoaObras.filter(function(x){ return x.pessoa_id === id; }).map(function(x){ return x.obra_id; }); }
-function obrasDaEmpresa(id){ return D.empresaObras.filter(function(x){ return x.empresa_id === id; }).map(function(x){ return x.obra_id; }); }
-function empresasDaObra(id){ return D.empresaObras.filter(function(x){ return x.obra_id === id; }).map(function(x){ return x.empresa_id; }); }
 
 /* ---------------------------------------------------------------------
    Entrada: quem autentica é o portal
@@ -236,7 +248,7 @@ sb.auth.getSession().then(function(s){
     .then(function(v){
       if(!v) return;
       PODE = { admin:v[0], pessoas:v[1], empresas:v[2], folha:v[3] };
-      if(!PODE.pessoas) ABA = 'obras';
+      if(!PODE.pessoas) ABA = 'setores';
       return recarregar();
     });
 }).catch(function(e){
@@ -249,19 +261,22 @@ function recarregar(){
     core('setores').select('nome,ordem,ativo').order('ordem').order('nome'),
     core('obras').select('id,nome,cno,ativa').order('nome'),
     core('empresas').select('id,cnpj,razao_social,nome_fantasia,ativa').order('razao_social'),
-    core('empresa_obras').select('empresa_id,obra_id'),
+    Promise.resolve({ data: [] }),   // era a empresa_obras (saiu com a aba Empresas)
     core('construtora').select('*').maybeSingle(),
     PODE.pessoas ? core('pessoas').select('id,nome,email,tipo,perfil,setor,cargo,empresa_id,ativo,whatsapp,avisa_whatsapp').order('nome')
                  : Promise.resolve({ data: [] }),
-    PODE.pessoas ? core('pessoa_obras').select('pessoa_id,obra_id') : Promise.resolve({ data: [] })
+    PODE.pessoas ? core('pessoa_obras').select('pessoa_id,obra_id') : Promise.resolve({ data: [] }),
+    PODE.admin ? core('perfil_modulos').select('perfil,modulo') : Promise.resolve({ data: [] }),
+    PODE.admin ? sb.schema('patrimonio').from('permissoes').select('perfil,nivel') : Promise.resolve({ data: [] })
   ];
   return Promise.all(pedidos).then(function(rs){
-    rs.forEach(function(r, i){ if(r.error && i !== 5) throw r.error; });
+    rs.forEach(function(r, i){ if(r.error && i !== 5 && i !== 9) throw r.error; });
     D.perfis = rs[0].data || []; D.setores = rs[1].data || []; D.obras = rs[2].data || [];
     D.empresas = rs[3].data || []; D.empresaObras = rs[4].data || [];
     D.construtora = rs[5].error ? null : (rs[5].data || null);
     D.construtoraFalta = !!rs[5].error;   // 0024 ainda não rodada
     D.pessoas = rs[6].data || []; D.pessoaObras = rs[7].data || [];
+    D.perfilModulos = rs[8].data || []; D.nivelPatrimonio = rs[9].data || [];
     desenhar();
   }).catch(function(e){
     $('conteudo').innerHTML = '<div class="recado erro">Não foi possível carregar: ' + esc(msgErro(e)) + '</div>';
@@ -274,10 +289,13 @@ function recarregar(){
 function abas(){
   var l = [];
   if(PODE.pessoas) l.push(['pessoas', 'Pessoas', D.pessoas.filter(function(p){ return p.ativo; }).length]);
-  l.push(['obras', 'Obras', D.obras.filter(function(o){ return o.ativa; }).length]);
-  l.push(['empresas', 'Empresas', D.empresas.filter(function(e){ return e.ativa; }).length]);
+  /* Obras e Empresas NÃO se cadastram aqui (decisão do Saurin, 24/09/2026):
+     a empresa nasce no Docs (é lá que ela acessa e manda documentação) e a
+     obra em cada sistema que precisa dela, de forma apartada. Aqui só se
+     usam as listas: quais obras uma pessoa vê e de que empresa é o externo. */
   l.push(['setores', 'Setores', D.setores.filter(function(s){ return s.ativo; }).length]);
   l.push(['construtora', 'Construtora', null]);
+  if(PODE.admin) l.push(['permissoes', 'Permissões', null]);
   return l;
 }
 function desenhar(){
@@ -287,7 +305,7 @@ function desenhar(){
     return '<button type="button" data-aba="' + a[0] + '" class="' + (ABA === a[0] ? 'ativa' : '') + '">' + esc(a[1])
          + (a[2] != null ? '<span class="n">' + a[2] + '</span>' : '') + '</button>';
   }).join('');
-  var fn = { pessoas:telaPessoas, obras:telaObras, empresas:telaEmpresas, setores:telaSetores, construtora:telaConstrutora }[ABA];
+  var fn = { pessoas:telaPessoas, setores:telaSetores, construtora:telaConstrutora, permissoes:telaPermissoes }[ABA];
   $('conteudo').innerHTML = fn();
   ligar();
 }
@@ -303,7 +321,7 @@ function ligar(){
       var k = el.getAttribute('data-filtro').split('.');
       F[k[0]][k[1]] = el.value;
       var alvo = $('lista-' + k[0]);
-      if(alvo) alvo.innerHTML = ({ pessoas:listaPessoas, obras:listaObras, empresas:listaEmpresas })[k[0]]();
+      if(alvo) alvo.innerHTML = ({ pessoas:listaPessoas })[k[0]]();
     });
   });
 }
@@ -312,10 +330,6 @@ $('conteudo').addEventListener('click', function(e){
   var a = b.getAttribute('data-acao'), id = b.getAttribute('data-id');
   if(a === 'pessoa')      abrirPessoa(id);
   if(a === 'nova-pessoa') novaPessoa();
-  if(a === 'obra')        abrirObra(id);
-  if(a === 'nova-obra')   abrirObra(null);
-  if(a === 'empresa')     abrirEmpresa(id);
-  if(a === 'nova-empresa')abrirEmpresa(null);
   if(a === 'novo-setor')  novoSetor();
   if(a === 'salvar-construtora') salvarConstrutora(b);
 });
@@ -518,116 +532,70 @@ function sincronizar(tabela, chave, valor, outra, antes, depois){
 }
 
 /* ---------------------------------------------------------------------
-   OBRAS
+   PERMISSÕES — perfil × sistema (só diretoria/TI). Grava por
+   core.definir_acesso (0025): card do portal + nível do Patrimônio juntos,
+   e as travas (Diretoria, TI nos Cadastros, externos) conferidas no banco.
    --------------------------------------------------------------------- */
-function telaObras(){
-  return cabecalho('Obras', 'Os canteiros e locais de trabalho. Todos os sistemas usam esta lista.',
-           PODE.admin ? '<button class="botao" data-acao="nova-obra">+ Nova obra</button>' : '')
-    + (PODE.admin ? '' : '<div class="dica" style="margin-top:14px">Só a diretoria e a TI cadastram obra.</div>')
-    + '<div class="barra"><input class="busca" type="search" placeholder="Buscar obra ou CNO" data-filtro="obras.busca" value="' + esc(F.obras.busca) + '">'
-    + selSit('obras.sit', F.obras.sit, [['ativas','Ativas'],['encerradas','Encerradas'],['','Todas']])
-    + '</div><div class="lista" id="lista-obras">' + listaObras() + '</div>';
-}
-function listaObras(){
-  var b = sem(F.obras.busca);
-  var l = D.obras.filter(function(o){
-    if(F.obras.sit === 'ativas' && !o.ativa) return false;
-    if(F.obras.sit === 'encerradas' && o.ativa) return false;
-    return !b || sem(o.nome + ' ' + o.cno).indexOf(b) >= 0;
-  });
-  if(!l.length) return '<div class="vazio">Nenhuma obra encontrada.</div>';
-  return l.map(function(o){
-    var n = empresasDaObra(o.id).length;
-    var ch = '<span class="chip cinza">' + n + (n === 1 ? ' empresa' : ' empresas') + '</span>' + (o.ativa ? '' : '<span class="chip cinza">Encerrada</span>');
-    return '<button type="button" class="linha' + (o.ativa ? '' : ' inativa') + '" data-acao="obra" data-id="' + esc(o.id) + '">'
-         + '<span class="corpo"><div class="nome">' + esc(o.nome) + '</div><div class="det">' + (o.cno ? 'CNO ' + esc(o.cno) : 'sem CNO') + '</div>'
-         + '<div class="chips-mob">' + ch + '</div></span><span class="chips">' + ch + '</span></button>';
+var SISTEMAS = [
+  { m:'flow',          nome:'Flow',        dica:'Pendências' },
+  { m:'patrimonio',    nome:'Patrimônio',  dica:'Bens — escolha o nível' },
+  { m:'docs',          nome:'Docs',        dica:'Até a virada o Docs tem acesso próprio; aqui é só o card' },
+  { m:'configuracoes', nome:'Cadastros',   dica:'A engrenagem do portal' }
+];
+var NIVEIS_PATRIMONIO = [
+  ['operador_ti', 'Gestor de TI'],
+  ['admin_obras', 'Gestor de Obra (Administrativo)'],
+  ['almoxarife',  'Almoxarife'],
+  ['operador',    'Só o que está com ele'],
+  ['admin_ti',    'Administrador de TI']
+];
+function temModulo(perfil, m){ return D.perfilModulos.some(function(x){ return x.perfil === perfil && x.modulo === m; }); }
+function nivelPatr(perfil){ var n = D.nivelPatrimonio.find(function(x){ return x.perfil === perfil; }); return n ? n.nivel : ''; }
+function telaPermissoes(){
+  var perfis = D.perfis.filter(function(p){ return p.ativo || D.perfilModulos.some(function(x){ return x.perfil === p.codigo; }); });
+  var internos = perfis.filter(function(p){ return !p.eh_externo; });
+  function qtd(c){ var n = D.pessoas.filter(function(p){ return p.ativo && p.perfil === c; }).length; return n + (n === 1 ? ' pessoa' : ' pessoas'); }
+  var linhas = internos.map(function(p){
+    var dir = p.codigo === 'diretoria';
+    return '<tr' + (dir ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + '</b><small>' + qtd(p.codigo) + (dir ? ' · travado' : '') + '</small></td>'
+      + SISTEMAS.map(function(sis){
+          if(sis.m === 'patrimonio'){
+            var nv = nivelPatr(p.codigo);
+            if(dir) return '<td><span class="trava">Diretoria (tudo)</span></td>';
+            return '<td><select data-perm="' + esc(p.codigo) + '" data-m="patrimonio" aria-label="Patrimônio para ' + esc(p.nome) + '">'
+              + '<option value="">— sem acesso —</option>'
+              + NIVEIS_PATRIMONIO.filter(function(n){ return n[0] !== 'admin_ti' || nv === 'admin_ti'; }).map(function(n){
+                  return '<option value="' + n[0] + '"' + (nv === n[0] ? ' selected' : '') + '>' + esc(n[1]) + '</option>'; }).join('')
+              + '</select>' + (nv && !temModulo(p.codigo, 'patrimonio') ? '<div class="trava">sem o card no portal</div>' : '') + '</td>';
+          }
+          var trava = dir || (sis.m === 'configuracoes' && p.codigo === 'ti');
+          return '<td><input type="checkbox" data-perm="' + esc(p.codigo) + '" data-m="' + sis.m + '"' + (temModulo(p.codigo, sis.m) ? ' checked' : '')
+               + (trava ? ' disabled title="Travado"' : '') + ' aria-label="' + esc(sis.nome) + ' para ' + esc(p.nome) + '"></td>';
+        }).join('') + '</tr>';
   }).join('');
+  var externos = perfis.filter(function(p){ return p.eh_externo; }).map(function(p){ return esc(p.nome); }).join(', ');
+  return cabecalho('Permissões', 'Em que sistema cada perfil entra. A mudança vale na hora, para todas as pessoas do perfil.')
+    + '<div class="dica" style="margin-top:14px">Travado de propósito: o perfil Diretoria, a TI nos Cadastros'
+    + (externos ? ' e os externos (' + externos + ' — só a área do fornecedor)' : '') + '. '
+    + 'Dentro de cada sistema, o que a pessoa pode fazer segue as regras dele (no Patrimônio, pelo nível).</div>'
+    + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
+    + SISTEMAS.map(function(sis){ return '<th title="' + esc(sis.dica) + '">' + esc(sis.nome) + '</th>'; }).join('')
+    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
-function abrirObra(id){
-  var o = id ? D.obras.find(function(x){ return x.id === id; }) : { nome:'', cno:'', ativa:true };
-  if(!o) return;
-  var ed = PODE.admin, marc = id ? empresasDaObra(id) : [];
-  var emps = D.empresas.filter(function(e){ return e.ativa || marc.indexOf(e.id) >= 0; })
-                       .map(function(e){ return { id:e.id, nome:e.razao_social + ' · ' + fmtCnpj(e.cnpj) }; });
-  modal(id ? 'Obra' : 'Nova obra',
-    '<div class="grade">'
-    + campo('Nome da obra', ed ? '<input type="text" id="o-nome" value="' + esc(o.nome) + '">' : '<div class="leitura">' + esc(o.nome) + '</div>', true)
-    + campo('CNO', ed ? '<input type="text" id="o-cno" inputmode="numeric" value="' + esc(o.cno) + '">' : '<div class="leitura">' + esc(o.cno || '—') + '</div>')
-    + campo('Situação', '<div class="seg" id="o-ativa" data-v="' + (o.ativa ? '1' : '0') + '"><button type="button" data-v="1" class="' + (o.ativa ? 'ativo' : '') + '"' + (ed ? '' : ' disabled') + '>Ativa</button>'
-        + '<button type="button" data-v="0" class="' + (o.ativa ? '' : 'ativo') + '"' + (ed ? '' : ' disabled') + '>Encerrada</button></div>')
-    + campo('Empresas nesta obra', caixaMarcar('o-emps', emps, marc, ed), true)
-    + '</div>',
-    ed ? function(){
-      var dados = { nome: $('o-nome').value.trim(), cno: $('o-cno').value.trim(), ativa: $('o-ativa').getAttribute('data-v') === '1' };
-      if(!dados.nome) throw new Error('Informe o nome da obra.');
-      var q = id ? core('obras').update(dados).eq('id', id).select('id').single() : core('obras').insert(dados).select('id').single();
-      return q.then(ok).then(function(r){
-        var novas = marcadosEm('o-emps');
-        return novas ? sincronizar('empresa_obras', 'obra_id', r.data.id, 'empresa_id', marc, novas) : null;
-      });
-    } : null);
-  if(ed) segmento('o-ativa');
-}
-
-/* ---------------------------------------------------------------------
-   EMPRESAS
-   --------------------------------------------------------------------- */
-function telaEmpresas(){
-  return cabecalho('Empresas', 'Empreiteiras, fornecedores e prestadores que trabalham nas obras.',
-           PODE.empresas ? '<button class="botao" data-acao="nova-empresa">+ Nova empresa</button>' : '')
-    + '<div class="barra"><input class="busca" type="search" placeholder="Buscar por razão social, nome fantasia ou CNPJ" data-filtro="empresas.busca" value="' + esc(F.empresas.busca) + '">'
-    + selSit('empresas.sit', F.empresas.sit, [['ativas','Ativas'],['inativas','Inativas'],['','Todas']])
-    + '</div><div class="lista" id="lista-empresas">' + listaEmpresas() + '</div>';
-}
-function listaEmpresas(){
-  var b = sem(F.empresas.busca), bd = soDigitos(F.empresas.busca);
-  var l = D.empresas.filter(function(e){
-    if(F.empresas.sit === 'ativas' && !e.ativa) return false;
-    if(F.empresas.sit === 'inativas' && e.ativa) return false;
-    return !b || sem(e.razao_social + ' ' + e.nome_fantasia).indexOf(b) >= 0 || (bd.length >= 3 && e.cnpj.indexOf(bd) >= 0);
-  });
-  if(!l.length) return '<div class="vazio">Nenhuma empresa encontrada.</div>';
-  return l.map(function(e){
-    var n = obrasDaEmpresa(e.id).length;
-    var ch = '<span class="chip cinza">' + n + (n === 1 ? ' obra' : ' obras') + '</span>' + (e.ativa ? '' : '<span class="chip cinza">Inativa</span>');
-    return '<button type="button" class="linha' + (e.ativa ? '' : ' inativa') + '" data-acao="empresa" data-id="' + esc(e.id) + '">'
-         + '<span class="corpo"><div class="nome">' + esc(e.razao_social) + '</div><div class="det">' + esc(fmtCnpj(e.cnpj))
-         + (e.nome_fantasia ? ' · ' + esc(e.nome_fantasia) : '') + '</div><div class="chips-mob">' + ch + '</div></span><span class="chips">' + ch + '</span></button>';
-  }).join('');
-}
-function abrirEmpresa(id){
-  var e = id ? D.empresas.find(function(x){ return x.id === id; }) : { cnpj:'', razao_social:'', nome_fantasia:'', ativa:true };
-  if(!e) return;
-  var ed = PODE.empresas, marc = id ? obrasDaEmpresa(id) : [];
-  var obras = D.obras.filter(function(o){ return o.ativa || marc.indexOf(o.id) >= 0; })
-                     .map(function(o){ return { id:o.id, nome:o.nome + (o.ativa ? '' : ' (encerrada)') }; });
-  modal(id ? 'Empresa' : 'Nova empresa',
-    '<div class="grade">'
-    + campo('CNPJ', ed ? '<input type="text" id="e-cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" value="' + esc(fmtCnpj(e.cnpj)) + '">' : '<div class="leitura">' + esc(fmtCnpj(e.cnpj)) + '</div>')
-    + campo('Situação', '<div class="seg" id="e-ativa" data-v="' + (e.ativa ? '1' : '0') + '"><button type="button" data-v="1" class="' + (e.ativa ? 'ativo' : '') + '"' + (ed ? '' : ' disabled') + '>Ativa</button>'
-        + '<button type="button" data-v="0" class="' + (e.ativa ? '' : 'ativo') + '"' + (ed ? '' : ' disabled') + '>Inativa</button></div>')
-    + campo('Razão social', ed ? '<input type="text" id="e-razao" value="' + esc(e.razao_social) + '">' : '<div class="leitura">' + esc(e.razao_social) + '</div>', true)
-    + campo('Nome fantasia', ed ? '<input type="text" id="e-fantasia" value="' + esc(e.nome_fantasia) + '">' : '<div class="leitura">' + esc(e.nome_fantasia || '—') + '</div>', true)
-    + campo('Obras em que trabalha', '<div class="sub" style="margin-bottom:6px">' + (PODE.admin ? '' : 'Só a diretoria ou a TI altera.') + '</div>'
-        + caixaMarcar('e-obras', obras, marc, PODE.admin), true)
-    + '</div>',
-    ed ? function(){
-      var cnpj = soDigitos($('e-cnpj').value);
-      var dados = { cnpj: cnpj, razao_social: $('e-razao').value.trim(), nome_fantasia: $('e-fantasia').value.trim(), ativa: $('e-ativa').getAttribute('data-v') === '1' };
-      if(!cnpjValido(cnpj)) throw new Error('CNPJ inválido (confira os 14 dígitos).');
-      if(!dados.razao_social) throw new Error('Informe a razão social.');
-      var q = id ? core('empresas').update(dados).eq('id', id).select('id').single() : core('empresas').insert(dados).select('id').single();
-      return q.then(ok).then(function(r){
-        var novas = PODE.admin ? marcadosEm('e-obras') : null;
-        return novas ? sincronizar('empresa_obras', 'empresa_id', r.data.id, 'obra_id', marc, novas) : null;
-      });
-    } : null);
-  if(ed){
-    segmento('e-ativa');
-    $('e-cnpj').addEventListener('blur', function(){ this.value = fmtCnpj(this.value); });
-  }
-}
+$('conteudo').addEventListener('change', function(e){
+  var t = e.target; if(!t.hasAttribute('data-perm')) return;
+  var perfil = t.getAttribute('data-perm'), m = t.getAttribute('data-m');
+  var ligado = t.tagName === 'SELECT' ? !!t.value : t.checked;
+  var nivel = t.tagName === 'SELECT' ? (t.value || null) : null;
+  t.disabled = true;
+  sb.schema('core').rpc('definir_acesso', { p_perfil: perfil, p_modulo: m, p_ligado: ligado, p_nivel: nivel }).then(ok)
+    .then(function(){ aviso('Permissão de ' + perfilNome(perfil) + ' atualizada.'); return recarregar(); })
+    .catch(function(err){
+      var msg = msgErro(err);
+      if(/definir_acesso|function .* does not exist|Could not find the function/i.test(msg)) msg = 'Falta rodar a migração 0025 no banco.';
+      aviso(msg, true); recarregar();
+    });
+});
 
 /* ---------------------------------------------------------------------
    SETORES
