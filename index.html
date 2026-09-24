@@ -360,7 +360,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.09.24.1';
+var VERSAO   = '2026.09.24.2';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -385,7 +385,10 @@ var MODULOS = {
      compactador, garimpador de arquivos mortos, matriz de permissões.
      Só diretoria e TI recebem este módulo (ver migração 0008). Desde o
      layout de 23/09/2026 ele é a ENGRENAGEM do cabeçalho, não um card. */
-  configuracoes: {nome:'Configurações', url:null, engrenagem:true}
+  /* 24/09/2026: a engrenagem abre os CADASTROS da construtora (pessoas, obras,
+     empresas, setores, dados da construtora). Aparece para diretoria/TI e para
+     quem cadastra pessoa ou empresa (0024). */
+  configuracoes: {nome:'Cadastros', url:'cadastros/', engrenagem:true}
 };
 
 var ICONES = {
@@ -586,7 +589,7 @@ function montarPortal(pessoa){
     var cfg = MODULOS.configuracoes, temCfg = meus.indexOf('configuracoes') >= 0;
     var g = $('btn-config');
     g.classList.toggle('oculto', !temCfg);
-    if(cfg.url){ g.href = cfg.url; g.removeAttribute('aria-disabled'); g.title = 'Configurações'; }
+    if(cfg.url){ g.href = cfg.url; g.removeAttribute('aria-disabled'); g.title = 'Cadastros'; g.setAttribute('aria-label','Cadastros'); }
     else       { g.removeAttribute('href'); g.setAttribute('aria-disabled','true'); g.title = 'Configurações (em breve)'; }
 
     var cards = meus.filter(function(m){ return !MODULOS[m].engrenagem; });
