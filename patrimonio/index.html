@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026.09.11">
+<meta name="app-version" content="2026.09.24.1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1B2A5E">
@@ -49,39 +49,66 @@
   }
   #app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 84px; background: var(--bg); position: relative; }
 
-  /* ===== TOP BAR ===== */
+  /* ===== TOP BAR =====
+     Cabeçalho padrão dos módulos da suíte (layout de 23/09/2026, o mesmo
+     do Flow): branco, assinatura BeMer (leva ao portal), o nome do módulo
+     e o fio laranja embaixo. As cores do cabeçalho são as oficiais
+     (#00296B / #FE9400); o resto do Patrimônio segue com as suas. */
   header.topbar {
-    background: var(--brand-navy);
-    color: white;
-    padding: 12px 16px;
+    background: #fff;
+    color: #0F1B2D;
+    padding: 9px 12px;
+    /* no app instalado do iPhone (barra de status translúcida) o topo
+       ficaria embaixo do relógio/bateria */
+    padding-top: calc(9px + env(safe-area-inset-top));
     position: sticky;
     top: 0;
     z-index: 50;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,.18);
-    border-bottom: 3px solid var(--brand-orange);
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0,20,60,.08);
+    border-bottom: 3px solid #FE9400;
   }
-  header.topbar .brand { display: flex; flex-direction: column; line-height: 1.1; }
-  header.topbar .brand .name { font-size: 15px; font-weight: 800; letter-spacing: 1px; }
-  header.topbar .brand .name .amp { color: var(--brand-orange); }
-  header.topbar .brand .tag { font-size: 10px; color: var(--brand-orange); font-weight: 600; letter-spacing: 0.5px; margin-top: 2px; }
-  header.topbar .right { display: flex; gap: 6px; align-items: center; }
+  header.topbar .bm-marca { display: flex; align-items: center; gap: 7px; text-decoration: none; flex: 0 0 auto; min-height: 36px; }
+  header.topbar .bm-marca img { height: 26px; width: auto; display: block; }
+  header.topbar .bm-palavra { font-size: 18px; font-weight: 800; letter-spacing: -.4px; line-height: 1; }
+  header.topbar .bm-palavra .be { color: #00296B; } header.topbar .bm-palavra .mer { color: #FE9400; }
+  header.topbar .bm-fio { width: 1px; height: 26px; background: #E3E7ED; flex: 0 0 auto; }
+  header.topbar .bm-modulo { display: flex; align-items: center; gap: 7px; background: none; border: 0; padding: 0;
+    cursor: pointer; font: inherit; flex: 0 1 auto; min-width: 0; min-height: 36px; }
+  header.topbar .bm-tile { width: 28px; height: 28px; border-radius: 8px; background: #00296B; color: #fff;
+    display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  header.topbar .bm-nome { font-size: 15px; font-weight: 700; color: #00296B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header.topbar .right { display: flex; gap: 4px; align-items: center; margin-left: auto; flex: 0 0 auto; }
   header.topbar .icon-btn {
-    background: rgba(255,255,255,.1); border: 0; color: white; width: 36px; height: 36px;
-    border-radius: 8px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;
+    background: #fff; border: 0; color: #00296B; width: 36px; height: 36px;
+    border-radius: 9px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;
     position: relative;
   }
-  header.topbar .icon-btn:active { background: rgba(255,255,255,.22); }
+  header.topbar .icon-btn:active { background: #EEF2F9; }
   header.topbar .icon-btn .badge-dot {
-    position: absolute; top: 4px; right: 4px;
-    background: var(--brand-orange); color: var(--brand-navy);
+    position: absolute; top: 2px; right: 1px;
+    background: #FE9400; color: #00296B;
     min-width: 16px; height: 16px; border-radius: 8px;
     font-size: 10px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
-    padding: 0 4px;
+    padding: 0 4px; box-shadow: 0 0 0 2px #fff;
   }
+  /* "Portal" com texto só onde cabe; abaixo disso a assinatura já leva ao portal */
+  header.topbar .btn-portal-txt { width: auto; padding: 0 10px; gap: 6px; font-size: 13px; font-weight: 700;
+    border: 1px solid #C9D1DD; height: 34px; }
+  @media (max-width: 419px) { header.topbar .btn-portal-txt { display: none; } }
+  /* celular estreito: some o quadradinho do módulo; menor ainda, a palavra BeMer */
+  @media (max-width: 380px) { header.topbar .bm-tile, header.topbar .bm-fio { display: none; } }
+  @media (max-width: 330px) { header.topbar .bm-palavra { display: none; } }
+
+  /* aviso de nova versão (mesmo padrão do Flow e do portal) */
+  .faixa-atualizar { position: fixed; left: 0; right: 0; top: 0; z-index: 190; background: #FE9400; color: #00296B;
+    padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+    font-size: 14px; font-weight: 700; box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+  .faixa-atualizar button { background: #00296B; color: #fff; border: 0; border-radius: 9px; padding: 8px 14px;
+    font: inherit; font-size: 14px; cursor: pointer; min-height: 40px; }
 
   /* botão de refresh com animação */
   @keyframes bm-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -242,22 +269,38 @@
     position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200;
     display: flex; align-items: flex-end; justify-content: center;
   }
+  /* position:relative no .modal: sem ele o × se ancorava no fundo escuro
+     (canto da TELA), ficava fora do modal, quase invisível e com ~14 px de
+     alvo — em Relatório, Movimentar e Inventário a pessoa ficava sem saída.
+     A margem de baixo respeita a barra de gestos do iPhone. */
   .modal {
-    background: white; width: 100%; max-width: 480px; max-height: 92vh;
+    position: relative;
+    background: white; width: 100%; max-width: 480px; max-height: 92vh; max-height: 92svh;
     border-radius: 16px 16px 0 0; padding: 20px; overflow-y: auto;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
-  .modal h2 { margin-bottom: 14px; color: var(--brand-navy); }
+  .modal h2 { margin-bottom: 14px; color: var(--brand-navy); padding-right: 44px; }
   .modal .close-btn {
-    position: absolute; top: 12px; right: 16px; background: none; border: 0;
-    font-size: 24px; color: var(--muted); cursor: pointer;
+    position: absolute; top: 6px; right: 6px; background: none; border: 0;
+    font-size: 26px; line-height: 1; color: var(--text); cursor: pointer;
+    min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
   }
+  .modal .close-btn:active { background: #f1f2f4; }
 
   .empty-state { text-align: center; color: var(--muted); padding: 40px 20px; }
   .empty-state .emoji { font-size: 48px; margin-bottom: 8px; }
   .empty-state p { font-size: 14px; }
 
   .filter-row { display: flex; gap: 8px; margin-bottom: 12px; }
-  .filter-row select, .filter-row input { flex: 1; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; background: white; }
+  /* min-width:0 — sem ele cada select fica do tamanho da opção mais longa
+     ("Aguard. aprovação movimentação") e a tela Bens rolava de lado. */
+  .filter-row select, .filter-row input { flex: 1; min-width: 0; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; background: white; }
+  /* iPhone dá zoom sozinho em campo com letra < 16 px ao tocar nele */
+  @media (max-width: 760px) {
+    input, select, textarea, .form-group input, .form-group select, .form-group textarea,
+    .filter-row select, .filter-row input { font-size: 16px; }
+  }
 
   .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; }
   .detail-row:last-child { border-bottom: 0; }
@@ -285,6 +328,14 @@
   }
   .toast.success { background: var(--success); }
   .toast.error { background: var(--danger); }
+  /* falha de gravação: fixo até a pessoa tocar em "Entendi" */
+  .aviso-erro-salvar { position: fixed; left: 12px; right: 12px; bottom: calc(96px + env(safe-area-inset-bottom));
+    max-width: 456px; margin: 0 auto; z-index: 290; background: #9B1C14; color: #fff; border-radius: 12px;
+    padding: 12px 12px 12px 16px; display: flex; align-items: center; gap: 12px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 8px 28px rgba(0,0,0,.3); }
+  .aviso-erro-salvar small { display: block; opacity: .85; font-size: 12px; margin-top: 2px; word-break: break-word; }
+  .aviso-erro-salvar button { flex: 0 0 auto; background: #fff; color: #9B1C14; border: 0; border-radius: 9px;
+    padding: 0 14px; min-height: 40px; font: inherit; font-weight: 700; cursor: pointer; }
   @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
   /* ===== QUICK ACTIONS ===== */
@@ -359,7 +410,7 @@
 
   .role-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
   .role-chip.diretoria { background: var(--brand-navy); color: var(--brand-orange); }
-  .role-chip.admin_ti { background: var(--brand-navy); color: white; }
+  .role-chip.admin_ti, .role-chip.operador_ti { background: var(--brand-navy); color: white; }
   .role-chip.admin_obras { background: var(--brand-orange); color: white; }
   .role-chip.operador { background: var(--border); color: var(--brand-navy); }
 
@@ -385,7 +436,13 @@
 /* ============================================================ */
 
 /* Versão do app (fonte única — exibida no rodapé e na meta tag). */
-const APP_VERSION = '2026.09.11';
+/* Formato AAAA.MM.DD.N, igual ao Flow e ao portal. O publicar.js grava este
+   número em version.json — é ele que faz aparecer o aviso de nova versão.
+   SUBA A CADA PUBLICAÇÃO. */
+const APP_VERSION = '2026.09.24.1';
+/* símbolo BeMer do cabeçalho (portal/marca/bemer-simbolo.png, reduzido).
+   Embutido porque a CSP desta página só aceita imagem da própria origem ou data:. */
+const SIMBOLO_BEMER = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJIAAAB4CAYAAAAZpKtqAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAABjTSURBVHhe7V0JlBxVub6I8MAVUUGQ5RmTdFV1FpCHIItBBAGBp08JoqAsIWG6uqsmgUDkgQxyOArBkGXWJBAg4bDD4RwQjgqIQHyAeaCBAJG8IBJJgIQlIRCSme73/X/d6unl1kxtPZnuru+c7/RMd9W9t+796v//u9QtkSBBglT2h8JoPUv+lyBBQBiWAd4jxpxfEGMvLAjDXir03JHy1wQJBsG4Mz4pNPtKCOdDMeaCgtCzDklQ6Vb8bS0Q2tS95NEJEiig574PAa0UY6fDAln9InJp5GCd6Df7DfyexRkfc05MkIAw0voq4qA7HKsztVpAlTRgmcaw2J6G+I6RqSRoXkzcEa5qOizMeywMHRZHJRwvusIz7JuEbu4vE03QVDByR0MAf5GuSi0UX4T4WIT2BqHlprE4EzQBvjJpTzR6D1uS9LQKUUQgidER5TKhZY+VuSVoSBj2meC/uMGDujG/JHE67m6xSJ337zLnBA0B3UzDCj3I3XnuwisEECuluzPsd4SRtWQpEtQtDpryCcRCbWjQzWVjQkNFtkwWPjP7yhIlqDto9n+hEV+So9Lqhq41SUSa2ScMc6QsVYK6QZrGhOy7RdrnmFAt6Qhpmxid+4osXYJhD2Pizmi4GRDRRseN1SiYDsJESHUGPXcCBPRXGeCqGzUsqRdGA49hhJkIqU6gn7M/hLPY6XLHOCZEJLfoBOj3QwxLQo07JUKqA2jZKWjccFMbA5Ean8eZrH8ijzNlbrSs5HiIdlkgi5cIqQ6gZy/nBme3o2jEMKS0SCiGNQci+rzMqR+G+Skc96ZvMSVCqhOkMocJ3X448kAjnevEV48KreVQmXo19pm2q9DN1xMhNSp06xw0rjP1QY2nalQV+9cXQRy5yTI1b6TO+TQs1dpESI2M0VO+gAaei8br8zWKzW4MlsiwOsWIlj1kKgODXFsipAYBdfV1u1X+V420fTAa+g+Ou1MMSBYXpdlPiNHmEfIsf0iE1EAwsmeL8ZeQEB4DvYVAxxnWK45oyN1JN6bbEELIidRESA0Ewzyd3ZLrmtLWAjHqvC/LX8ux/5m7odFngn3OWJO9AOd/Sf4aHImQGgiukLixisHyesfdtakX4+vWgTg2+qNEiZAaCKlSIbkNhoZ1emxPi3T2OHlk/EiE5GBC28d5iU5dI5X9SZWQXLpTJbQYvxaNF1ZIqsHNeoWR/U9Y+GdFOqPLb+oUAwmJCXfn9MreQUNejDtnJ3lmdAQVEpXFsPJC42fg6huplhSu5a5ib3hcvVvZQYUkWXR39l8RP31Xnh0NgYVEJGFTee0HUfaxMqX6wcjTP4PrvRLld1aZ0rVr2V4xNjNCHlGn8Cskl/3u7jZUxiiZSjiEEpIkN0LrFriFy3mqpR6g587Atf5f2SpTdtfNKCSmdHe6/b7QWy8N3ZAkJD3rf66tktQIzljWCqGb8VjJWkA3D8E1qgd1m1tIkiQApyFfECn7hzJF/4gqJJdFK2ktEcaU/WTq2x80HmfYXWCeRaQqeyKkElIjUhqGfa8YlRsvUx4ccQmJWewUrEfjbOdHliZ8HGU4H2V5Sw6jKMormQhJQb7r7K3oVV0tRkz5rMzBG46Q3opHSJI0Ou90CpYi/WBzf3FAy5yIvJ+RolaXsZSJkDxIFeNU4mqenxsIEyfuiEp8Xoy9SJ1WFLKF5NUI3WKk9UWZY22hZX7mxEGw0KoyqZgIaRC6a7QpyDRyX5e5VUPLfk2kWx/3fQcHIa+P4h7SGl5jVUtQbKZb7wdeEJgIySfZMth9cHnzeI2TF9K2iYbY4PQGIQBVWmHJKzZJ1NZDIh0ghgsC3bzfKbsi/4HoCik9+asypTpFrYVEpMpyLYM2wMpJuqtpOsbthanSisL+GG6mMCbtLnONDp6vDCEiYtMKidyF6ns/dNdy63BluvlNWYJqOM/VIXYi8aGiVWmFooky4FoPuIwar/+JligY17IH6uTNwC7NZcMISTN/HEBIvWiMvHN8BEHR+VTxhr1QjDx3H1mScuxzyq7I45c4ZotjSRTpBCHFX04cthrpToptNFwz7whtjYiukOo+RtKyp/kTEoSjZbeKVOZk/H9DZPfT/6DAeriaqSiJeu2T1jIGsdN9Tm9IsdR3MLJb5XzeRS/uMn7gIC7o5qmOyCPcVI0jJJ8WiV0aaNjOyLGWPQmV8Jy8y6uP90t3zbduP4X0vTciNeCCDfsVRxR+Gg7HcCNb28D5sW/SNTbzOeTxRihxl7JhhOQ3RnIbjzZedzHy+H9DI10CN7XJEYOfBvYgWzhqFPtm4bVtDQXI9JQKucWBGpBdJ6d1Z816aVrmZha1Kv8gbE6LRH+baXlmP2gVAK0GiNzbIivCFm4j/v5v3hFFhVT2KOS5qio2obzJCtHYlWZNkEfHD3LvXGcRbhyXiZAUYHdnL5cxSfn5QVgMjFv/But0vEy9HCPP/iKOu5fzIvE4AnoGFvJUeURtMNL6DAT0WmSX5rJphVTq2lQYaTnuTrdjcnegkZvD65pV0HM2yv9HHDPZ82EFL+j2t0XafhjlvdX3UmI9s0CMuVBd3jBMLNIgcHZ6u93Z6S2Cu6N8aTxJtx5GZX9Oph4NNC3Du9DBqrA1Ywv6LuKpS/ndKV7QM8c41xLh5qhkIiSf0M3voZGej+zuHDE9JcZd4N3Qg4GsDr1Ep/gYeokgqGxOGVfiWn8sz+gH5atnV0e6KVRMXFsA7H/mLjjvMjRStG0EWUzmrTJV/6CnTnTrCuTv7P9EjadKn+haKcP6PSzU4TIFpAH3yvkrzikjri2I2BpHSD4HJKMIyYV+3ijuklN+YYNVEgKJ3w+cfTAtcE1gi0hl5OPNTvm4en8deBK/07iYZv4C/z/na9okEVIEpOktktZLoYJxFqC5Whht6qEBF5p9GvJwBkxDz4OhbCx6n3GRYzFnOflnn/d1szStkMZOjeeCKag1rLnOnT+Aq1GRXY95ikypHKmW45Den/oFoDi/FuQ6zC0vPvenZ19qMiEFiJGci473BTN6toUrPIiYOM4y75Ip9EPLXsZWwc/1xEl2gfZHYnRmnFOQwg4o34tNJiT0UPxWPDe2vRmB67WwCOF3IamEnpnuiEORp4rkqjRzlZgwoXxsScvdxbGQ6pxakl10pmSPqWYUUuD1SLhwp+ezDjzfcxojKLTs4zzmpMqzko71+rBq+x0tuySQIOMg5aeZD8sSSCQWyT/dWXvDWs7Bc1TQ9IrfmMaJ1/JidE6TZzvQsouHVEjOwwUbIZqKt10mFik4qfHpfMP+HSrvEJlqcNC2Ln4f33YD/8rB0aEWEuWVMs+SuZcgEVJ4UqWSCAzrutDLRjXzMV9WaTgIieMi8x6ZcwWaUUhlO7ZFJDWw4+42QlRtvh6SLIWRfWi7CMmxqOrfVORlwtZbYoy9p8y5Am0fQ9marPuv2rEtKqlRHEG9IjTrXJnT4Bhqi0SNqJvrcTO1CT23zrEybtpepJsF9aVlfiBzVSBxbfGSKpIFZf8PKky9rsgFDeTp5hp/0wpxCYmt0FvOuZP3ciZ0qRMxQH3Q8IKWWczneKMZe20+BySjsPjSQOtuMdqWg3YVoIX0wXptYIWQ9OxNwYVkvikOmtHvgukxKdoqmm6ASlHzNeTWiP1bd5NHe6EZhRSw+8+VO5j5V5FcAjWytQ1C6CpbjD86d7jQ7TfYGijPraArJHrCpBRhhKSZ65RPlpBLLnuNBvIkoY/2WLFZjsS1DUh6HEkzV3AF+akkFani6G7Xcpvw/yNI80/4zDsCNauPV5ErX7G7bSghZd/g5bMq0OYThj2bxT/+UspzkfxlMCRC8qRjBXp55WPKOgUVvDLw0oxSUgXSHU4suiqfdJZqvMbLeksRzrWtRyMOvPIylf0PYUzrQoP73U03iZE8WXQn2dF83l706nb7F+C7TkAdUAxRyBYtezuXoxThXNuGWPcBYDTlFElAIaVby/eDpliHHkAcaHu7WIlycFCuePNArSxSYNA4UrKMRM2ixanoKbnQrEPhcn7PafntfYUhbcqlZaqXkBBCCQnd//GD9sICIhGSNwcTkguD4yf5bJvPXpgvIn/e2c36X08LkghpOyKokPwstaWlJWlrKnfpaaEZVVZlekFI4uBGsW/hNzR5IeyAZJMJKd8uvrZlroi+ZLoMwXpt4CAWqRS0+E23Z6HB5NY0bhp+iePplRG6tajsiQ4vJEIaFPkOkYaQ7s/PFeohj9DwPY5EIiAGEJILsmK8oQMq1ldeJUy3QkjmVTKlgZG4tgGRv0bske8W/4KYMvKrGDEUQnJBj0jr9hPO9IOPSnbJT2fkBn+eLbFInmARXS9e6IOQCm0ee1FFQlAhVU5LhIFuT0IjrmZBcbqq/CrIvTUIZSAkQlICbmyffI9YUbhLFHrnitPl1zGjljHSQKC1SjTbTg1PlVmZXxWRP1mmVGa6TKEaoYRkvilGlEzaxoLhI6TCPKH19YhVhVtFAbHRi7BG6s04IiNor22spd7zMSz03EVO/j4sE1U6b7XccqA8uxxhhDTQXFtoDA8hvT9rp/EQ0euFG0ShsEgUtnWKAdZQRYVfIRGp4g17mjwzPmjZmb4FQMdp5h/kmeUYVkIyV1YtQ1GRrbHZx3OYMQLW59i++eKdwnWOiPrmiaXypxohiJDIatCxhv1nXPh3ZAoxABWvZZ1VBcp8S4kyUANpmYPkyf0YdkLycT10DDM+IUFEP8nPFx8VFkJEneACuLV5wvvtC7HA9662JSzueYQufVwxE21Z7FcE/BCk2SHP7MewEdLEHX1ZJJ7stjcKLTctrle85jvFjML1EM98jokKhcWwRnNFj/y5hggjJCZZJzQaDTYaudneC+F9IpXdG+l+4CvwpjtYy77Ad34p6kVIVH6uO+se5O+spogIBNE7o2t/Y+EmiKdLiggWqa8TMdJsEXOvVAVybeMvpotSX/RgpPPYQtAKx9wFvBdSWOjmcl/uwAlQN1c9Nh5qGckQCok6LM4arn/gRvyRPDgyCteKEejeP0HWh1xZvgMkl4YgG11/9WYbsYMmQA16N0fYaQxJXjTPlfRC6ErSs4/6Wjng9iDHVDxpG05I60Tqwvg2cWcohMSxJf2f64hz/dO2dnES4qE3WDQkIKLr0uaJm+VhQwgaaOR9FdGQUZaBsNnmgPyRwFsU6+YfAwmpMj4LJSSPNdtRQO+hc4VEeTgW+yl85/3+lRDo6xJXcq+MgmmIxxUSfYffXh0al+YFeskwXTRPY1SY5iAkMXFFti6pekbfC5r51PYRUswWiV9oaK4S435OebyL+ryIrVRMyM8Ro2CFHirGQ64lIhF14xPC2jpbxCrasNgBF9+CSnjN8ekh4ycOyPl8CqJnDvi+NrIKvOwVjatMq4QsJLDyvf/DJdim3eQ0801hTP1t3ONDhQ5xFkT0Ng8ylgioKCS4tN65YoY8fJiAN/G0f8VCCDIvVkk3IKe9HGlf7MpF+wSt5Uz/vUcvIZnBtrWplZDozUu0lXKMyM8Su+e7xRIWkOzal4nIjYvaxZ3ylGEIWgbCr4iQ8Y+qUfzQDcj13ApYlcm8vxFNmGq5HwjdetuXNSK6rk2zyyeQwwiJ59oC7lEwxIBQvode2Wp2ZW6vrFJEEBi6/8/krxHht48eMqRbj0KD/5kby0833YuuILXsJm5INyhVHauiV4ykZW8OJ6S4J23jAQSyN6zPjTzAuNARjFJEFFx3i9choop9moY7tNafweWtcpbRBhBAJcnl8fkBXaa3kEJYpFqMI0UHgugpfT3o1ntZIVdE1GObLz7YOqvWUyC1AgXHunU5xDD0z7UVXVvF2qjhEiNFwNZOcRgE9FjhRohEFQuVkH+fL3rzc4Wfx8iHOVKt9FzbIif+iRA/BWGcQqrJwrbgyHeKfRFMzydx0Gy9qkdWykIPCJfWO0ecJpNoENDifHodetT4yQ8bSEgUHEM8P0cwvUE1LqSiK6L8HHG2TKYBQS+E0e0VjrvjhoqfRSFV9tpCjCNtJyHRJCvE0wK+zAKCOFSiKaOMiYi97Y0sIhfOS2xmoKHWywHJ6kaMQk+LFEZIQ99rg3jOAJezgChYVommkiQi6rktEFu2zRPfl0k1CWhZrmF1c4MFaeDBWKfBNuKgHyEO+gsPKtIcmUowKpKIEDchsN6QnyeOlsk1IWjbZMN+wJl/iyF+YgtnbhHpzL4yBwdBu/+0QI/2WYp9E4l+vNImduntEWfDdS3jIDqIgCSpB4ee3Er8Hc8iwroHjWDTSwDZ3UWYEObJZHN19Ssk/Lg2WDOaGKbjDHuN0DNXeL7mNALyC8XucF9T+7rFysAWSJKXydK0R7d4KP8r4XdvpiYBv/O21UZAvjb0vgAkRNX+SAMJifKh38giGtaTQrfOqcXUCGKY0YVucRUaf60bAwUVELsyGgagaY8uMac2DzQ2Cka07AGLMBOC2szC8D26TYKARTHMI2RK/VC5NrJevB4o94FI27cIY2pNYgzEP9+BBbodMdAWFhANFqpE4oMkIMRD7/V2iJ/K5BMMClqrRA1MDT7ogCbENm4GrFFGvZi9KCQcR2lxevYqCLatFs+NQSz7QTjTwWfZdZEL8zEO5EVaS8SurEcszce+W0izgFZTGvajjgBgQdgFoVfFJJFBICyM3PyqRf8uNPMOccCl8hzrIR7ToiUdMaJwh9gZ8c93IZ7bwE08lSEf+1GJwy9pYrZvvshDTJcnriwOpK2TIYTrEZg/DwuzAcJ5G3wVluVOfJ4gj1JDy85FIH0DLNzB8pvYgNjnULiuaxCz/J1n48n60GpEhSh8k2IhGqWGK0T6TyOWqnbXCWIAP5gwbXdxqF+r4mGpQqBQEDts7RQHw+pcgcD5bxz8kvUJEzwryD0yp1v/PgR6aWFCrZ7JHwRvte+6Nwr0Tag66RbGBIhlp63zxWFo2KshnufYWsTkulySCNmikSvrFnfnu0RKZr99QBeNnsJhEFIPIvwF8NvHFiaK2BaYNwvgUvaRI86L0Kgvs8WJWTwuOU1Ku0cs29YlTpJFGB5gQaHn0LdArEGwthamsou7okvi3tqtMYDYZjdYnG+BV0I4S8FNPOJMMQ+JKGbxEF1x4ob/O/I9t00M42C6cJX4LAp5LVfK7TyQtb6vU9wHkeVQWQdSb0Me2lSApd4Td/8xqIM21MUD+FxXtAzUZacut6Lxo5JdGOWDQBou7B/IuzU/S8Tag6wpPuwQIyGoHvbvd4JLQOpddIlVENdt+JwKHtmIsRWs8xfQYF9HI57V1yG6cZ1P4mZ6rygcusmoXmpgdVxyEC17dWiHF0Erf7WI+UneIQQqMQVTOh93w2Ya5Cqab6pQmFr8vh7CWoqK7+jtFpNxwd/IXyf2pt6KTGLYAuX8NNy3Dp6IxrsAnzfg82mI523uXdF1El2LU0PhuOR8ZN0ivHgC9XlGfq6ofuyqXlHo4g0GroZg1vGF0t3SBdKdSRVN31GlowFw976PxngRDfMgPjsgNhuVdCrOP4TTWShifmdHNWgwTlqWUVtJ3Mi/t1O0oEy/6WsX96KMT4FrufFKy09/19jaVJKtD+VL40DdYiNu2sWoq2HxhGvNQA/YwfJMQmU/ynctNQB9llYK3VUUGJL1ot+J9DeJrF1sBd+GwFbgnGU45z406C1wkdfju1/2touLiWjw6fjtPPCnvfPQGyIh4JPmjXBsFn9fxMc5/DV+v47SQdr3g8/i/5eQ3nv4u5fLV1kWVzB0M5Q06lCR60kGz1y+btRFj7gAf+8nq7p5QHEELn4OLM4rbKHcSlFVHJEqz7ViFG9QY7qukug2tEv6jn6vpNex7vGUNjWSKxTKt6I824Nl4kEZERK8jDqcjTr8hqzS5gbE8wlUxongdaiY14qiogaNMPlY7+Sbh6xzyU2G+qHAeQ56gEfTemtZhQkqgcr7VH6BOA5327WwVMvBfotB1gp3parSG4FscUpjRgiI48Uu8QgEdAkEdAjEs32mMOod6BmNQbzTgoq8DZX6Kt+hrhsiizVEvaG4yaKhstM10LW47qoT8V+neAKcCeGcjOv+sqyKBHEhf7vYFTHCAajcSRDXQri9ZQiIN3Lc4DYGxTj0PzXSdgqEXbJYqAyuYKhsrnVFGWFtN+E6noNobsXnRRDOt2B1vbfcSVA7QChfgrAOR0Ocjc/Z+HwAvbCXIbDN3IhufOE2IP1ProPcJNENqF1S4w9E9zgSB51LaZBI3MDfzYtIFqZD9FHvD8JaAeHcjzLOw3lTcN4RNF4mLyPBcATFEbi794LIDiD30NslshDXbxBrLEJ3/hFYgCfx+U98rsXnu0XrQSSBkEUjYZBAiPQ/CaZEaDjvQwhkHc59HZ/Lkfbj+O63EEtPb4do620XLdt6xLfxfwrcQxYtQaMB1mmX/GLxSWpkek8GLIXxUbsYC7EcVGgXR+H7EyCS47e1i+PwSYI4EseMp6WnxMIcsR93DOpiH6DhDCH+H8//9RFDrtAQAAAAAElFTkSuQmCC';
 try { const _mv = document.querySelector('meta[name="app-version"]'); if (_mv) _mv.setAttribute('content', APP_VERSION); } catch {}
 
 /* ----- Configuração Supabase -------------------------------- */
@@ -420,18 +477,41 @@ function T(nome){
    A tabela patrimonio.permissoes faz a ponte; aqui ela vira um mapa.
    Quem não está no mapa NÃO entra no módulo — perfil fica nulo.     */
 let NIVEL_DE = null;
-async function carregarNiveis(){
-  if (NIVEL_DE) return NIVEL_DE;
-  const { data } = await T('permissoes').select('perfil,nivel');
+/* 23/09/2026 — o mapa só era carregado dentro do fluxo de 2FA (desligado),
+   então nunca era aplicado: a tela recebia 'ti' e 'administrativo' crus e
+   só a diretoria funcionava. Agora o load() chama isto sempre. Só guarda
+   em cache quando a leitura volta com dados (uma falha não congela {}). */
+async function carregarNiveis(forcar){
+  if (NIVEL_DE && !forcar) return NIVEL_DE;
+  const { data, error } = await T('permissoes').select('perfil,nivel');
+  if (error || !data || !data.length) return NIVEL_DE || {};
   NIVEL_DE = {};
-  (data || []).forEach(function(r){ NIVEL_DE[r.perfil] = r.nivel; });
+  data.forEach(function(r){ NIVEL_DE[r.perfil] = r.nivel; });
   return NIVEL_DE;
+}
+/* Nível do banco → papel da TELA: o MESMO nome dos dois lados. Atenção: o
+   'operador_ti' é o chefe da TI (0015/0017: eh_admin e gerencia as
+   categorias de TI) — apesar do nome, não é um operador comum. */
+function papelDaTela(perfilCore){
+  return (NIVEL_DE && perfilCore) ? (NIVEL_DE[perfilCore] || null) : null;
 }
 function comNivel(p){
   if (!p) return p;
-  p.perfil = (NIVEL_DE && p.perfil) ? (NIVEL_DE[p.perfil] || null) : null;
+  p.perfilCore = p.perfil;
+  p.perfil = papelDaTela(p.perfil);
   return p;
 }
+/* Domínio da categoria (obra/ti/geral), que é o que as regras do banco usam.
+   Sem a coluna (cache antigo), cai no número fixo de antes: 1 = obra, 2/3 = ti. */
+function dominioDaCategoria(catId){
+  const c = (DB.categorias || []).find(x => x.id === catId);
+  if (c && c.dominio) return c.dominio;
+  return catId === 1 ? 'obra' : (catId === 2 || catId === 3) ? 'ti' : 'geral';
+}
+/* O que cada papel ENXERGA e GERENCIA — espelho de ve_categoria() e
+   gerencia_categoria() da 0017. Mudou lá, muda aqui. */
+const VE_DOMINIO     = { admin_ti: 'ti', operador_ti: 'ti', admin_obras: 'obra', almoxarife: 'obra' };
+const GERE_DOMINIO   = { admin_ti: 'ti', operador_ti: 'ti', admin_obras: 'obra' };
 
 /* ----- Camada de Autenticação ------------------------------- */
 /* Supabase Auth é a fonte da verdade. A sessão fica em localStorage
@@ -635,6 +715,7 @@ const BMStore = {
       return { ...data, currentUser: null };
     }
     try {
+      await carregarNiveis(true);   // sem o mapa, ninguém além da diretoria trabalha
       const [profs, cats, subs, locs, swts, patrs, movs, invs] = await Promise.all([
         T('pessoas').select('id,email,nome,perfil,setor,ativo,whatsapp')
           .eq('tipo','colaborador').order('email'),
@@ -652,11 +733,13 @@ const BMStore = {
       const data = {
         usuarios: (profs.data || []).map(p => ({
           id: p.id, nome: p.nome || p.email, email: p.email,
-          perfil: p.perfil || 'operador', setor: p.setor || '',
+          /* perfil = papel no Patrimônio (null = não entra no módulo);
+             perfilCore = perfil da empresa, é o que se grava em core.pessoas */
+          perfil: papelDaTela(p.perfil), perfilCore: p.perfil, setor: p.setor || '',
           ativo: p.ativo !== false,
           whatsapp: p.whatsapp || ''
         })),
-        categorias: (cats.data || []).map(c => ({ id: c.id, nome: c.nome, icone: c.icone })),
+        categorias: (cats.data || []).map(c => ({ id: c.id, nome: c.nome, icone: c.icone, dominio: c.dominio })),
         subcategorias: (subs.data || []).map(s => ({ id: s.id, nome: s.nome, categoriaId: s.categoria_id })),
         localizacoes: (locs.data || []).map(l => ({ id: l.id, nome: l.nome, tipo: l.tipo, parent: l.parent_id })),
         softwareTipos: (swts.data || []).map(s => ({ id: s.id, nome: s.nome })),
@@ -704,16 +787,62 @@ const BMStore = {
   /* ---------- Save (diff-based) ---------- */
   save(data) {
     const shared = this._stripSession(data);
-    try { localStorage.setItem(this.KEY, JSON.stringify(shared)); } catch {}
+    // durante a recarga pós-erro o cache guarda o último estado CONFIRMADO
+    // (é dele que o load() lê sem rede) — não deixa este save sujá-lo
+    if (!this._recarregandoAposErro) { try { localStorage.setItem(this.KEY, JSON.stringify(shared)); } catch {} }
     if (!SB) return Promise.resolve();
     const snapshot = this._clone(shared);
     // Congela o baseline NESTE instante — se o realtime/⟳ recarregar antes de gravar,
     // o diff não passa a "ver" linhas de outra pessoa como exclusão (P0-4).
     const baseCongelado = this._baseline ? this._clone(this._baseline) : null;
-    this._saveQueue = this._saveQueue
-      .then(() => this._persistDiff(snapshot, baseCongelado))
-      .catch(e => { console.error('[Supabase] save erro:', e && (e.message || e)); toast('Erro ao salvar: ' + (e && e.message || 'desconhecido'), 'error'); });
-    return this._saveQueue; // permite `await save()` antes de anunciar sucesso (P1-8)
+    /* 23/09/2026 — antes o .catch engolia o erro: a tela dizia "salvo", o
+       baseline não andava e TODO save seguinte reenviava a linha recusada e
+       parava no mesmo erro (movimentações nunca chegavam ao banco). Agora:
+       · a promessa devolvida REJEITA quando a gravação falha;
+       · a fila continua viva, a falha vira um aviso fixo e a tela é
+         recarregada do banco (some o estado que o banco recusou);
+       · saves já enfileirados sobre o estado descartado não rodam (geração);
+       · o toast de sucesso espera a gravação (ver toast()). */
+    const geracao = this._geracao;
+    const p = this._saveQueue.then(() => {
+      // montado sobre dados já descartados: rejeita (sem toast de sucesso), sem novo aviso
+      if (geracao !== this._geracao) throw SAVE_DESCARTADO;
+      return this._persistDiff(snapshot, baseCongelado);
+    });
+    this._saveQueue = p.catch(e => {
+      if (e !== SAVE_DESCARTADO) return this._falhouAoSalvar(e);
+      if (this._avisouDescarte) return;   // um aviso só por rajada
+      this._avisouDescarte = true; setTimeout(() => { this._avisouDescarte = false; }, 3000);
+      mostrarToast('Não foi salvo — a tela recarregou. Refaça a última ação.', 'error');
+    });
+    SALVANDO = p;
+    const limpa = () => { if (SALVANDO === p) SALVANDO = null; };
+    p.then(limpa, limpa);
+    return p;
+  },
+  _geracao: 0,
+  _recarregandoAposErro: false,
+  async _falhouAoSalvar(e) {
+    const msg = (e && (e.message || e)) || 'erro desconhecido';
+    console.error('[Supabase] save erro:', msg);
+    avisoErroAoSalvar(msg);
+    try {
+      /* Sem rede o load() cai no cache local — que o save() já tinha gravado
+         COM a mudança recusada. Devolve ao cache o último estado confirmado. */
+      this._recarregandoAposErro = true;
+      if (this._baseline) { try { localStorage.setItem(this.KEY, JSON.stringify(this._baseline)); } catch {} }
+      const uid = DB.currentUser;
+      const d = await this.load();
+      DB = { ...d, currentUser: uid };
+      fecharModaisComDados();   // mostravam o estado que o banco recusou
+      render();
+    } catch (e2) { console.warn('[Supabase] recarga após erro falhou:', e2 && e2.message); }
+    finally {
+      /* Só DEPOIS da recarga: saves pedidos durante ela (sobre o DB velho,
+         com a mudança recusada) também são descartados. */
+      this._geracao++;
+      this._recarregandoAposErro = false;
+    }
   },
 
   async _persistDiff(curr, baseCongelado) {
@@ -727,8 +856,12 @@ const BMStore = {
     await this._syncCollection('patrimonios',   base.patrimonios,   curr.patrimonios   || [], (x) => this._patrimonioToRow(x));
     await this._syncCollection('inventarios',   base.inventarios,   curr.inventarios   || [], (x) => this._invToRow(x));
 
-    // Movimentações: insert-only (RLS bloqueia UPDATE)
-    const baseMovIds = new Set((base.movimentacoes || []).map(m => m.id));
+    // Movimentações: insert-only (RLS bloqueia UPDATE). Com dois saves em
+    // sequência, a base congelada do segundo ainda não tem as movimentações
+    // do primeiro — as que já estão no último baseline confirmado não voltam
+    // (reenviar dava chave duplicada e a movimentação nova se perdia).
+    const baseMovIds = new Set((base.movimentacoes || [])
+      .concat((this._baseline && this._baseline.movimentacoes) || []).map(m => m.id));
     const newMovs = (curr.movimentacoes || []).filter(m => !baseMovIds.has(m.id));
     if (newMovs.length) {
       const { error } = await T('movimentacoes').insert(newMovs.map(m => this._movToRow(m)));
@@ -762,14 +895,20 @@ const BMStore = {
   /* ---------- Realtime ---------- */
   subscribe(onChange) {
     if (!SB) return null;
-    const tables = ['categorias','subcategorias','localizacoes','software_tipos','patrimonios','movimentacoes','inventarios','profiles'];
+    /* Na suíte as tabelas estão em patrimonio.* e core.pessoas (antes:
+       public.* e public.profiles, que não existem mais — a tela nunca
+       atualizava sozinha). Para os eventos chegarem, as tabelas também
+       precisam estar na publicação supabase_realtime: migração 0023. */
+    const tables = [['patrimonio','categorias'],['patrimonio','subcategorias'],['patrimonio','localizacoes'],
+                    ['patrimonio','software_tipos'],['patrimonio','patrimonios'],['patrimonio','movimentacoes'],
+                    ['patrimonio','inventarios'],['core','pessoas']];
     const ch = SB.channel('bm_relacional');
     let queued = false;
     const trigger = () => {
       if (queued) return; queued = true;
       setTimeout(() => { queued = false; onChange(); }, 250);
     };
-    tables.forEach(t => ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, trigger));
+    tables.forEach(([schema, table]) => ch.on('postgres_changes', { event: '*', schema, table }, trigger));
     return ch.subscribe();
   },
 
@@ -832,13 +971,24 @@ const nextId = (col) => {
 };
 
 // Normaliza datas para AAAA-MM-DD (o Postgres recusa DD/MM/AAAA).
+// Aceita DD/MM/AAAA, DD-MM-AAAA e DD.MM.AAAA. O que não reconhece vira null
+// (antes devolvia o texto cru, o banco recusava e envenenava a fila de saves).
+// Data impossível (31/02, mês 13) também vira null: o banco recusaria e a
+// gravação inteira do lote (ex.: CSV) falharia.
+const dataExiste = (a, m, d) => {
+  const t = new Date(Date.UTC(a, m - 1, d));
+  return t.getUTCFullYear() === a && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+};
 const toISODate = (v) => {
   if (!v) return null;
   const s = String(v).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-  return s;
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m && dataExiste(+m[1], +m[2], +m[3])) return s.slice(0, 10);
+  m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+  if (m && dataExiste(+m[3], +m[2], +m[1]))
+    return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  console.warn('[data] formato não reconhecido, ignorado:', s);
+  return null;
 };
 
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -848,12 +998,47 @@ const fmtMoney = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFrac
 const fmtDate = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
 const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '—';
 
+/* Gravação em andamento (ver BMStore.save). Um toast de SUCESSO pedido
+   enquanto ela corre espera o resultado: se a gravação falhar, o "salvo"
+   não aparece — aparece o aviso de erro no lugar. Assim nenhum dos ~27
+   pontos que fazem "save(); toast('...', 'success')" mente para a pessoa. */
+let SALVANDO = null;
+/* save descartado (montado sobre dados de antes de uma falha): a promessa
+   rejeita com este marcador — sem toast de sucesso e sem segundo aviso. */
+const SAVE_DESCARTADO = { descartado: true, message: 'descartado após falha anterior' };
+/* Fecha os modais que mostram/guardam objetos do DB (depois de uma recarga
+   eles ficariam soltos: gravariam num objeto que já não está no DB).
+   Inventário em andamento e leitor de código ficam — não são dado do banco. */
+function fecharModaisComDados() {
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    if (m.id === 'modal-invrun' || m.id === 'modal-scan') return;
+    m.remove();
+  });
+}
 function toast(msg, kind='') {
+  if (kind === 'success' && SALVANDO) {
+    SALVANDO.then(() => mostrarToast(msg, kind), () => {});
+    return;
+  }
+  mostrarToast(msg, kind);
+}
+function mostrarToast(msg, kind) {
   const t = document.createElement('div');
   t.className = 'toast' + (kind ? ' ' + kind : '');
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2200);
+}
+/* Falha de gravação: aviso FIXO (não some sozinho em 2 s como o toast). */
+function avisoErroAoSalvar(msg) {
+  const velho = document.getElementById('aviso-erro-salvar'); if (velho) velho.remove();
+  const a = document.createElement('div');
+  a.id = 'aviso-erro-salvar'; a.className = 'aviso-erro-salvar'; a.setAttribute('role', 'alert');
+  a.innerHTML = '<div><b>Não foi salvo.</b> A tela voltou ao que está gravado no banco.' +
+                '<small>' + escapeHtml(String(msg)) + '</small></div>' +
+                '<button type="button">Entendi</button>';
+  a.querySelector('button').addEventListener('click', () => a.remove());
+  document.body.appendChild(a);
 }
 
 /* ============== NOTIFICAÇÕES WHATSAPP (Evolution API via Edge Function) ============== */
@@ -894,13 +1079,7 @@ const WhatsDest = {
   },
   // Admins de uma categoria (quem pode aprovar) — inclui Diretoria sempre.
   aprovadoresDaCategoria(catId) {
-    return DB.usuarios.filter(u => {
-      if (u.ativo === false) return false;
-      if (u.perfil === 'diretoria') return true;
-      if (u.perfil === 'admin_ti'    && (catId === 2 || catId === 3)) return true;
-      if (u.perfil === 'admin_obras' && catId === 1) return true;
-      return false;
-    }).map(u => u.id);
+    return DB.usuarios.filter(u => u.ativo !== false && Perms.canApproveCadastro(u, catId)).map(u => u.id);
   },
   // Envolvidos no patrimônio: criador + responsável atual (sem duplicar).
   envolvidos(p) {
@@ -964,34 +1143,43 @@ function whatsFormatar(v) {
 
 /* ============== AUTH & PERMISSIONS ============== */
 
+/* Regras da TELA espelhando as do banco (0017), por domínio da categoria.
+   Papéis: diretoria (tudo) · operador_ti / admin_ti (chefe da TI: vê e gerencia TI) ·
+   admin_obras (Administrativo: vê e gerencia Obra) · almoxarife (vê e
+   movimenta Obra, não edita cadastro, cadastro dele vai para aprovação) ·
+   operador (só o que está com ele). admin_* e diretoria = eh_admin(). */
 const Perms = {
-  isAdmin(u) { return u && (u.perfil === 'diretoria' || u.perfil === 'admin_ti' || u.perfil === 'admin_obras'); },
-  isDiretoria(u) { return u && u.perfil === 'diretoria'; },
-  isOperador(u) { return u && (u.perfil === 'operador' || u.perfil === 'operador_ti'); },
+  /* = eh_admin() da 0017 */
+  isAdmin(u) { return !!u && ['diretoria','admin_ti','admin_obras','operador_ti'].includes(u.perfil); },
+  isDiretoria(u) { return !!u && u.perfil === 'diretoria'; },
+  /* quem precisa de aprovação para cadastrar */
+  isOperador(u) { return !!u && (u.perfil === 'operador' || u.perfil === 'almoxarife'); },
+  veCategoria(u, categoriaId) {
+    if (!u) return false;
+    if (u.perfil === 'diretoria') return true;
+    return !!VE_DOMINIO[u.perfil] && VE_DOMINIO[u.perfil] === dominioDaCategoria(categoriaId);
+  },
   canManageCategoria(u, categoriaId) {
     if (!u) return false;
     if (u.perfil === 'diretoria') return true;
-    if (u.perfil === 'admin_ti'   && (categoriaId === 2 || categoriaId === 3)) return true;
-    if (u.perfil === 'admin_obras'&& categoriaId === 1) return true;
-    return false;
+    return !!GERE_DOMINIO[u.perfil] && GERE_DOMINIO[u.perfil] === dominioDaCategoria(categoriaId);
   },
-  canCreate(u) { return !!u; },
+  canCreate(u) { return !!u && !!u.perfil; },
   canDelete(u) { return Perms.isDiretoria(u); },
-  canApproveCadastro(u, categoriaId) {
-    if (!u) return false;
-    if (u.perfil === 'diretoria') return true;
-    if (u.perfil === 'admin_ti'   && (categoriaId === 2 || categoriaId === 3)) return true;
-    if (u.perfil === 'admin_obras'&& categoriaId === 1) return true;
-    return false;
-  },
+  canApproveCadastro(u, categoriaId) { return Perms.canManageCategoria(u, categoriaId); },
   canRequestBaixa(u, categoriaId) { return Perms.canManageCategoria(u, categoriaId); },
   canRequestMove(u, p) {
     if (!u || !p) return false;
     if (Perms.canManageCategoria(u, p.categoriaId)) return true;
-    if (u.perfil === 'operador_ti' && (p.categoriaId === 2 || p.categoriaId === 3)) return true;
-    if (u.perfil === 'operador' && p.responsavelAtualId === u.id) return true;
+    /* Quem não gerencia a categoria (almoxarife incluído) só movimenta o que
+       está com ele, e por solicitação (openMove). É o que a RLS da 0017
+       (patr_upd) deixa gravar: o bem de obra que está com outra pessoa o
+       almoxarife não consegue alterar. Liberar isso exige mudança no banco. */
+    if (p.responsavelAtualId === u.id) return true;
     return false;
   },
+  /* inventário grava em patrimonio.inventarios, que exige eh_admin() */
+  podeInventariar(u) { return Perms.isAdmin(u); },
   movimentacoesPendentesParaAprovador(user) {
     if (!user) return [];
     return DB.patrimonios.filter(p =>
@@ -1001,21 +1189,20 @@ const Perms = {
   },
   canApproveBaixa(u) { return Perms.isDiretoria(u); },
   allowedCategorias(u) {
-    if (!u) return [];
-    if (u.perfil === 'diretoria')  return DB.categorias;
-    if (u.perfil === 'admin_ti')   return DB.categorias.filter(c => c.id === 2 || c.id === 3);
-    if (u.perfil === 'admin_obras')return DB.categorias.filter(c => c.id === 1);
-    if (u.perfil === 'operador_ti')return DB.categorias.filter(c => c.id === 2 || c.id === 3);
-    if (u.perfil === 'operador')   return DB.categorias;
-    return [];
+    if (!u || !u.perfil) return [];
+    if (u.perfil === 'diretoria') return DB.categorias;
+    if (u.perfil === 'operador')  return DB.categorias;   // pede cadastro; aprovação decide
+    return DB.categorias.filter(c => Perms.veCategoria(u, c.id));
   },
   perfilLabel(perfil) {
+    if (!perfil) return 'Sem acesso ao Patrimônio';
     return ({
       diretoria:    'Diretoria',
-      admin_ti:     'Adm. TI',
-      admin_obras:  'Adm. Obras',
+      admin_ti:     'TI (gestor)',
+      admin_obras:  'Administrativo',
+      almoxarife:   'Almoxarife',
       operador:     'Operador Obra',
-      operador_ti:  'Operador TI'
+      operador_ti:  'TI (gestor)'
     })[perfil] || perfil;
   }
 };
@@ -1055,9 +1242,7 @@ const Lookup = {
     if (!user || !p) return false;
     if (p.status === 'excluido') return false; // exclusão lógica: some do app, mas fica no Supabase
     if (user.perfil === 'diretoria') return true;
-    if (user.perfil === 'admin_ti')    return p.categoriaId === 2 || p.categoriaId === 3;
-    if (user.perfil === 'admin_obras') return p.categoriaId === 1;
-    if (user.perfil === 'operador_ti') return p.categoriaId === 2 || p.categoriaId === 3;
+    if (Perms.veCategoria(user, p.categoriaId)) return true;   // espelho de patr_sel (0017)
     return p.responsavelAtualId === user.id || p.criadoPor === user.id;
   },
   visibleItems(user) {
@@ -1101,6 +1286,7 @@ function render() {
     bindNovaSenha();
     return;
   }
+  if (!DB.currentUser && SEM_ACESSO) { app.innerHTML = renderSemAcesso(); return; }
   if (!DB.currentUser) {
     /* Na suíte quem autentica é o portal. O módulo é uma sala, não a
        casa: sem sessão, devolve a pessoa para o corredor. A tela de
@@ -1163,6 +1349,7 @@ function bindLogin() {
       try { DB = await BMStore.load(); } catch (e) { console.warn('[load pós-login]:', e.message); }
       const id = await syncCurrentUserFromAuth(authUser);
       if (id == null) {
+        if (SEM_ACESSO) { render(); return; }   // mostra o aviso, sem derrubar a sessão da suíte
         await Auth.signOut();
         return toast('Sua conta ainda não foi provisionada no app. Contate a Diretoria.', 'error');
       }
@@ -1288,7 +1475,7 @@ function bindNovaSenha() {
 }
 
 /* ===== MFA (TOTP) para perfis administrativos ===== */
-const ADMIN_PERFIS = ['diretoria','admin_ti','admin_obras'];
+const ADMIN_PERFIS = ['diretoria','admin_ti','admin_obras','operador_ti'];
 
 /* 2FA DESLIGADO durante a implantação (decisão de 11/09/2026).
    Para religar, basta trocar para true — quem já cadastrou o autenticador
@@ -1403,10 +1590,11 @@ async function syncCurrentUserFromAuth(authUser) {
         /* Antes caía em 'operador' quando o perfil vinha vazio. Na suíte isso
            daria acesso a quem não está no módulo: comNivel devolve nulo de
            propósito para quem não consta em patrimonio.permissoes. */
+        await carregarNiveis();
         comNivel(data);
         entry = { id: data.id, nome: data.nome || data.email, email: data.email,
-                  perfil: data.perfil || null, setor: data.setor || '',
-                  ativo: data.ativo !== false };
+                  perfil: data.perfil || null, perfilCore: data.perfilCore || null,
+                  setor: data.setor || '', ativo: data.ativo !== false };
         if (!DB.usuarios.find(x => x.id === entry.id)) DB.usuarios.push(entry);
       }
     } catch (e) { console.warn('[sync] fallback profile:', e.message); }
@@ -1419,7 +1607,21 @@ async function syncCurrentUserFromAuth(authUser) {
     toast('Sua conta está desativada. Contate a Diretoria.', 'error');
     return null;
   }
+  /* Sem nível no Patrimônio (fora de patrimonio.permissoes): não entra.
+     Antes entrava e via tudo vazio. Mostra a razão em vez de mandar de volta
+     ao portal — senão o card do portal traria a pessoa aqui de novo. */
+  if (!entry.perfil) { SEM_ACESSO = true; return null; }
+  SEM_ACESSO = false;
   return entry.id;
+}
+let SEM_ACESSO = false;
+function renderSemAcesso() {
+  return `
+    <div style="padding:48px 20px; text-align:center;">
+      <div style="font-size:18px; font-weight:700; color:#00296B; margin-bottom:8px;">Seu perfil não tem acesso ao Patrimônio</div>
+      <div style="font-size:15px; color:#4F5B6D; line-height:1.5; margin-bottom:22px;">Se você precisa usar este módulo, peça à diretoria para liberar o seu perfil.</div>
+      <a href="../" style="display:inline-flex; align-items:center; min-height:44px; padding:0 18px; border-radius:10px; background:#00296B; color:#fff; font-weight:700; text-decoration:none;">Voltar ao portal</a>
+    </div>`;
 }
 
 /* --- TOPBAR --- */
@@ -1429,20 +1631,24 @@ function renderTopbar() {
   const pending = Lookup.pendingCount(u.id);
   return `
     <header class="topbar">
-      <div class="brand" id="brand-home" style="cursor:pointer;" title="Ir para a página inicial">
-        <div class="name">BRANDÃO <span class="amp">&amp;</span> MARMO</div>
-        <div class="tag">CONTROLE DE PATRIMÔNIO</div>
-      </div>
+      <a class="bm-marca" href="../" aria-label="BeMer — voltar ao portal" title="Voltar ao portal">
+        <img src="${SIMBOLO_BEMER}" alt="">
+        <span class="bm-palavra"><span class="be">Be</span><span class="mer">Mer</span></span>
+      </a>
+      <span class="bm-fio" aria-hidden="true"></span>
+      <button class="bm-modulo" id="brand-home" type="button" title="Ir para a página inicial do Patrimônio">
+        <span class="bm-tile" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span>
+        <span class="bm-nome">Patrimônio</span>
+      </button>
       <div class="right">
-        <button class="icon-btn" id="btn-portal" title="Voltar ao portal"
-                style="width:auto; padding:0 10px; font-size:13px; font-weight:700; gap:4px;"
-                onclick="location.href='../'">&#8249; Portal</button>
-        <button class="icon-btn" id="btn-refresh" title="Atualizar"><span class="ic">⟳</span></button>
-        <button class="icon-btn" id="btn-pending" title="Aceites pendentes">
-          🔔
+        <button class="icon-btn btn-portal-txt" id="btn-portal" type="button" title="Voltar ao portal"
+                onclick="location.href='../'"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Portal</button>
+        <button class="icon-btn" id="btn-refresh" type="button" title="Atualizar" aria-label="Atualizar"><span class="ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span></button>
+        <button class="icon-btn" id="btn-pending" type="button" title="Aceites pendentes" aria-label="Aceites pendentes${pending ? ' (' + pending + ')' : ''}">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           ${pending ? `<span class="badge-dot">${pending}</span>` : ''}
         </button>
-        <button class="icon-btn" id="btn-logout" title="Sair" style="width:auto; padding:0 10px; font-size:13px; font-weight:700; gap:4px;">↩ Sair</button>
+        <button class="icon-btn" id="btn-logout" type="button" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
       </div>
     </header>
   `;
@@ -1535,8 +1741,9 @@ function renderHome() {
   const isOperador = u.perfil === 'operador';
 
   const escopoCat =
-    u.perfil === 'admin_ti' ? '<div class="card-hint">Você gerencia apenas itens de <strong>TI</strong></div>' :
+    (u.perfil === 'admin_ti' || u.perfil === 'operador_ti') ? '<div class="card-hint">Você gerencia apenas itens de <strong>TI</strong></div>' :
     u.perfil === 'admin_obras' ? '<div class="card-hint">Você gerencia apenas itens de <strong>Obra</strong></div>' :
+    u.perfil === 'almoxarife' ? '<div class="card-hint">Você vê os itens de <strong>Obra</strong> e pede movimentação dos que estão com você</div>' :
     u.perfil === 'diretoria' ? '<div class="card-hint">Acesso total ao sistema</div>' :
     '<div class="card-hint">Visualizando apenas os bens sob sua custódia</div>';
 
@@ -1593,7 +1800,7 @@ function renderHome() {
             <span class="qa-icon">➕</span>Cadastrar bem
           </button>
         ` : ''}
-        ${!isOperador ? `
+        ${Perms.podeInventariar(u) ? `
           <button class="quick-action" data-action="inventory">
             <span class="qa-icon">📦</span>Inventário
           </button>
@@ -1672,9 +1879,9 @@ function renderList() {
   if (f.responsavel) items = items.filter(p => String(p.responsavelAtualId) === String(f.responsavel));
 
   // Categorias disponíveis para o usuário (admin_ti só vê TI, etc.)
-  const catsVisiveis = u.perfil === 'admin_ti' ? DB.categorias.filter(c => c.id === 2 || c.id === 3)
-                     : u.perfil === 'admin_obras' ? DB.categorias.filter(c => c.id === 1)
-                     : DB.categorias;
+  const catsVisiveis = (u.perfil === 'diretoria' || u.perfil === 'operador')
+                     ? DB.categorias
+                     : DB.categorias.filter(c => Perms.veCategoria(u, c.id));
   const showCatFilter = catsVisiveis.length > 1;
 
   // Subcategorias disponíveis (das categorias visíveis; se houver filtro de categoria, restringe a ela)
@@ -1948,11 +2155,15 @@ function openDetail(patrimonioId) {
       toast('Processando foto...', 'success');
       try {
         const dataURL = await comprimirImagem(file);
-        p.foto = dataURL;
-        p.atualizadoEm = new Date().toISOString();
+        // o do DB de agora: durante a compressão uma recarga pode ter trocado o DB
+        const atual = DB.patrimonios.find(x => x.id === p.id);
+        if (!atual) return toast('Este item foi alterado — abra de novo', 'error');
+        const aberto = document.body.contains(node);
+        atual.foto = dataURL;
+        atual.atualizadoEm = new Date().toISOString();
         save();
         toast('Foto salva', 'success');
-        node.remove(); openDetail(p.id);
+        if (aberto) { node.remove(); openDetail(atual.id); }
       } catch (err) {
         toast('Falha ao processar a foto', 'error');
       }
@@ -2037,6 +2248,8 @@ function openEditPatrimonio(patrimonioId) {
 
   node.querySelector('#edit-patr-form').addEventListener('submit', (e) => {
     e.preventDefault();
+    const p = DB.patrimonios.find(x => x.id === patrimonioId);   // o do DB de agora (uma recarga pode ter trocado o DB)
+    if (!p) return toast('Este item foi alterado — abra de novo', 'error');
     const codigo = node.querySelector('#e-codigo').value.trim();
     if (!codigo) return toast('Informe o código / número do patrimônio', 'error');
     if (DB.patrimonios.some(x => x.id !== p.id && x.status !== 'excluido' && (x.codigoBarras||'').toLowerCase() === codigo.toLowerCase())) {
@@ -2126,7 +2339,11 @@ function openMove(patrimonioId) {
   const p = DB.patrimonios.find(x => x.id === patrimonioId);
   const u = Lookup.user(DB.currentUser);
   if (!Perms.canRequestMove(u, p)) return toast('Sem permissão para esta categoria', 'error');
-  const isOpProprio = u.perfil === 'operador' && p.responsavelAtualId === u.id && !Perms.canManageCategoria(u, p.categoriaId);
+  /* Quem não gerencia a categoria só pede: o responsável continua o mesmo e a
+     troca fica em pending_move até quem gerencia aprovar (a RLS recusa a
+     movimentação direta). Antes só valia para 'operador' — nível que ninguém
+     mais tem desde a 0016 —, e o almoxarife gravava direto e o banco recusava. */
+  const isOpProprio = !Perms.canManageCategoria(u, p.categoriaId);
 
   const html = `
     <div class="modal-backdrop" id="modal-move">
@@ -2177,6 +2394,8 @@ function openMove(patrimonioId) {
 
   node.querySelector('#move-form').addEventListener('submit', e => {
     e.preventDefault();
+    const p = DB.patrimonios.find(x => x.id === patrimonioId);   // o do DB de agora (uma recarga pode ter trocado o DB)
+    if (!p) return toast('Este item foi alterado — abra de novo', 'error');
     const novoLocal = parseInt(node.querySelector('#m-local').value) || null;
     const novoResp = node.querySelector('#m-resp').value || null;   // uuid (string)
     const motivo = node.querySelector('#m-motivo').value.trim();
@@ -2185,7 +2404,8 @@ function openMove(patrimonioId) {
     const tipo = novoLocal && novoResp ? 'transferencia_local_resp' : (novoLocal ? 'transferencia_local' : 'transferencia_resp');
     if (isOpProprio) {
       // Operador OBRA: pede aprovação do ADM OBRA antes de aplicar
-      p.pendingMove = { localizacaoAtualId: novoLocal, responsavelAtualId: novoResp, motivo: motivo || '', tipo };
+      // statusAntes vai para o banco: quem aprova/rejeita está em outro aparelho
+      p.pendingMove = { localizacaoAtualId: novoLocal, responsavelAtualId: novoResp, motivo: motivo || '', tipo, statusAntes: p.status };
       p.statusBeforePending = p.status;
       p.status = 'aguardando_aprovacao_movimentacao';
       p.solicitadoMovPor = u.id;
@@ -2317,6 +2537,8 @@ function sendToMaintenance(patrimonioId) {
   /* clique fora NÃO fecha o modal (evita fechar/retroceder sem querer) — use ✕/Voltar */
   node.querySelector('[data-close]').addEventListener('click', () => node.remove());
   node.querySelector('#mnt-confirm').addEventListener('click', () => {
+    const p = DB.patrimonios.find(x => x.id === patrimonioId);   // o do DB de agora (uma recarga pode ter trocado o DB)
+    if (!p) return toast('Este item foi alterado — abra de novo', 'error');
     const respId = node.querySelector('#mnt-resp').value || null;   // uuid (string)
     const motivo = node.querySelector('#mnt-motivo').value.trim();
     if (!respId) return toast('Selecione o responsável', 'error');
@@ -2440,7 +2662,7 @@ function rejectMove(patrimonioId) {
   const u = Lookup.user(DB.currentUser);
   if (!p || p.status !== 'aguardando_aprovacao_movimentacao') return;
   if (!Perms.canApproveCadastro(u, p.categoriaId)) return toast('Sem permissão para rejeitar', 'error');
-  p.status = p.statusBeforePending || 'ativo';
+  p.status = p.statusBeforePending || (p.pendingMove && p.pendingMove.statusAntes) || 'ativo';
   const motivoMov = (p.pendingMove && p.pendingMove.motivo) || '';
   delete p.pendingMove;
   delete p.statusBeforePending;
@@ -3117,6 +3339,8 @@ function bindMore() {
 let inventoryState = null;
 
 function openInventoryStart() {
+  /* a gravação exige eh_admin() (inv_ins, 0017): não oferecer a quem o banco recusa */
+  if (!Perms.podeInventariar(Lookup.user(DB.currentUser))) return toast('Sem permissão para inventário', 'error');
   const html = `
     <div class="modal-backdrop" id="modal-inv">
       <div class="modal" onclick="event.stopPropagation()">
@@ -3554,443 +3778,51 @@ function openCadLoc() {
   });
 }
 
+/* ============== USUÁRIOS — só consulta ==============
+   Até 23/09/2026 esta tela criava, editava, desativava e trocava senha de
+   pessoas. Na suíte isso não funcionava (gravava níveis do módulo em
+   core.pessoas.perfil, recusados pela FK; a senha "temporária" mostrada não
+   era a da conta criada) e, por decisão do Saurin, TUDO que é cadastro de
+   pessoa mora no PORTAL. Aqui fica a lista de quem usa o Patrimônio, com o
+   papel de cada um — para consultar, não para mexer. */
 function openCadUser() {
   const u = Lookup.user(DB.currentUser);
-  if (!Perms.isAdmin(u)) return toast('Apenas administradores podem gerenciar usuários', 'error');
-
-  // Perfis que o usuário atual pode criar
-  const perfisDisp =
-    u.perfil === 'diretoria'   ? [['operador','Operador Obra'],['operador_ti','Operador TI'],['admin_ti','Administrador TI'],['admin_obras','Administrador Obras'],['diretoria','Diretoria']] :
-    u.perfil === 'admin_ti'    ? [['operador_ti','Operador TI']] :
-    u.perfil === 'admin_obras' ? [['operador','Operador Obra']] : [];
-
-  const podeRemover = (alvo) => {
-    if (u.perfil !== 'diretoria') return false; // só a Diretoria persiste (RLS de profiles)
-    if (alvo.id === u.id) return false; // não pode se remover
-    if (isMaster(alvo))   return false; // 🛡️ conta-mestre protegida
-    if (Lookup.hasItemsUnderCustody(alvo.id)) return false;
-    return true;
-  };
-  // Quem pode REATIVAR (mesma regra, sem checar custódia — usuário está inativo).
-  const podeReativar = (alvo) => {
-    if (u.perfil !== 'diretoria') return false;
-    if (alvo.id === u.id) return false;
-    if (isMaster(alvo))   return false;
-    return true;
-  };
-
-  // Layout de uma linha de usuário (reaproveitado nas listas de ativos e inativos).
-  const renderUserRow = (x) => {
-    const temBens = Lookup.hasItemsUnderCustody(x.id);
-    const remov = podeRemover(x);
-    const inativo = x.ativo === false;
-    const reativ = podeReativar(x);
-    return `
-              <div class="item" style="${inativo ? 'opacity:.6;' : ''}">
-                <div class="item-icon">👤</div>
-                <div class="item-info">
-                  <div class="title">${escapeHtml(x.nome)} ${isMaster(x) ? '<span title="Conta-mestre protegida" style="font-size:14px;">🛡️</span>' : ''}</div>
-                  <div class="subtitle">${escapeHtml(x.email)} · <span class="role-chip ${x.perfil}">${Perms.perfilLabel(x.perfil)}</span></div>
-                  <div class="subtitle" style="font-size:11px;">${x.whatsapp ? '📱 ' + escapeHtml(whatsFormatar(x.whatsapp)) : '<span style="color:var(--danger);">⚠ sem WhatsApp cadastrado</span>'}</div>
-                  ${isMaster(x) ? `<div style="font-size:11px; color:var(--brand-navy); margin-top:2px; font-weight:600;">🛡️ Conta-mestre — não pode ser desativada nem ter o perfil alterado</div>` : ''}
-                  ${temBens && !inativo ? `<div style="font-size:11px; color:var(--warning); margin-top:2px;">🔒 Possui bens sob custódia</div>` : ''}
-                </div>
-                <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
-                  <button class="btn secondary" data-edit="${x.id}" style="width:auto; padding:6px 10px; font-size:12px;" title="Editar usuário">✏️</button>
-                  <button class="btn secondary" data-pw="${x.id}" style="width:auto; padding:6px 10px; font-size:12px;" title="Trocar senha">🔑</button>
-                  ${inativo
-                    ? (reativ ? `<button class="btn secondary" data-react="${x.id}" style="width:auto; padding:6px 10px; font-size:12px; background:var(--success); color:#fff; border:none;" title="Reativar usuário">♻️</button>` : '')
-                    : (remov ? `<button class="btn danger" data-del="${x.id}" style="width:auto; padding:6px 10px; font-size:12px;" title="Desativar usuário">🚫</button>` : '')}
-                </div>
-              </div>
-    `;
-  };
-  const usuariosAtivos   = DB.usuarios.filter(x => x.ativo !== false);
-  const usuariosInativos = DB.usuarios.filter(x => x.ativo === false);
-
+  if (!Perms.isAdmin(u)) return toast('Apenas administradores', 'error');
+  const comAcesso = DB.usuarios
+    .filter(x => x.ativo !== false && x.perfil)
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  const semAcesso = DB.usuarios.filter(x => x.ativo !== false && !x.perfil).length;
+  const linha = (x) => `
+    <div class="item">
+      <div class="item-icon">👤</div>
+      <div class="item-info" style="min-width:0;">
+        <div class="title">${escapeHtml(x.nome)}</div>
+        <div class="subtitle">${escapeHtml(x.email)}</div>
+        <div class="subtitle"><span class="role-chip ${escapeHtml(x.perfil)}">${escapeHtml(Perms.perfilLabel(x.perfil))}</span>${Lookup.hasItemsUnderCustody(x.id) ? ' · com bens sob custódia' : ''}</div>
+      </div>
+    </div>`;
   const html = `
     <div class="modal-backdrop" id="modal-cu">
       <div class="modal" onclick="event.stopPropagation()">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
           <button class="btn secondary" data-close style="width:auto;padding:6px 14px;font-size:13px;">← Voltar</button>
-          <h2 style="margin:0;font-size:18px;">Usuários</h2>
+          <h2 style="margin:0;font-size:18px;">Quem usa o Patrimônio</h2>
+        </div>
+        <div style="background:#EEF2F9;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:14px;line-height:1.5;color:#0F1B2D;">
+          Cadastro, perfil, desativação e senha das pessoas são feitos no <b>portal BeMer</b>. Esta lista é só para consulta.
         </div>
         <div class="item-list" style="margin-bottom:12px;">
-          ${usuariosAtivos.length
-            ? usuariosAtivos.map(renderUserRow).join('')
-            : '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px;">Nenhum usuário ativo.</div>'}
+          ${comAcesso.length ? comAcesso.map(linha).join('')
+            : '<div style="text-align:center;color:var(--muted);font-size:14px;padding:12px;">Ninguém com acesso.</div>'}
         </div>
-        ${usuariosInativos.length ? `
-        <button type="button" id="toggle-inativos" class="btn secondary" style="width:100%;margin-bottom:12px;font-size:13px;">
-          👁️ Ver inativos (${usuariosInativos.length})
-        </button>
-        <div id="lista-inativos" class="item-list" style="margin-bottom:12px;display:none;">
-          ${usuariosInativos.map(renderUserRow).join('')}
-        </div>` : ''}
-        <h2 style="margin-top:14px;">Adicionar usuário</h2>
-        <div style="background:#dcfce7;border:1px solid #16a34a;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#166534;line-height:1.45;">
-          <strong>✓ Cadastro automático:</strong> defina a senha inicial abaixo (mín. 6 caracteres).
-          Envie ao usuário por WhatsApp — ele pode trocar depois pelo botão 🔑.
-        </div>
-        <form id="user-form">
-          <div class="form-group"><label>Nome</label><input type="text" id="u-nome" required></div>
-          <div class="form-group"><label>E-mail</label><input type="email" id="u-email" required></div>
-          <div class="form-group">
-            <label>WhatsApp <span style="color:var(--danger);">*</span></label>
-            <input type="tel" id="u-whats" required placeholder="+55 (11) 99999-9999" inputmode="tel">
-            <div class="form-help">Obrigatório. Receberá todas as notificações do app.</div>
-          </div>
-          <div class="form-group"><label>Perfil</label>
-            <select id="u-perfil">
-              ${perfisDisp.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Senha inicial <span style="font-weight:normal;color:var(--muted);font-size:11px;">(mín. 6)</span></label>
-            <div style="display:flex;gap:6px;">
-              <input type="text" id="u-senha" required minlength="6" style="flex:1;font-family:monospace;">
-              <button type="button" id="u-gen" class="btn secondary" style="width:auto;padding:6px 10px;font-size:12px;">🎲 Gerar</button>
-            </div>
-          </div>
-          <button class="btn">Adicionar</button>
-        </form>
+        ${semAcesso ? `<div style="font-size:13px;color:var(--muted);text-align:center;">${semAcesso} pessoa(s) da empresa sem acesso a este módulo.</div>` : ''}
       </div>
     </div>
   `;
   const wrap = document.createElement('div'); wrap.innerHTML = html;
   const node = wrap.firstElementChild; document.body.appendChild(node);
-  /* clique fora NÃO fecha o modal (evita fechar/retroceder sem querer) — use ✕/Voltar */
   node.querySelector('[data-close]').addEventListener('click', () => node.remove());
-
-  // Mostrar/ocultar a lista de inativos (mantém a tela limpa por padrão).
-  const btnToggleInativos = node.querySelector('#toggle-inativos');
-  if (btnToggleInativos) btnToggleInativos.addEventListener('click', () => {
-    const lst = node.querySelector('#lista-inativos');
-    if (!lst) return;
-    const mostrar = lst.style.display === 'none';
-    lst.style.display = mostrar ? 'flex' : 'none';
-    btnToggleInativos.innerHTML = mostrar ? '🔼 Ocultar inativos' : `👁️ Ver inativos (${usuariosInativos.length})`;
-  });
-
-  // Editar usuário
-  node.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
-    const targetId = b.dataset.edit;
-    const target = Lookup.user(targetId);
-    if (!target) return;
-    node.remove();
-    openEditUser(target);
-  }));
-
-  // Desativar usuário (NÃO é exclusão definitiva — exibe explicação)
-  node.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
-    const targetId = b.dataset.del;            // uuid (string)
-    const target = Lookup.user(targetId);
-    if (!target) return;
-    if (Lookup.hasItemsUnderCustody(targetId)) {
-      return toast('Não dá pra desativar: este usuário tem bens sob custódia. Transfira os itens primeiro.', 'error');
-    }
-    // PROTEÇÃO ESPECIAL: desativar uma Diretoria é crítico (perde gestão).
-    // Bloqueia se for a última, exige digitar "CONFIRMO" pras demais.
-    if (target.perfil === 'diretoria') {
-      const diretoresAtivos = DB.usuarios.filter(x => x.perfil === 'diretoria' && x.ativo !== false).length;
-      if (diretoresAtivos <= 1) {
-        return toast('⛔ Não é possível desativar o último usuário Diretoria. O app ficaria sem administrador-raiz.', 'error');
-      }
-      const aviso = prompt(
-        `⚠️ ATENÇÃO — desativar usuário DIRETORIA\n\n` +
-        `Você está prestes a desativar:\n` +
-        `   ${target.nome} (${target.email})\n\n` +
-        `Essa pessoa perde TODO acesso administrativo imediatamente. ` +
-        `Pra reativar depois, só pelo SQL Editor do Supabase.\n\n` +
-        `Pra confirmar, digite CONFIRMO (maiúsculas) abaixo:`,
-        ''
-      );
-      if (aviso !== 'CONFIRMO') return toast('Desativação cancelada.', 'error');
-    } else if (!confirm(
-      `Desativar o usuário ${target.nome}?\n\n` +
-      `🔒 O acesso ao app será BLOQUEADO imediatamente.\n\n` +
-      `📋 O nome dele continuará aparecendo no histórico de patrimônios e movimentações ` +
-      `(isso é proposital — preserva auditoria).\n\n` +
-      `❗ Por que não "excluir definitivamente"?\n` +
-      `   Apagar a pessoa quebraria o histórico (não saberíamos quem cadastrou cada item). ` +
-      `Por isso só "desativamos". Mesmo pelo painel do Supabase a exclusão falha pelo mesmo motivo.\n\n` +
-      `Confirmar desativação?`
-    )) return;
-    // Desativa o perfil no banco (RLS só permite a Diretoria)
-    if (SB && u.perfil === 'diretoria') {
-      try {
-        const { error } = await T('pessoas').update({ ativo: false })
-          .eq('id', targetId);
-        if (error) throw error;
-        target.ativo = false;   // reflete na hora, sem depender do realtime
-      } catch (e) {
-        console.warn('[profiles] desativar:', e.message);
-        return toast('Erro ao desativar: ' + (e.message || ''), 'error');
-      }
-    }
-    // O DB.usuarios local será recarregado de profiles no próximo load()
-    notificarWhatsApp('usuario_desativado', {
-      nome: target.nome, email: target.email,
-      desativadoPor: u.nome
-    }, WhatsDest.diretoriaMais(targetId));
-    node.remove(); toast('Usuário desativado', 'success'); openCadUser();
-  }));
-
-  // Reativar usuário (volta o acesso — só a Diretoria grava, por RLS)
-  node.querySelectorAll('[data-react]').forEach(b => b.addEventListener('click', async () => {
-    const targetId = b.dataset.react;
-    const target = Lookup.user(targetId);
-    if (!target) return;
-    if (!confirm(`Reativar o usuário ${target.nome}?\n\nEle volta a ter acesso ao app.`)) return;
-    if (SB && u.perfil === 'diretoria') {
-      try {
-        const { error } = await T('pessoas').update({ ativo: true })
-          .eq('id', targetId);
-        if (error) throw error;
-        target.ativo = true;   // reflete na hora
-      } catch (e) {
-        console.warn('[profiles] reativar:', e.message);
-        return toast('Erro ao reativar: ' + (e.message || ''), 'error');
-      }
-    }
-    node.remove(); toast('Usuário reativado', 'success'); openCadUser();
-  }));
-
-  // Trocar senha — APENAS o próprio usuário pode trocar a própria senha.
-  // Senhas de outras pessoas só pelo painel Supabase (envio de reset por e-mail).
-  node.querySelectorAll('[data-pw]').forEach(b => b.addEventListener('click', async () => {
-    const targetId = b.dataset.pw;             // uuid (string)
-    const target = Lookup.user(targetId);
-    if (!target) return;
-    const isSelf = target.id === u.id;
-    if (!isSelf) {
-      return toast(
-        'Por segurança, trocas de senha de terceiros só pelo painel Supabase ' +
-        '(Authentication → Users → "Send password recovery").',
-        'error'
-      );
-    }
-    const nova = prompt('Nova senha (mínimo 12 caracteres, com letras, números e símbolo):', '');
-    if (nova == null) return;
-    const senha = nova.trim();
-    if (senha.length < 12) return toast('Senha precisa ter ao menos 12 caracteres', 'error');
-    if (!/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
-      return toast('Senha precisa conter letras E números', 'error');
-    }
-    try {
-      await Auth.updateOwnPassword(senha);
-      toast('Senha atualizada', 'success');
-      notificarWhatsApp('senha_alterada', {
-        nome: u.nome,
-        quando: new Date().toISOString()
-      }, [u.id]);
-    } catch (err) {
-      toast('Erro ao atualizar senha: ' + (err.message || ''), 'error');
-    }
-  }));
-
-  // Máscara WhatsApp em tempo real
-  const whatsInput = node.querySelector('#u-whats');
-  if (whatsInput) {
-    whatsInput.addEventListener('input', () => {
-      const pos = whatsInput.selectionStart;
-      whatsInput.value = whatsFormatar(whatsInput.value);
-      // Mantém o cursor no fim (simples e robusto)
-      try { whatsInput.setSelectionRange(whatsInput.value.length, whatsInput.value.length); } catch {}
-    });
-  }
-
-  // Botão "Gerar senha"
-  const genPwd = () => {
-    const A='ABCDEFGHJKLMNPQRSTUVWXYZ', a='abcdefghijkmnpqrstuvwxyz', d='23456789', s='!@#$%&*';
-    const all = A+a+d+s;
-    const rnd = (n) => { const b = new Uint32Array(1); crypto.getRandomValues(b); return b[0] % n; }; // fonte segura (P2-19)
-    const pick = (set) => set[rnd(set.length)];
-    const arr = [pick(A), pick(a), pick(d), pick(s)];
-    for (let i=0;i<12;i++) arr.push(all[rnd(all.length)]);
-    for (let i=arr.length-1;i>0;i--) { const j=rnd(i+1); [arr[i],arr[j]]=[arr[j],arr[i]]; } // embaralha (Fisher–Yates)
-    return arr.join('');
-  };
-  const genBtn = node.querySelector('#u-gen');
-  if (genBtn) genBtn.addEventListener('click', () => { node.querySelector('#u-senha').value = genPwd(); });
-  // Já preenche com sugestão ao abrir
-  const senhaInput = node.querySelector('#u-senha');
-  if (senhaInput && !senhaInput.value) senhaInput.value = genPwd();
-
-  node.querySelector('#user-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    // Fase 3: a fonte da verdade é `profiles`. Criar usuário aqui exigiria
-    // service_role (proibido no client). O fluxo correto é:
-    //   1) Diretoria → painel Supabase → Authentication → Add user (envia convite)
-    //   2) O trigger on_auth_user_created cria a linha em `profiles` como 'operador'
-    //   3) Aqui na tela "Usuários", ajustar perfil/nome/setor via UPDATE em profiles
-    // (Quando a Edge Function `criar-usuario` for implantada, este botão chamará ela.)
-    const email = node.querySelector('#u-email').value.trim().toLowerCase();
-    const nome  = node.querySelector('#u-nome').value.trim();
-    const perfil = node.querySelector('#u-perfil').value;
-    const whatsRaw = (node.querySelector('#u-whats').value || '').trim();
-    const whatsapp = whatsNormalizar(whatsRaw);
-    if (!whatsapp) return toast('WhatsApp inválido. Use +55 (DDD) número.', 'error');
-    const existente = DB.usuarios.find(x => (x.email||'').toLowerCase() === email);
-    if (existente) {
-      // Atualiza profile do usuário já existente
-      if (!SB || u.perfil !== 'diretoria') {
-        return toast('Apenas a Diretoria pode editar perfis.', 'error');
-      }
-      try {
-        const { error } = await T('pessoas')
-          .update({ nome, perfil, whatsapp, ativo: true })
-          .eq('id', existente.id);
-        if (error) throw error;
-        node.remove();
-        toast('Perfil atualizado.', 'success');
-        openCadUser();
-      } catch (err) {
-        toast('Erro ao atualizar perfil: ' + (err.message || ''), 'error');
-      }
-      return;
-    }
-    // Não existe: chama a Edge Function `criar-usuario` (server-side, com service_role).
-    if (!SB) return toast('Supabase indisponível', 'error');
-    if (u.perfil !== 'diretoria') return toast('Apenas a Diretoria pode criar usuários.', 'error');
-    if (!email || !nome) return toast('Preencha nome e e-mail.', 'error');
-    const senha = (node.querySelector('#u-senha').value || '').trim();
-    if (senha.length < 6) return toast('Senha precisa ter ao menos 6 caracteres', 'error');
-    try {
-      const { data, error } = await SB.functions.invoke('criar-usuario', {
-        body: { email, nome, perfil, senha, whatsapp }
-      });
-      if (error) throw error;
-      if (data && data.error) throw new Error(data.error);
-      // Notifica o novo usuário (envio direto pelo número — usuário ainda não está em DB.usuarios)
-      notificarWhatsApp('usuario_criado', {
-        nome, email, senhaTemp: senha
-      }, [whatsapp]);
-      // Avisa a Diretoria
-      notificarWhatsApp('usuario_criado_admin', {
-        nome, email,
-        perfil: Perms.perfilLabel(perfil),
-        criadoPor: u.nome
-      }, WhatsDest.diretoria().filter(id => id !== u.id));
-      node.remove();
-      // Mostra a senha gerada num modal pra Diretoria copiar e passar pro usuário
-      const m = document.createElement('div');
-      m.className = 'modal-backdrop';
-      m.innerHTML = `
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;text-align:center;">
-          <h2 style="margin:0 0 10px;">Usuário criado ✓</h2>
-          <p style="margin:6px 0;"><b>${escapeHtml(nome)}</b><br><span style="color:var(--muted);font-size:13px;">${escapeHtml(email)}</span></p>
-          <p style="margin:14px 0 6px;font-size:13px;color:var(--muted);">Senha temporária — copie e passe pelo WhatsApp. O usuário deve trocar no primeiro login.</p>
-          <input id="tmp-pwd" readonly value="${escapeHtml(senha)}" style="width:100%;text-align:center;font-family:monospace;font-size:16px;padding:10px;border:2px dashed var(--brand-navy);border-radius:8px;background:#fff;">
-          <div style="display:flex;gap:8px;justify-content:center;margin-top:14px;">
-            <button class="btn" id="tmp-copy" style="width:auto;padding:8px 16px;">Copiar senha</button>
-            <button class="btn secondary" id="tmp-ok" style="width:auto;padding:8px 16px;">Fechar</button>
-          </div>
-        </div>`;
-      document.body.appendChild(m);
-      m.querySelector('#tmp-copy').onclick = async () => {
-        try { await navigator.clipboard.writeText(senha); toast('Senha copiada', 'success'); } catch { m.querySelector('#tmp-pwd').select(); document.execCommand('copy'); toast('Senha copiada', 'success'); }
-      };
-      m.querySelector('#tmp-ok').onclick = () => { m.remove(); openCadUser(); };
-    } catch (err) {
-      toast('Erro ao criar usuário: ' + (err.message || ''), 'error');
-    }
-  });
 }
-
-/* ============== EDITAR USUÁRIO EXISTENTE ============== */
-function openEditUser(target) {
-  const u = Lookup.user(DB.currentUser);
-  if (!Perms.isAdmin(u)) return toast('Apenas administradores podem editar usuários', 'error');
-  const isDir = Perms.isDiretoria(u);
-  const isSelf = target.id === u.id;
-  const targetMaster = isMaster(target);  // 🛡️ conta-mestre = perfil bloqueado
-
-  // Perfis que o usuário atual pode atribuir
-  const perfisDisp =
-    isDir ? [['operador','Operador Obra'],['operador_ti','Operador TI'],['admin_ti','Administrador TI'],['admin_obras','Administrador Obras'],['diretoria','Diretoria']] :
-    u.perfil === 'admin_ti'    ? [['operador_ti','Operador TI']] :
-    u.perfil === 'admin_obras' ? [['operador','Operador Obra']] : [];
-
-  // Bloqueio: admin não-Diretoria só edita operadores da própria área
-  if (!isDir && !isSelf) {
-    if (u.perfil === 'admin_ti'    && target.perfil !== 'operador_ti') return toast('Adm. TI só pode editar Operadores TI', 'error');
-    if (u.perfil === 'admin_obras' && target.perfil !== 'operador')    return toast('Adm. Obras só pode editar Operadores Obra', 'error');
-  }
-
-  // Conta-mestre: perfil é INALTERÁVEL (mesmo pra outra Diretoria, e mesmo pra ela mesma)
-  const perfilEditavel = isDir && !targetMaster;
-
-  const html = `
-    <div class="modal-backdrop" id="modal-edu">
-      <div class="modal" onclick="event.stopPropagation()">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-          <button class="btn secondary" data-close style="width:auto;padding:6px 14px;font-size:13px;">← Voltar</button>
-          <h2 style="margin:0;font-size:18px;">Editar usuário</h2>
-        </div>
-        <form id="edu-form">
-          <div class="form-group"><label>Nome</label>
-            <input type="text" id="edu-nome" required value="${escapeHtml(target.nome || '')}"></div>
-          <div class="form-group"><label>E-mail</label>
-            <input type="email" id="edu-email" disabled value="${escapeHtml(target.email || '')}" style="background:#f3f4f6;color:#6b7280;">
-            <div class="form-help">E-mail não pode ser alterado. Para trocar, crie um novo usuário e desative o antigo.</div>
-          </div>
-          <div class="form-group">
-            <label>WhatsApp <span style="color:var(--danger);">*</span></label>
-            <input type="tel" id="edu-whats" required value="${escapeHtml(whatsFormatar(target.whatsapp || ''))}" placeholder="+55 (11) 99999-9999" inputmode="tel">
-            <div class="form-help">Obrigatório. Receberá todas as notificações do app.</div>
-          </div>
-          <div class="form-group">
-            <label>Perfil ${
-              targetMaster ? '<span style="color:var(--brand-navy);font-size:11px;font-weight:normal;">🛡️ (conta-mestre — bloqueado)</span>'
-                           : (isDir ? '' : '<span style="color:var(--muted);font-size:11px;font-weight:normal;">(só Diretoria altera)</span>')
-            }</label>
-            <select id="edu-perfil" ${perfilEditavel ? '' : 'disabled style="background:#f3f4f6;color:#6b7280;"'}>
-              ${perfisDisp.map(([v,l]) => `<option value="${v}" ${target.perfil===v?'selected':''}>${l}</option>`).join('')}
-              ${!perfisDisp.find(([v]) => v === target.perfil) ? `<option value="${target.perfil}" selected>${Perms.perfilLabel(target.perfil)}</option>` : ''}
-            </select>
-          </div>
-          <button class="btn">💾 Salvar alterações</button>
-        </form>
-      </div>
-    </div>`;
-  const wrap = document.createElement('div'); wrap.innerHTML = html;
-  const node = wrap.firstElementChild; document.body.appendChild(node);
-  /* clique fora NÃO fecha (evita perder o que foi digitado) — use ✕/Voltar */
-  node.querySelector('[data-close]').addEventListener('click', () => { node.remove(); openCadUser(); });
-
-  // Máscara WhatsApp
-  const whatsInput = node.querySelector('#edu-whats');
-  whatsInput.addEventListener('input', () => {
-    whatsInput.value = whatsFormatar(whatsInput.value);
-    try { whatsInput.setSelectionRange(whatsInput.value.length, whatsInput.value.length); } catch {}
-  });
-
-  node.querySelector('#edu-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    if (!SB) return toast('Supabase indisponível', 'error');
-    const nome  = node.querySelector('#edu-nome').value.trim();
-    const perfil = perfilEditavel ? node.querySelector('#edu-perfil').value : target.perfil;
-    const whatsRaw = (node.querySelector('#edu-whats').value || '').trim();
-    const whatsapp = whatsNormalizar(whatsRaw);
-    if (!nome) return toast('Nome é obrigatório', 'error');
-    if (!whatsapp) return toast('WhatsApp inválido. Use +55 (DDD) número.', 'error');
-
-    // Atualiza no banco
-    try {
-      const updates = { nome, whatsapp };   // core.pessoas não tem updated_at (a gravação falhava)
-      if (perfilEditavel) updates.perfil = perfil;
-      const { error } = await T('pessoas').update(updates).eq('id', target.id);
-      if (error) throw error;
-      node.remove();
-      toast('Usuário atualizado', 'success');
-      openCadUser();
-    } catch (err) {
-      toast('Erro ao atualizar: ' + (err.message || ''), 'error');
-    }
-  });
-}
-
 
 /* ============== IMPORTAÇÃO CSV ============== */
 function parseCSV(text) {
@@ -4104,7 +3936,7 @@ function openImportCsv() {
         parsedRows = parseCSV(ev.target.result.replace(/^\uFEFF/,''));
         const total = parsedRows.length - 1;
         node.querySelector('#csv-preview').innerHTML = total > 0
-          ? `<div style="color:var(--success);">✓ ${total} linha(s) lida(s). Cabeçalho: <code>${parsedRows[0].slice(0,5).join(', ')}…</code></div>`
+          ? `<div style="color:var(--success);">✓ ${total} linha(s) lida(s). Cabeçalho: <code>${escapeHtml(parsedRows[0].slice(0,5).join(', '))}…</code></div>`
           : `<div style="color:var(--danger);">Arquivo vazio ou sem dados.</div>`;
       } catch (err) {
         parsedRows = null;
@@ -4264,6 +4096,36 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+/* ===== Aviso de nova versão (mesmo padrão do Flow e do portal) =====
+   Página única fica aberta no celular por dias; sem isto a pessoa segue
+   na versão velha. O publicar.js grava version.json com o APP_VERSION. */
+(function () {
+  let avisando = false, emVoo = false;
+  // na tela de senha nova, recarregar perderia o link do e-mail
+  const naTelaDeSenha = () => !!document.getElementById('nova-senha-form');
+  function conferir() {
+    // emVoo: duas conferências juntas criavam duas faixas e o botão ficava sem clique
+    if (avisando || emVoo || document.hidden || naTelaDeSenha()) return;
+    emVoo = true;
+    fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(v => {
+        if (!v || !v.versao || v.versao === APP_VERSION || avisando || naTelaDeSenha()) return;
+        avisando = true;
+        const f = document.createElement('div');
+        f.className = 'faixa-atualizar'; f.setAttribute('role', 'status');
+        f.innerHTML = '<span>Nova versão do Patrimônio disponível</span><button type="button" id="btn-atualizar-versao">Atualizar agora</button>';
+        document.body.appendChild(f);
+        f.querySelector('button').addEventListener('click', () => location.reload());
+      })
+      .catch(() => {})    // sem internet: silêncio, tenta de novo depois
+      .then(() => { emVoo = false; });
+  }
+  setInterval(conferir, 120000);
+  document.addEventListener('visibilitychange', conferir);
+  setTimeout(conferir, 8000);
+})();
+
 /* ===== Logout automático por inatividade (dispositivos compartilhados) ===== */
 const IDLE_LOGOUT_MS = 12 * 60 * 60 * 1000; // 12h sem uso → desloga (mude aqui p/ ajustar)
 let _idleTimer = null;
@@ -4324,8 +4186,11 @@ function setupIdleLogout() {
       catch (e) { console.error('Erro ao carregar dados:', e); DB = { ...BMStore.seed(), currentUser: null }; }
       const id = await syncCurrentUserFromAuth(session.user);
       if (id == null) {
-        // Sessão existe mas o usuário não está provisionado: sai e mostra login.
-        await Auth.signOut();
+        /* Sem acesso ao módulo NÃO desloga: a sessão é da suíte inteira, e
+           sair daqui derrubaria o portal e os outros módulos. Só mostra o
+           aviso (render → renderSemAcesso). Conta inativa ou sem cadastro,
+           sim, encerra. */
+        if (!SEM_ACESSO) await Auth.signOut();
         DB.currentUser = null;
       } else {
         DB.currentUser = id;
@@ -4336,14 +4201,33 @@ function setupIdleLogout() {
 
   // Realtime: qualquer mudança nas 7 tabelas (ou em profiles) dispara reload.
   // O callback é chamado uma única vez por janela de 250ms — agrupa rajadas.
-  BMStore.subscribe(async () => {
+  /* A recarga espera: modal aberto (os formulários guardam o objeto do DB —
+     trocar o DB por baixo fazia a edição/movimentação/foto gravar num objeto
+     solto), gravação em andamento, e a aba Cadastrar (render() apagaria o
+     que está sendo digitado). Assim que liberar, recarrega uma vez. */
+  let rtPendente = false;
+  const rtPodeRecarregar = () =>
+    !document.querySelector('.modal-backdrop') && !SALVANDO && State.tab !== 'create';
+  async function recarregarRT() {
+    if (!rtPodeRecarregar()) {
+      if (!rtPendente) {
+        rtPendente = true;
+        const esperar = () => {
+          if (!rtPodeRecarregar()) return setTimeout(esperar, 1000);
+          rtPendente = false; recarregarRT();
+        };
+        setTimeout(esperar, 1000);
+      }
+      return;
+    }
     try {
       const myUserId = DB && DB.currentUser;
       const fresh = await BMStore.load();
       DB = { ...fresh, currentUser: myUserId };
       render();
     } catch (e) { console.warn('[Realtime] reload falhou:', e && e.message); }
-  });
+  }
+  BMStore.subscribe(recarregarRT);
 
   // Reage a sign-out em outras abas ou expiração de token
   Auth.onChange(async (event, sess) => {

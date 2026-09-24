@@ -319,7 +319,8 @@
   .rodape-versao{position:fixed;right:10px;bottom:6px;z-index:30;font-size:11.5px;
                  color:var(--tinta3);background:rgba(244,246,250,.9);padding:2px 8px;
                  border-radius:12px;pointer-events:none;letter-spacing:.2px}
-  .faixa-atualizar{position:fixed;left:0;right:0;top:0;z-index:200;background:var(--laranja);
+  /* abaixo dos modais (60): por cima, cobria o × no celular */
+  .faixa-atualizar{position:fixed;left:0;right:0;top:0;z-index:58;background:var(--laranja);
                    color:#3d2400;padding:11px 16px;text-align:center;font-size:14px;font-weight:600;
                    box-shadow:0 2px 12px rgba(0,0,0,.2)}
   .faixa-atualizar button{background:var(--azul);color:#fff;padding:7px 15px;border-radius:7px;
@@ -596,7 +597,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.09.23.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.24.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -616,7 +617,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.09.23.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.24.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -637,7 +638,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.09.23.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.24.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -767,7 +768,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.09.23.2';
+var APP_VERSAO = '2026.09.24.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3844,7 +3845,10 @@ var canalTempoReal = null;
 function aoMudarNoServidor(){
   if(relogioTempoReal) clearTimeout(relogioTempoReal);
   relogioTempoReal = setTimeout(function(){
-    if(document.querySelector('.fundo-modal')) return;   // não puxa o tapete
+    /* modal aberto: não puxa o tapete — espera fechar e recarrega depois
+       (antes o evento era jogado fora e quem estava com a pendência aberta
+       não via a mudança nem ao fechar) */
+    if(document.querySelector('.fundo-modal')) return aoMudarNoServidor();
     recarregarTudo().then(Sino.atualizar);
   }, TEMPO_REAL_ESPERA);
 }
@@ -3854,8 +3858,12 @@ function ligarTempoReal(){
   try{
     canalTempoReal = sb.channel('bemerflow');
     ['pendencias','notas','reprogramacoes','pendencia_envolvidos'].forEach(function(t){
+      /* schema 'flow' (era 'public', do Flow antigo): na suíte as tabelas
+         são flow.* e o canal nunca recebia nada. Para os eventos chegarem,
+         a tabela também precisa estar na publicação supabase_realtime —
+         migração 0023 (23/09/2026). */
       canalTempoReal.on('postgres_changes',
-        { event:'*', schema:'public', table:t }, aoMudarNoServidor);
+        { event:'*', schema:'flow', table:t }, aoMudarNoServidor);
     });
     canalTempoReal.subscribe();
   } catch(e){ console.warn('[tempo real] indisponível:', e && e.message); }
@@ -3945,24 +3953,33 @@ $('btn-sino').addEventListener('click', Sino.abrir);
    bug não foi corrigido.
    ===================================================================== */
 (function(){
-  var avisando = false;
+  var avisando = false, emVoo = false;
+  /* na tela de senha nova, recarregar perderia o link do e-mail */
+  function naTelaDeSenha(){
+    var t = document.getElementById('tela-nova-senha');
+    return !!t && !t.classList.contains('oculto');
+  }
   function conferir(){
-    if(avisando || document.hidden) return;
+    /* emVoo: duas conferências juntas criavam duas faixas e o botão da de
+       cima ficava sem clique */
+    if(avisando || emVoo || document.hidden || naTelaDeSenha()) return;
+    emVoo = true;
     fetch('version.json?t='+Date.now(), {cache:'no-store'})
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(v){
-        if(!v || !v.versao || v.versao === APP_VERSAO) return;
+        if(!v || !v.versao || v.versao === APP_VERSAO || avisando || naTelaDeSenha()) return;
         avisando = true;
         var f = document.createElement('div');
         f.className = 'faixa-atualizar';
         f.innerHTML = 'Nova versão disponível ('+esc(v.versao)+')'+
                       '<button id="btn-atualizar">Atualizar agora</button>';
         document.body.appendChild(f);
-        document.getElementById('btn-atualizar').addEventListener('click', function(){
+        f.querySelector('button').addEventListener('click', function(){
           location.reload(true);
         });
       })
-      .catch(function(){});   // sem internet: silêncio, tenta de novo depois
+      .catch(function(){})    // sem internet: silêncio, tenta de novo depois
+      .then(function(){ emVoo = false; });
   }
   setInterval(conferir, 120000);
   document.addEventListener('visibilitychange', conferir);

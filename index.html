@@ -147,6 +147,13 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
 
 .centro{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--texto2);font-size:14px}
 
+/* aviso de nova versão: por cima de tudo, no topo */
+.faixa-atualizar{position:fixed;left:0;right:0;top:0;z-index:200;background:var(--laranja);color:var(--azul);
+                 padding:10px 16px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+                 font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.faixa-atualizar button{background:var(--azul);color:#fff;border:0;border-radius:9px;padding:8px 14px;
+                        font:inherit;font-size:14px;font-weight:600;cursor:pointer;min-height:40px}
+
 /* ========================== CELULAR ========================== */
 @media (max-width: 760px){
   /* A tela de entrar tem que caber SEM ROLAR (pedido de 23/09/2026), até
@@ -350,7 +357,10 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
    ===================================================================== */
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
-var VERSAO   = 'v0.2';
+/* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
+   para publicar/version.json — é ele que faz aparecer o aviso de "nova
+   versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
+var VERSAO   = '2026.09.24.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -415,7 +425,7 @@ function limparEndereco(){ history.replaceState(null, '', location.pathname + lo
 
 /* ---------- identidade do cliente e versão ---------- */
 (function(){
-  var ver = 'BeMer · ' + VERSAO + (AMBIENTE ? ' · ' + AMBIENTE : '');
+  var ver = 'BeMer · v' + VERSAO + (AMBIENTE ? ' · ' + AMBIENTE : '');
   $('versao-login').textContent = ver;
   $('versao-portal').textContent = ver;
   [['cliente-logo-login', CLIENTE.logoBranco], ['cliente-logo-faixa', CLIENTE.logoBranco]]
@@ -496,8 +506,10 @@ $('form-nova').addEventListener('submit', function(e){
     if(r.error) throw r.error;
     RECUPERANDO = false; limparEndereco(); abrir();
   }).catch(function(err){
-    if(err && err.message === 'sem-sessao')
+    if(err && err.message === 'sem-sessao'){
+      RECUPERANDO = false;   // saiu da recuperação: o aviso de versão volta a valer
       return telaLogin('O link expirou ou já foi usado. Peça outro em "Esqueci minha senha".');
+    }
     recado('recado-nova', /different|same/i.test(err && err.message || '')
       ? 'A senha nova precisa ser diferente da anterior.'
       : 'Não foi possível salvar a senha. Tente de novo.');
@@ -609,6 +621,37 @@ function montarPortal(pessoa){
     mostrar('tela-portal');
   });
 }
+
+/* ---------- aviso de nova versão ----------
+   Mesmo padrão do Flow. Página única fica aberta no celular por dias; sem
+   isto a pessoa segue na versão velha e jura que o erro não foi corrigido. */
+(function(){
+  var avisando = false, emVoo = false;
+  function conferir(){
+    /* emVoo: duas conferências juntas criavam duas faixas e o botão da de
+       cima ficava sem clique. RECUPERANDO: recarregar na tela de senha nova
+       perdia o link e entrava sem a pessoa ter criado a senha. */
+    if(avisando || emVoo || document.hidden || RECUPERANDO) return;
+    emVoo = true;
+    fetch('version.json?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if(!v || !v.versao || v.versao === VERSAO || avisando || RECUPERANDO) return;
+        avisando = true;
+        var f = document.createElement('div');
+        f.className = 'faixa-atualizar'; f.setAttribute('role', 'status');
+        f.innerHTML = '<span>Nova versão do BeMer disponível</span>'
+                    + '<button type="button" id="btn-atualizar">Atualizar agora</button>';
+        document.body.appendChild(f);
+        f.querySelector('button').addEventListener('click', function(){ location.reload(); });
+      })
+      .catch(function(){})    // sem internet: silêncio, tenta de novo depois
+      .then(function(){ emVoo = false; });
+  }
+  setInterval(conferir, 120000);
+  document.addEventListener('visibilitychange', conferir);
+  setTimeout(conferir, 8000);
+})();
 
 /* ---------- início ---------- */
 sb.auth.onAuthStateChange(function(evento){
