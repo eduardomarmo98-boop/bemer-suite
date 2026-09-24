@@ -87,10 +87,6 @@ input:focus{outline:none;border-color:var(--azul);background:#fff;box-shadow:0 0
 /* ============================ PORTAL ============================ */
 .topo{height:72px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;
       gap:14px;padding:0 clamp(16px,3vw,40px)}
-.fio{width:1px;height:32px;background:var(--borda);margin:0 6px}
-.cliente{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px 0 8px;border-radius:12px;background:var(--fundo)}
-.cliente img{height:28px;width:auto;display:block}
-.cliente span{font-size:14px;font-weight:600;color:var(--texto)}
 .espaco{flex:1}
 .icone-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--borda);background:#fff;
            display:flex;align-items:center;justify-content:center;color:var(--azul);cursor:pointer;text-decoration:none}
@@ -103,18 +99,20 @@ input:focus{outline:none;border-color:var(--azul);background:#fff;box-shadow:0 0
 .sair{height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--borda-forte);background:#fff;
       color:var(--azul);font:inherit;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;cursor:pointer}
 
-.faixa{position:relative;overflow:hidden;background:var(--azul) var(--iso-branco);height:250px}
+/* A construtora cliente aparece AQUI (logo branco no alto da faixa), e não
+   no cabeçalho: em 23/09/2026 a etiqueta no cabeçalho foi achada poluída. */
+.faixa{position:relative;overflow:hidden;background:var(--azul) var(--iso-branco);height:280px}
 .faixa .marca-agua{position:absolute;right:70px;top:22px;height:260px;width:auto;opacity:.1}
 .faixa-conteudo{position:relative;max-width:1100px;margin:0 auto;padding:36px 20px 0;display:flex;flex-direction:column;gap:8px}
 /* align-self: sem ele o flex da coluna estica a imagem na largura toda */
-.faixa .cliente-branco{display:none;height:26px;width:auto;max-width:60%;object-fit:contain;
-                       align-self:flex-start;margin-bottom:6px}
+.faixa .cliente-branco{display:block;height:30px;width:auto;max-width:60%;object-fit:contain;
+                       align-self:flex-start;margin-bottom:10px}
 .chip{align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,.14);
       border-radius:999px;padding:5px 12px}
 .faixa h1{font-size:36px;font-weight:600;color:#fff;letter-spacing:-.5px}
 .faixa p{font-size:15px;color:var(--azul-texto-claro)}
 
-.cards{position:relative;max-width:1100px;margin:-64px auto 0;padding:0 20px;display:grid;
+.cards{position:relative;max-width:1100px;margin:-52px auto 0;padding:0 20px;display:grid;
        grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px}
 .card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:28px;min-height:252px;
       display:flex;flex-direction:column;gap:18px;color:var(--texto);text-decoration:none;text-align:left;
@@ -151,35 +149,50 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
 
 /* ========================== CELULAR ========================== */
 @media (max-width: 760px){
-  .login{grid-template-columns:1fr;grid-template-rows:auto 1fr;background:#fff}
-  .palco{padding:36px 24px 30px;align-items:center;text-align:center}
+  /* A tela de entrar tem que caber SEM ROLAR (pedido de 23/09/2026), até
+     num iPhone SE com as barras do Safari à mostra (~548 px úteis). Conta:
+     marca ~115 + formulário ~395 = ~510. `svh` é a altura com as barras
+     visíveis — a menor —, então o que cabe nela cabe sempre. */
+  .login{grid-template-columns:1fr;grid-template-rows:auto 1fr;background:#fff;
+         min-height:100vh;min-height:100svh}
+  .palco{padding:20px 20px 16px;align-items:center;text-align:center}
   .palco .arco{display:none}
-  .palco-marca{flex-direction:column;gap:12px}
-  .palco-marca img{height:96px}
-  .palco-marca .palavra{font-size:48px;letter-spacing:-1.5px}
-  .slogan{margin-top:22px;font-size:24px;letter-spacing:-.4px}
+  .palco-marca{flex-direction:row;gap:10px}
+  .palco-marca img{height:46px}
+  .palco-marca .palavra{font-size:36px;letter-spacing:-1.2px}
+  .descritor{display:none}
+  .slogan{margin-top:10px;font-size:19px;letter-spacing:-.3px}
   .pilares{display:none}
-  .lado-form{border-radius:28px 28px 0 0;justify-content:flex-start;padding:28px 24px 20px;background-position:0 0}
+  .lado-form{border-radius:24px 24px 0 0;justify-content:flex-start;padding:22px 22px 14px;background-position:0 0}
   .cartao{background:none;box-shadow:none;padding:0;max-width:none}
-  .cartao h2{color:#fff;font-size:22px}
-  .cartao .sub{color:var(--azul-texto-claro);margin-bottom:18px}
-  .cartao label{color:#DCE5F5}
-  .cartao input{border:0;background:#fff}
+  .cartao h2{color:#fff;font-size:20px;margin-bottom:14px}
+  .cartao .sub{color:var(--azul-texto-claro);margin:-8px 0 14px;font-size:13px}
+  #form-login .sub{display:none}
+  .cartao label{color:#DCE5F5;margin-bottom:4px}
+  .cartao input{border:0;background:#fff;height:46px;margin-bottom:12px}
+  .cartao .linha-link{margin:-6px 0 6px}
   .cartao .link{color:#fff}
-  .pe-form{position:static;margin-top:28px}
-  .pe-form img{height:30px}
+  .cartao .botao{height:48px}
+  .recado{margin-bottom:12px;padding:10px 12px;font-size:13px}
+  /* a assinatura do cliente desce para o pé do azul, onde sobra espaço */
+  .pe-form{position:static;margin-top:auto;padding-top:14px;gap:8px}
+  .pe-form img{height:24px}
+  .versao{font-size:11px}
 
   .topo{height:64px;gap:4px;padding:0 10px 0 16px}
   .topo .marca img{height:32px}
   .topo .palavra{font-size:22px}
-  .fio,.cliente,.pessoa{display:none}
+  .pessoa{display:none}
   .icone-btn{border:0}
   .sair{border:0;padding:0;width:44px;justify-content:center}
   .sair .rotulo{display:none}
-  .faixa{height:210px}
+  /* altura mínima, não fixa: nome longo ("Boa tarde, Maximiliano.") quebra
+     o h1 em duas linhas num celular de 320 px, e com altura fixa o chip do
+     perfil ia parar atrás dos cartões. 56 = os 44 que os cartões sobem + 12. */
+  .faixa{height:auto;min-height:222px;padding-bottom:56px}
   .faixa .marca-agua{right:-20px;top:10px;height:170px}
   .faixa-conteudo{padding:22px 20px 0;gap:6px}
-  .faixa .cliente-branco{display:block}
+  .faixa .cliente-branco{height:26px;margin-bottom:6px}
   .faixa h1{font-size:26px}
   .faixa p{font-size:13px}
   .faixa .chip{order:9;font-size:11px;padding:3px 10px}
@@ -195,6 +208,19 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
   .card .abrir{display:none}
   .seta{width:32px;height:32px}
   .rodape{flex-direction:column;margin-top:28px;text-align:center}
+}
+/* Celular baixo (iPhone SE com barras: 548 px úteis). Medido em
+   23/09/2026: sem recado cabe; com recado sobravam 50 px. Aqui a marca
+   encolhe um pouco e, SÓ quando há recado na tela, o slogan dá lugar a
+   ele — a mensagem é o que a pessoa precisa ler naquela hora. */
+@media (max-width: 760px) and (max-height: 640px){
+  .palco{padding:14px 20px 10px}
+  .palco-marca img{height:40px}
+  .palco-marca .palavra{font-size:32px}
+  /* só o recado da caixa VISÍVEL conta: as caixas escondidas guardam o
+     recado antigo (ex.: senha errada, depois "Esqueci minha senha") */
+  .login:has(.cartao:not(.oculto) .recado:not(.oculto)) .slogan{display:none}
+  .pe-form{padding-top:8px}
 }
 </style>
 </head>
@@ -273,8 +299,6 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
       <img src="marca/bemer-simbolo.png" alt="">
       <span class="palavra"><span class="be">Be</span><span class="mer">Mer</span></span>
     </a>
-    <span class="fio" aria-hidden="true"></span>
-    <div class="cliente"><img id="cliente-icone" alt=""><span id="cliente-nome"></span></div>
     <div class="espaco"></div>
     <a id="btn-config" class="icone-btn oculto" aria-label="Configurações" title="Configurações">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -336,7 +360,7 @@ var AMBIENTE = 'homologação';   // '' em produção
 var CLIENTE = {
   nome:        'Brandão & Marmo',
   logoBranco:  'marca/cliente/bm-logo-branco.png',  // sobre o azul: login e faixa do celular
-  icone:       'marca/cliente/bm-icone.png'         // etiqueta no cabeçalho
+  icone:       'marca/cliente/bm-icone.png'         // reservado (saiu do cabeçalho em 23/09/2026: "poluído")
 };
 
 /* Os módulos da suíte. `url` nulo = ainda não conectado (card fica apagado).
@@ -394,9 +418,8 @@ function limparEndereco(){ history.replaceState(null, '', location.pathname + lo
   var ver = 'BeMer · ' + VERSAO + (AMBIENTE ? ' · ' + AMBIENTE : '');
   $('versao-login').textContent = ver;
   $('versao-portal').textContent = ver;
-  [['cliente-logo-login', CLIENTE.logoBranco], ['cliente-logo-faixa', CLIENTE.logoBranco], ['cliente-icone', CLIENTE.icone]]
+  [['cliente-logo-login', CLIENTE.logoBranco], ['cliente-logo-faixa', CLIENTE.logoBranco]]
     .forEach(function(p){ var el = $(p[0]); el.src = p[1]; el.alt = CLIENTE.nome; });
-  $('cliente-nome').textContent = CLIENTE.nome;
 })();
 
 /* Um módulo pode devolver a pessoa para cá com um recado no endereço

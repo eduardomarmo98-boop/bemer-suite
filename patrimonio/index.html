@@ -3719,7 +3719,7 @@ function openCadUser() {
     // Desativa o perfil no banco (RLS só permite a Diretoria)
     if (SB && u.perfil === 'diretoria') {
       try {
-        const { error } = await T('pessoas').update({ ativo: false, updated_at: new Date().toISOString() })
+        const { error } = await T('pessoas').update({ ativo: false })
           .eq('id', targetId);
         if (error) throw error;
         target.ativo = false;   // reflete na hora, sem depender do realtime
@@ -3744,7 +3744,7 @@ function openCadUser() {
     if (!confirm(`Reativar o usuário ${target.nome}?\n\nEle volta a ter acesso ao app.`)) return;
     if (SB && u.perfil === 'diretoria') {
       try {
-        const { error } = await T('pessoas').update({ ativo: true, updated_at: new Date().toISOString() })
+        const { error } = await T('pessoas').update({ ativo: true })
           .eq('id', targetId);
         if (error) throw error;
         target.ativo = true;   // reflete na hora
@@ -3839,7 +3839,7 @@ function openCadUser() {
       }
       try {
         const { error } = await T('pessoas')
-          .update({ nome, perfil, whatsapp, ativo: true, updated_at: new Date().toISOString() })
+          .update({ nome, perfil, whatsapp, ativo: true })
           .eq('id', existente.id);
         if (error) throw error;
         node.remove();
@@ -3978,7 +3978,7 @@ function openEditUser(target) {
 
     // Atualiza no banco
     try {
-      const updates = { nome, whatsapp, updated_at: new Date().toISOString() };
+      const updates = { nome, whatsapp };   // core.pessoas não tem updated_at (a gravação falhava)
       if (perfilEditavel) updates.perfil = perfil;
       const { error } = await T('pessoas').update(updates).eq('id', target.id);
       if (error) throw error;
