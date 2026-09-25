@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026.09.24.2">
+<meta name="app-version" content="2026.09.25.1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1B2A5E">
@@ -444,7 +444,7 @@
 /* Formato AAAA.MM.DD.N, igual ao Flow e ao portal. O publicar.js grava este
    número em version.json — é ele que faz aparecer o aviso de nova versão.
    SUBA A CADA PUBLICAÇÃO. */
-const APP_VERSION = '2026.09.24.2';
+const APP_VERSION = '2026.09.25.1';
 /* símbolo BeMer do cabeçalho (portal/marca/bemer-simbolo.png, reduzido).
    Embutido porque a CSP desta página só aceita imagem da própria origem ou data:. */
 const SIMBOLO_BEMER = 'data:image/png;base64,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';
@@ -513,10 +513,39 @@ function dominioDaCategoria(catId){
   if (c && c.dominio) return c.dominio;
   return catId === 1 ? 'obra' : (catId === 2 || catId === 3) ? 'ti' : 'geral';
 }
-/* O que cada papel ENXERGA e GERENCIA — espelho de ve_categoria() e
-   gerencia_categoria() da 0017. Mudou lá, muda aqui. */
-const VE_DOMINIO     = { admin_ti: 'ti', operador_ti: 'ti', admin_obras: 'obra', almoxarife: 'obra' };
-const GERE_DOMINIO   = { admin_ti: 'ti', operador_ti: 'ti', admin_obras: 'obra' };
+/* O que cada nível pode fazer: Cadastros › Permissões do portal grava em
+   core.nivel_acoes (0026), e o banco obedece (ve_categoria/gerencia_categoria/
+   eh_admin leem a mesma tabela). A tela lê igual, para não oferecer o que o
+   banco recusa. Sem a tabela (0026 não rodada / falha de leitura), vale o
+   padrão abaixo — que é exatamente a regra de antes (0017). Diretoria: tudo. */
+const ACOES_PADRAO = {
+  operador_ti: ['ver_ti', 'gerenciar_ti', 'administrar'],
+  admin_ti:    ['ver_ti', 'gerenciar_ti', 'administrar'],
+  admin_obras: ['ver_obra', 'gerenciar_obra', 'administrar'],
+  almoxarife:  ['ver_obra'],
+  operador:    []
+};
+let ACOES_DE = null;   // nível → Set de ações
+async function carregarAcoes(){
+  try {
+    const { data, error } = await SB.schema('core').from('nivel_acoes').select('nivel,acao').eq('modulo', 'patrimonio');
+    if (error || !Array.isArray(data)) throw error || new Error('sem resposta');
+    // vazio = o dono desmarcou tudo (estado válido), NÃO "tabela ausente"
+    const m = {};
+    data.forEach(r => { (m[r.nivel] = m[r.nivel] || new Set()).add(r.acao); });
+    ACOES_DE = m;
+  } catch (e) {
+    if (!ACOES_DE) { ACOES_DE = {}; Object.keys(ACOES_PADRAO).forEach(k => { ACOES_DE[k] = new Set(ACOES_PADRAO[k]); }); }
+  }
+  return ACOES_DE;
+}
+function nivelPode(nivel, acao){
+  if (!nivel) return false;
+  if (nivel === 'diretoria') return true;
+  const m = ACOES_DE || {};
+  const lista = m[nivel] || (ACOES_DE ? null : new Set(ACOES_PADRAO[nivel] || []));
+  return !!(lista && lista.has(acao));
+}
 
 /* ----- Camada de Autenticação ------------------------------- */
 /* Supabase Auth é a fonte da verdade. A sessão fica em localStorage
@@ -721,6 +750,7 @@ const BMStore = {
     }
     try {
       await carregarNiveis(true);   // sem o mapa, ninguém além da diretoria trabalha
+      await carregarAcoes();
       const [profs, cats, subs, locs, swts, patrs, movs, invs] = await Promise.all([
         T('pessoas').select('id,email,nome,perfil,setor,ativo,whatsapp')
           .eq('tipo','colaborador').order('email'),
@@ -1105,6 +1135,10 @@ const WhatsDest = {
     return Array.from(out);
   },
   // Lista única com Diretoria + envolvidos
+  // quem aprova baixa/extravio daquela área (Diretoria + quem tem a ação)
+  aprovadoresDeBaixa(catId) {
+    return (DB.usuarios || []).filter(x => x.ativo !== false && Perms.canApproveBaixa(x, catId)).map(x => x.id);
+  },
   diretoriaMais(...ids) {
     const out = new Set(this.diretoria());
     for (const i of ids.flat()) if (i) out.add(i);
@@ -1154,23 +1188,25 @@ function whatsFormatar(v) {
    movimenta Obra, não edita cadastro, cadastro dele vai para aprovação) ·
    operador (só o que está com ele). admin_* e diretoria = eh_admin(). */
 const Perms = {
-  /* = eh_admin() da 0017 */
-  isAdmin(u) { return !!u && ['diretoria','admin_ti','admin_obras','operador_ti'].includes(u.perfil); },
+  /* = eh_admin() (0026: ação "administrar") */
+  isAdmin(u) { return !!u && nivelPode(u.perfil, 'administrar'); },
   isDiretoria(u) { return !!u && u.perfil === 'diretoria'; },
   /* quem precisa de aprovação para cadastrar */
-  isOperador(u) { return !!u && (u.perfil === 'operador' || u.perfil === 'almoxarife'); },
+  isOperador(u) { return !!u && !(DB.categorias || []).some(c => Perms.canManageCategoria(u, c.id)); },   // não gerencia área nenhuma
+  /* = ve_categoria() / gerencia_categoria() (0026): ver_<domínio> ou gerenciar_<domínio> */
   veCategoria(u, categoriaId) {
     if (!u) return false;
-    if (u.perfil === 'diretoria') return true;
-    return !!VE_DOMINIO[u.perfil] && VE_DOMINIO[u.perfil] === dominioDaCategoria(categoriaId);
+    const d = dominioDaCategoria(categoriaId);
+    return nivelPode(u.perfil, 'ver_' + d) || nivelPode(u.perfil, 'gerenciar_' + d);
   },
   canManageCategoria(u, categoriaId) {
     if (!u) return false;
-    if (u.perfil === 'diretoria') return true;
-    return !!GERE_DOMINIO[u.perfil] && GERE_DOMINIO[u.perfil] === dominioDaCategoria(categoriaId);
+    return nivelPode(u.perfil, 'gerenciar_' + dominioDaCategoria(categoriaId));
   },
   canCreate(u) { return !!u && !!u.perfil; },
-  canDelete(u) { return Perms.isDiretoria(u); },
+  /* excluir / aprovar baixa: a ação E gerenciar a área do bem (o banco confere
+     igual — gatilho da 0027). Chamado sem categoria = "em alguma área". */
+  canDelete(u, categoriaId) { return !!u && nivelPode(u.perfil, 'excluir') && (arguments.length < 2 || Perms.canManageCategoria(u, categoriaId)); },
   canApproveCadastro(u, categoriaId) { return Perms.canManageCategoria(u, categoriaId); },
   canRequestBaixa(u, categoriaId) { return Perms.canManageCategoria(u, categoriaId); },
   canRequestMove(u, p) {
@@ -1192,12 +1228,15 @@ const Perms = {
       Perms.canApproveCadastro(user, p.categoriaId)  // mesma regra de aprovação
     );
   },
-  canApproveBaixa(u) { return Perms.isDiretoria(u); },
+  canApproveBaixa(u, categoriaId) { return !!u && nivelPode(u.perfil, 'aprovar_baixa') && (arguments.length < 2 || Perms.canManageCategoria(u, categoriaId)); },
+  /* pedir cadastro: quem gerencia a área cadastra direto; quem só vê (ou o
+     operador, que vê só o que está com ele) pede e alguém aprova */
+  canRequestCadastro(u, categoriaId) { return Perms.allowedCategorias(u).some(c => c.id === categoriaId); },
   allowedCategorias(u) {
     if (!u || !u.perfil) return [];
     if (u.perfil === 'diretoria') return DB.categorias;
-    if (u.perfil === 'operador')  return DB.categorias;   // pede cadastro; aprovação decide
-    return DB.categorias.filter(c => Perms.veCategoria(u, c.id));
+    const vis = DB.categorias.filter(c => Perms.veCategoria(u, c.id));
+    return vis.length ? vis : DB.categorias;   // não vê área nenhuma: pede em qualquer uma; a aprovação decide
   },
   perfilLabel(perfil) {
     if (!perfil) return 'Sem acesso ao Patrimônio';
@@ -1229,10 +1268,10 @@ const Lookup = {
     );
   },
   pendingBaixasForDiretoria(user) {
-    if (!Perms.isDiretoria(user)) return [];
+    if (!Perms.canApproveBaixa(user)) return [];
     return DB.patrimonios.filter(p =>
-      p.status === 'aguardando_aprovacao_baixa' ||
-      p.status === 'aguardando_aprovacao_extravio'
+      (p.status === 'aguardando_aprovacao_baixa' || p.status === 'aguardando_aprovacao_extravio') &&
+      Perms.canApproveBaixa(user, p.categoriaId)
     );
   },
   pendingCount(userId) {
@@ -2022,7 +2061,7 @@ function openDetail(patrimonioId) {
   const isAdminCat = Perms.canManageCategoria(u, p.categoriaId);
   const podeManager = isAdminCat;
   const podeMover = Perms.canRequestMove(u, p) && p.status !== 'aguardando_aprovacao_movimentacao' && p.status !== 'aguardando_aceite';
-  const podeDeletar = Perms.canDelete(u);
+  const podeDeletar = Perms.canDelete(u, p.categoriaId);
   const aguardandoMeuAceite = (p.status === 'aguardando_aceite' && p.responsavelAtualId === u.id);
 
   const html = `
@@ -2077,11 +2116,11 @@ function openDetail(patrimonioId) {
                 </div>
               </div>`;
           }
-          if ((p.status === 'aguardando_aprovacao_baixa' || p.status === 'aguardando_aprovacao_extravio') && Perms.canApproveBaixa(u)) {
+          if ((p.status === 'aguardando_aprovacao_baixa' || p.status === 'aguardando_aprovacao_extravio') && Perms.canApproveBaixa(u, p.categoriaId)) {
             const tipo = p.status === 'aguardando_aprovacao_baixa' ? 'baixa' : 'extravio';
             return `
               <div class="accept-card" style="border-color:#92400e;">
-                <div class="ac-title">${tipo === 'baixa' ? 'Baixa' : 'Extravio'} aguardando aprovação da Diretoria</div>
+                <div class="ac-title">${tipo === 'baixa' ? 'Baixa' : 'Extravio'} aguardando sua aprovação</div>
                 <div class="ac-meta">Solicitado por ${escapeHtml((Lookup.user(p.solicitadoPor)||{}).nome || '—')}${p.solicitacaoMotivo ? ' · ' + escapeHtml(p.solicitacaoMotivo) : ''}.</div>
                 <div class="btn-row" style="margin-top:10px;">
                   <button class="btn danger"    data-action="approve-baixa">✓ Aprovar ${tipo}</button>
@@ -2094,7 +2133,7 @@ function openDetail(patrimonioId) {
           }
           if (p.status === 'aguardando_aprovacao_baixa' || p.status === 'aguardando_aprovacao_extravio') {
             const tipo = p.status === 'aguardando_aprovacao_baixa' ? 'baixa' : 'extravio';
-            return `<div class="lock-hint" style="margin-top:10px;"><span>⏳</span><span>${tipo === 'baixa' ? 'Baixa' : 'Extravio'} aguardando aprovação da Diretoria.</span></div>`;
+            return `<div class="lock-hint" style="margin-top:10px;"><span>⏳</span><span>${tipo === 'baixa' ? 'Baixa' : 'Extravio'} aguardando aprovação.</span></div>`;
           }
           // Movimentação aguardando aprovação do admin da categoria
           if (p.status === 'aguardando_aprovacao_movimentacao') {
@@ -2115,13 +2154,16 @@ function openDetail(patrimonioId) {
             return `<div class="lock-hint" style="margin-top:10px;"><span>⏳</span><span>Movimentação aguardando aprovação do administrador da categoria.</span></div>`;
           }
           // Botões de ação
+          if ((p.status === 'baixado' || p.status === 'extraviado') && !Perms.canApproveBaixa(u, p.categoriaId)) {
+            return `<div class="lock-hint" style="margin-top:10px;"><span>🔒</span><span>Bem ${p.status === 'baixado' ? 'baixado' : 'extraviado'}: só quem aprova baixa desta área mexe nele.</span></div>`;
+          }
           if (podeMover || podeManager) {
             const moveBtn  = podeMover  ? `<button class="btn" data-action="move">↗ Movimentar</button>` : '';
             const manutBtn = podeManager ? (p.status !== 'manutencao' ? `<button class="btn warning" data-action="manut">🔧 Manutenção</button>` : `<button class="btn success" data-action="ret-manut">✓ Retornou</button>`) : '';
             const baixaRow = podeManager ? `
               <div class="btn-row" style="margin-bottom:8px;">
-                <button class="btn outline-red" data-action="baixa">⬇ ${Perms.isDiretoria(u) ? 'Baixar' : 'Solicitar baixa'}</button>
-                <button class="btn secondary"   data-action="extraviado">⚠ ${Perms.isDiretoria(u) ? 'Extraviado' : 'Solicitar extravio'}</button>
+                <button class="btn outline-red" data-action="baixa">⬇ ${Perms.canApproveBaixa(u, p.categoriaId) ? 'Baixar' : 'Solicitar baixa'}</button>
+                <button class="btn secondary"   data-action="extraviado">⚠ ${Perms.canApproveBaixa(u, p.categoriaId) ? 'Extraviado' : 'Solicitar extravio'}</button>
               </div>` : '';
             return `
               <div class="btn-row" style="margin-bottom:8px;">${moveBtn}${manutBtn}</div>
@@ -2694,7 +2736,7 @@ function requestBaixa(patrimonioId, tipo) {
   if (!p) return;
   if (!Perms.canRequestBaixa(u, p.categoriaId)) return toast('Sem permissão', 'error');
   const label = tipo === 'baixa' ? 'baixa' : 'extravio';
-  if (Perms.isDiretoria(u)) {
+  if (Perms.canApproveBaixa(u, p.categoriaId)) {
     if (!confirm(`Confirmar ${label} deste patrimônio?`)) return;
     p.statusAnterior = p.status;
     p.status = tipo === 'baixa' ? 'baixado' : 'extraviado';
@@ -2703,7 +2745,7 @@ function requestBaixa(patrimonioId, tipo) {
       id: nextId('movimentacoes'), patrimonioId: p.id,
       tipo: tipo === 'baixa' ? 'baixa' : 'extravio',
       data: new Date().toISOString(), usuarioId: u.id,
-      motivo: tipo === 'baixa' ? 'Baixa do patrimônio (Diretoria)' : 'Item extraviado (Diretoria)'
+      motivo: (tipo === 'baixa' ? 'Baixa do patrimônio' : 'Item extraviado') + ' — ' + u.nome
     });
     save();
     notificarWhatsApp(tipo === 'baixa' ? 'baixa_aprovada' : 'extravio_aprovado', {
@@ -2715,6 +2757,7 @@ function requestBaixa(patrimonioId, tipo) {
   const motivo = prompt(`Motivo da solicitação de ${label}:`, '');
   if (motivo === null) return;
   p.statusAnterior = p.status;
+  p.pendingMove = { baixa: true, statusAntes: p.status };   // quem aprova/rejeita está em outro aparelho
   p.status = tipo === 'baixa' ? 'aguardando_aprovacao_baixa' : 'aguardando_aprovacao_extravio';
   p.solicitadoPor = u.id; p.solicitadoEm = new Date().toISOString(); p.solicitacaoMotivo = motivo;
   DB.movimentacoes.push({
@@ -2729,25 +2772,26 @@ function requestBaixa(patrimonioId, tipo) {
     responsavel: (Lookup.user(p.responsavelAtualId) || {}).nome,
     motivo,
     solicitadoPor: u.nome
-  }, WhatsDest.diretoriaMais(u.id, p.responsavelAtualId));
-  toast(`Solicitação de ${label} enviada à Diretoria`, 'success'); render();
+  }, WhatsDest.diretoriaMais(u.id, p.responsavelAtualId, WhatsDest.aprovadoresDeBaixa(p.categoriaId)));
+  toast(`Solicitação de ${label} enviada para aprovação`, 'success'); render();
 }
 function approveBaixa(patrimonioId) {
   const p = DB.patrimonios.find(x => x.id === patrimonioId);
   const u = Lookup.user(DB.currentUser);
   if (!p) return;
-  if (!Perms.canApproveBaixa(u)) return toast('Apenas a Diretoria pode aprovar', 'error');
+  if (!Perms.canApproveBaixa(u, p.categoriaId)) return toast('Seu nível não aprova baixa', 'error');
   const isBaixa = p.status === 'aguardando_aprovacao_baixa';
   const isExtr  = p.status === 'aguardando_aprovacao_extravio';
   if (!isBaixa && !isExtr) return;
   const solicitanteId = p.solicitadoPor;
   p.status = isBaixa ? 'baixado' : 'extraviado';
+  delete p.pendingMove;
   p.aprovadoPor = u.id; p.aprovadoEm = new Date().toISOString();
   DB.movimentacoes.push({
     id: nextId('movimentacoes'), patrimonioId: p.id,
     tipo: isBaixa ? 'baixa' : 'extravio',
     data: new Date().toISOString(), usuarioId: u.id,
-    motivo: isBaixa ? 'Baixa aprovada pela Diretoria' : 'Extravio aprovado pela Diretoria'
+    motivo: (isBaixa ? 'Baixa aprovada' : 'Extravio aprovado') + ' por ' + u.nome
   });
   save();
   notificarWhatsApp(isBaixa ? 'baixa_aprovada' : 'extravio_aprovado', {
@@ -2760,18 +2804,19 @@ function rejectBaixa(patrimonioId) {
   const p = DB.patrimonios.find(x => x.id === patrimonioId);
   const u = Lookup.user(DB.currentUser);
   if (!p) return;
-  if (!Perms.canApproveBaixa(u)) return toast('Apenas a Diretoria pode rejeitar', 'error');
+  if (!Perms.canApproveBaixa(u, p.categoriaId)) return toast('Seu nível não aprova baixa', 'error');
   const isBaixa = p.status === 'aguardando_aprovacao_baixa';
   const isExtr  = p.status === 'aguardando_aprovacao_extravio';
   if (!isBaixa && !isExtr) return;
   const solicitanteId = p.solicitadoPor;
-  p.status = p.statusAnterior || 'ativo';
+  p.status = p.statusAnterior || (p.pendingMove && p.pendingMove.statusAntes) || 'ativo';
+  delete p.pendingMove;
   delete p.statusAnterior; delete p.solicitadoPor; delete p.solicitadoEm; delete p.solicitacaoMotivo;
   DB.movimentacoes.push({
     id: nextId('movimentacoes'), patrimonioId: p.id,
     tipo: isBaixa ? 'rejeicao_baixa' : 'rejeicao_extravio',
     data: new Date().toISOString(), usuarioId: u.id,
-    motivo: isBaixa ? 'Baixa rejeitada pela Diretoria' : 'Extravio rejeitado pela Diretoria'
+    motivo: (isBaixa ? 'Baixa rejeitada' : 'Extravio rejeitado') + ' por ' + u.nome
   });
   save();
   notificarWhatsApp(isBaixa ? 'baixa_rejeitada' : 'extravio_rejeitado', {
@@ -2783,9 +2828,9 @@ function rejectBaixa(patrimonioId) {
 
 function deletePatrimonio(patrimonioId) {
   const u = Lookup.user(DB.currentUser);
-  if (!Perms.canDelete(u)) return toast('Apenas a Diretoria pode excluir', 'error');
   const p = DB.patrimonios.find(x => x.id === patrimonioId);
   if (!p) return;
+  if (!Perms.canDelete(u, p.categoriaId)) return toast('Seu nível não exclui bens', 'error');
   // Exclusão LÓGICA: o item some do app (status 'excluido' é filtrado em canSee),
   // mas o registro e todo o histórico de movimentações continuam no Supabase.
   // Não removemos das listas em memória → o sync não dispara DELETE no banco.
@@ -2794,7 +2839,7 @@ function deletePatrimonio(patrimonioId) {
   DB.movimentacoes.push({
     id: nextId('movimentacoes'), patrimonioId: p.id,
     tipo: 'exclusao', data: new Date().toISOString(),
-    usuarioId: u.id, motivo: 'Excluído do app pela Diretoria — registro preservado'
+    usuarioId: u.id, motivo: 'Excluído do app por ' + u.nome + ' — registro preservado'
   });
   save();
   toast('Patrimônio excluído (registro mantido no Supabase)', 'success');
@@ -2812,8 +2857,8 @@ function renderCreate() {
   const isOperador = Perms.isOperador(u);
   return `
     <div class="page-title">Cadastrar patrimônio</div>
-    ${isOperador ? `
-      <div class="alert-bar" style="cursor:default;">
+    ${true ? `
+      <div class="alert-bar" id="c-aviso-aprov" style="cursor:default;${isOperador ? '' : 'display:none;'}">
         <div class="ab-icon">⏳</div>
         <div class="ab-body">
           <div class="ab-title">Cadastro sujeito a aprovação</div>
@@ -2995,6 +3040,8 @@ function bindCreate() {
   const catSel = $('#c-cat');
   function toggleSoftwareFields() {
     if (!catSel) return;
+    // faixa "sujeito a aprovação": vale para a categoria escolhida (gerencia = cadastra direto)
+    const av = $('#c-aviso-aprov'); if (av) av.style.display = Perms.canManageCategoria(u, parseInt(catSel.value)) ? 'none' : '';
     const isSoft = parseInt(catSel.value) === 3;
     const fhw  = $('#form-hardware'),  fsw  = $('#form-software');
     const fhwx = $('#form-hw-extra');
@@ -3040,8 +3087,8 @@ function bindCreate() {
   $('#create-form').addEventListener('submit', async e => {
     e.preventDefault();
     const catId = parseInt($('#c-cat').value);
-    const isOperador = Perms.isOperador(u);
-    if (!isOperador && !Perms.canManageCategoria(u, catId)) return toast('Sem permissão para esta categoria', 'error');
+    if (!Perms.canRequestCadastro(u, catId)) return toast('Sem permissão para esta categoria', 'error');
+    const isOperador = !Perms.canManageCategoria(u, catId);   // = precisa de aprovação
 
     // ── Softwares TI (cat 3) ─────────────────────────────────
     if (catId === 3) {
@@ -3188,12 +3235,8 @@ function renderPending() {
   const cadastrosParaAprovar = Lookup.pendingCadastrosForApprover(u);
   const movimentacoesParaAprovar = Perms.movimentacoesPendentesParaAprovador(u);
   const baixasParaAprovar = Lookup.pendingBaixasForDiretoria(u);
-  const meusCadastrosPendentes = Perms.isOperador(u)
-    ? DB.patrimonios.filter(p => p.status === 'aguardando_aprovacao_cadastro' && p.criadoPor === u.id)
-    : [];
-  const minhasMovimentacoesPendentes = Perms.isOperador(u)
-    ? DB.patrimonios.filter(p => p.status === 'aguardando_aprovacao_movimentacao' && p.solicitadoMovPor === u.id)
-    : [];
+  const meusCadastrosPendentes = DB.patrimonios.filter(p => p.status === 'aguardando_aprovacao_cadastro' && p.criadoPor === u.id);
+  const minhasMovimentacoesPendentes = DB.patrimonios.filter(p => p.status === 'aguardando_aprovacao_movimentacao' && p.solicitadoMovPor === u.id);
 
   return `
     <div class="page-title">Pendências e aprovações</div>
@@ -3228,7 +3271,7 @@ function renderPending() {
       </div>
     ` : ''}
 
-    ${Perms.isDiretoria(u) ? `
+    ${Perms.canApproveBaixa(u) ? `
       <div class="card">
         <h2>Baixas e extravios aguardando aprovação <span class="pill">${baixasParaAprovar.length}</span></h2>
         <div class="card-hint">Solicitações dos administradores que precisam de sua aprovação.</div>
@@ -3238,7 +3281,7 @@ function renderPending() {
       </div>
     ` : ''}
 
-    ${Perms.isOperador(u) ? `
+    ${(Perms.isOperador(u) || meusCadastrosPendentes.length || minhasMovimentacoesPendentes.length) ? `
       <div class="card">
         <h2>Meus cadastros aguardando aprovação <span class="pill">${meusCadastrosPendentes.length}</span></h2>
         <div class="card-hint">Solicitações que você enviou e aguardam aprovação do administrador.</div>
@@ -3898,7 +3941,7 @@ function openImportCsv() {
         <div class="form-group">
           <label>Categoria</label>
           <select id="csv-cat">
-            ${DB.categorias.map(c => `<option value="${c.id}">${c.icone} ${escapeHtml(c.nome)}</option>`).join('')}
+            ${DB.categorias.filter(c => Perms.canManageCategoria(u, c.id)).map(c => `<option value="${c.id}">${c.icone} ${escapeHtml(c.nome)}</option>`).join('')}
           </select>
         </div>
         <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;">
@@ -3926,6 +3969,7 @@ function openImportCsv() {
   // Baixar modelo
   node.querySelector('#csv-template').addEventListener('click', () => {
     const catId = parseInt(node.querySelector('#csv-cat').value);
+    if (!Perms.canManageCategoria(u, catId)) return toast('Seu nível não gerencia esta categoria', 'error');
     const tpl = CSV_TEMPLATES[catId]; if (!tpl) return;
     const cat = Lookup.cat(catId);
     downloadCsv(`modelo-${cat.nome.replace(/[^a-z0-9]+/gi,'_').toLowerCase()}.csv`, [tpl.headers, tpl.sample]);
@@ -3955,6 +3999,7 @@ function openImportCsv() {
   node.querySelector('#csv-import').addEventListener('click', () => {
     if (!parsedRows || parsedRows.length < 2) return toast('Selecione um CSV com dados', 'error');
     const catId = parseInt(node.querySelector('#csv-cat').value);
+    if (!Perms.canManageCategoria(u, catId)) return toast('Seu nível não gerencia esta categoria', 'error');
     const tpl = CSV_TEMPLATES[catId]; if (!tpl) return;
     const headers = parsedRows[0].map(h => h.trim());
     const required = tpl.headers;
@@ -4022,6 +4067,7 @@ function openImportCsv() {
           if (!resp) resp = u; // default ao admin que importa
 
           const existing = DB.patrimonios.find(p => p.status !== 'excluido' && (p.codigoBarras||'').toLowerCase() === codigo.toLowerCase());
+          if (existing && existing.categoriaId !== catId) { erros.push(`L${i+1}: código ${codigo} já existe em outra categoria`); continue; }
           const dados = {
             codigoBarras: codigo,
             descricao: desc,

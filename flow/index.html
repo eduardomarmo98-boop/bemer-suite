@@ -597,7 +597,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.09.24.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.25.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -617,7 +617,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.09.24.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.25.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -638,7 +638,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.09.24.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.25.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -768,7 +768,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.09.24.2';
+var APP_VERSAO = '2026.09.25.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -852,6 +852,21 @@ function nomeCurto(nome){
   return partes[0]+' '+ultimo.charAt(0).toUpperCase()+'.';
 }
 function ehAdmin(){ return EU.papel==='diretor'; }
+/* O que cada nível pode (Cadastros › Permissões do portal, 0026). Nulo =
+   tabela não carregada: vale a regra de antes (Painel para quem não é
+   colaborador). Diretor pode tudo. */
+var ACOES_FLOW = null;
+/* perfis com o Flow liberado (Cadastros › Permissões). Nulo = não carregado:
+   todo mundo conta (modo local, ou tabela indisponível). */
+var PERFIS_FLOW = null;
+function usaFlow(c){ return !PERFIS_FLOW || !c || !c.perfil || !!PERFIS_FLOW[c.perfil]; }
+/* no ar (_prod.js) pessoas/nível/obras que cada um vê moram no portal */
+var CADASTROS_NO_PORTAL = false;
+function podeNoFlow(acao){
+  if(EU.papel==='diretor') return true;
+  if(!ACOES_FLOW) return acao==='ver_painel' ? EU.papel!=='colaborador' : false;
+  return !!(ACOES_FLOW[EU.papel] && ACOES_FLOW[EU.papel][acao]);
+}
 /* Diretoria e TI criam e editam pessoas. Só a Diretoria mexe em obras e cadastros. */
 function gereUsuarios(){ return EU.papel==='diretor' || EU.papel==='ti'; }
 
@@ -1267,10 +1282,10 @@ function desenhar(){
   $('c-fazer').textContent = agir;
   $('c-fazer').className = 'cont'+(agir ? (agir>semPrazo ? ' vermelho' : ' laranja') : '');
   $('c-esperando').textContent = comOutros.length;
-  $('aba-painel').classList.toggle('oculto', EU.papel==='colaborador');
+  $('aba-painel').classList.toggle('oculto', !podeNoFlow('ver_painel'));
   $('btn-cadastros').classList.toggle('oculto', !ehAdmin());
   $('menu-cadastros').classList.toggle('oculto', !ehAdmin());
-  if(ABA==='painel' && EU.papel==='colaborador'){
+  if(ABA==='painel' && !podeNoFlow('ver_painel')){
     ABA='fazer';
     for(var j=0;j<botoesNav.length;j++) botoesNav[j].classList.toggle('on', botoesNav[j].dataset.aba==='fazer');
   }
@@ -1700,7 +1715,7 @@ var Rota = {
 };
 
 function opcoesPessoas(sel){
-  return DB.colaboradores.filter(function(c){ return c.ativo; }).map(function(c){
+  return DB.colaboradores.filter(function(c){ return c.ativo && (usaFlow(c) || c.id===sel); }).map(function(c){
     return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+esc(c.nome)+' — '+esc(c.setor)+
       (c.id===EU.id?' (eu)':'')+'</option>'; }).join('');
 }
@@ -1772,7 +1787,7 @@ $('btn-nova').addEventListener('click', function(){
     '<div class="pendentes" id="n-lista"></div>'+
     '<label>Quem mais precisa acompanhar <span style="font-weight:400;color:var(--tinta3)">(opcional)</span></label>'+
     '<div class="marcadores" id="n-envolvidos">'+
-      DB.colaboradores.filter(function(c){ return c.ativo; }).map(function(c){
+      DB.colaboradores.filter(function(c){ return c.ativo && usaFlow(c); }).map(function(c){
         return '<label class="marcador"><input type="checkbox" data-env="'+c.id+'">'+
                esc(c.nome)+'</label>'; }).join('')+
     '</div>'+
@@ -1994,7 +2009,7 @@ var Detalhe = {
     var lista = p.envolvidos || [];
     var podeMexer = !encerrada && (p.criado_por===EU.id || p.responsavel_id===EU.id);
     var disponiveis = DB.colaboradores.filter(function(c){
-      return c.ativo && !mesmoId(c.id, p.criado_por) && !mesmoId(c.id, p.responsavel_id)
+      return c.ativo && usaFlow(c) && !mesmoId(c.id, p.criado_por) && !mesmoId(c.id, p.responsavel_id)
         && !lista.filter(function(x){ return mesmoId(x, c.id); }).length; });
     return '<div class="bloco"><div class="rot">Também acompanham'+
       (lista.length?' ('+lista.length+')':'')+'</div>'+
@@ -2609,6 +2624,8 @@ $('btn-equipe').addEventListener('click', function(){
   var m = abrirModal(
     '<div class="modal-topo"><h2>Equipe</h2><button class="fechar">&times;</button></div>'+
     '<div class="modal-corpo">'+
+    (CADASTROS_NO_PORTAL ? '<div class="aviso"><b>Pessoas, nível e obras que cada um vê se cadastram no portal</b>, '+
+      'na engrenagem › Cadastros. Aqui é só consulta.</div>' : '')+
     '<div class="aviso"><b>Quem vê o quê:</b> por padrão todos veem todas as pendências. '+
     'Se você marcar obras específicas para alguém, essa pessoa passa a ver só as obras marcadas — '+
     'mais os assuntos internos e o que ela mesma criou ou recebeu.</div>'+
@@ -2716,11 +2733,11 @@ var Equipe = {
       'apenas essas, além dos assuntos internos e do que ela mesma criou ou recebeu.</div>'+
       '<div class="marcadores">'+DB.obras.map(function(o){
         return '<label class="marcador'+(c.obras.indexOf(o.id)>=0?' on':'')+'">'+
-          '<input type="checkbox" data-ob="'+o.id+'"'+(c.obras.indexOf(o.id)>=0?' checked':'')+'>'+
+          '<input type="checkbox" data-ob="'+o.id+'"'+(c.obras.indexOf(o.id)>=0?' checked':'')+(CADASTROS_NO_PORTAL?' disabled':'')+'>'+
           esc(o.nome)+'</label>'; }).join('')+'</div>'+
       '<div class="dica" id="e-resumo" style="margin-top:12px"></div>'+
       '</div><div class="modal-rodape">'+
-      '<button class="btn btn-s" id="e-todas">Liberar todas</button>'+
+      (CADASTROS_NO_PORTAL ? '' : '<button class="btn btn-s" id="e-todas">Liberar todas</button>')+
       '<span style="flex:1"></span><button class="btn btn-p fechar">Concluir</button></div>', true, true);
 
     function resumo(){
@@ -2729,13 +2746,13 @@ var Equipe = {
         : 'Sem restrição — enxerga todas as obras.';
     }
     resumo();
-    var cx = m.querySelectorAll('[data-ob]');
+    var cx = CADASTROS_NO_PORTAL ? [] : m.querySelectorAll('[data-ob]');   // no ar: só consulta
     for(var i=0;i<cx.length;i++) cx[i].addEventListener('change', function(){
       var marcado = this.checked, rot = this.parentNode;
       Admin.obraDoUsuario(c, this.dataset.ob, marcado).then(function(){
         rot.classList.toggle('on', marcado); resumo(); desenhar(); });
     });
-    m.querySelector('#e-todas').addEventListener('click', function(){
+    if(m.querySelector('#e-todas')) m.querySelector('#e-todas').addEventListener('click', function(){
       Admin.liberarTodas(c).then(function(){
         m.remove(); desenhar();
         aviso(c.nome.split(' ')[0]+' agora enxerga todas as obras.','ok');
@@ -2757,11 +2774,14 @@ $('btn-cadastros').addEventListener('click', function(){
     '<div class="modal-corpo">'+
     '<div class="dupla" style="align-items:start">'+
     '<div><div class="rot">Setores</div>'+
-      '<div class="dica" style="margin:0 0 8px">Usados para classificar cada pessoa da equipe.</div>'+
+      (CADASTROS_NO_PORTAL
+        ? '<div class="dica" style="margin:0 0 8px">Setor é da construtora: cadastra-se no portal, na engrenagem › <b>Cadastros › Setores</b>.</div>'
+        : '<div class="dica" style="margin:0 0 8px">Usados para classificar cada pessoa da equipe.</div>')+
       '<div class="listagem" id="l-setores"></div>'+
+      (CADASTROS_NO_PORTAL ? '' :
       '<div style="display:flex;gap:7px;margin-top:9px">'+
       '<input type="text" id="c-setor" placeholder="Novo setor…" style="flex:1">'+
-      '<button class="btn btn-s btn-mini" id="add-setor">Incluir</button></div></div>'+
+      '<button class="btn btn-s btn-mini" id="add-setor">Incluir</button></div>')+'</div>'+
     '<div><div class="rot">Assuntos</div>'+
       '<div class="dica" style="margin:0 0 8px">Classificam a pendência. Alimentam o painel por obra.</div>'+
       '<div class="listagem" id="l-assuntos"></div>'+
@@ -2779,7 +2799,7 @@ $('btn-cadastros').addEventListener('click', function(){
       var u = usoSetor(s);
       return '<div class="ln"><span>'+esc(s)+'</span>'+
         (u?'<span class="uso">'+u+(u===1?' pessoa':' pessoas')+'</span>':'')+
-        '<button data-dels="'+esc(s)+'" title="Excluir">×</button></div>'; }).join('')
+        (CADASTROS_NO_PORTAL ? '' : '<button data-dels="'+esc(s)+'" title="Excluir">×</button>')+'</div>'; }).join('')
       || '<div class="dica">Nenhum setor.</div>';
     m.querySelector('#l-assuntos').innerHTML = DB.assuntos.map(function(a){
       var u = usoAssunto(a);
@@ -2815,9 +2835,9 @@ $('btn-cadastros').addEventListener('click', function(){
       m.querySelector(campo).value=''; pintar(); aviso(rotulo+' incluído.','ok');
     }).catch(function(e){ aviso(e.message||String(e),'erro'); });
   }
-  m.querySelector('#add-setor').addEventListener('click', function(){ incluir('#c-setor','setores','Setor'); });
+  if(m.querySelector('#add-setor')) m.querySelector('#add-setor').addEventListener('click', function(){ incluir('#c-setor','setores','Setor'); });
   m.querySelector('#add-assunto').addEventListener('click', function(){ incluir('#c-assunto','assuntos','Assunto'); });
-  m.querySelector('#c-setor').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault();
+  if(m.querySelector('#c-setor')) m.querySelector('#c-setor').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault();
     incluir('#c-setor','setores','Setor'); } });
   m.querySelector('#c-assunto').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault();
     incluir('#c-assunto','assuntos','Assunto'); } });
@@ -3001,10 +3021,34 @@ function tabelaDaLista(lista){
   return lista === 'setores' ? sb.schema('core').from('setores')
                              : sb.schema('flow').from(lista);
 }
+/* 0026: o nível do Flow de cada perfil vem de flow.permissoes (Cadastros ›
+   Permissões). Sem a tabela, vale o mapa fixo acima (a regra de antes). */
+var NIVEL_FLOW = null;
 function comPapel(p){
   if(!p) return p;
-  p.papel = PERFIL_PARA_PAPEL[p.perfil] || 'colaborador';
+  p.papel = p.perfil === 'diretoria' ? 'diretor'   // travado: a Diretoria tem tudo
+          : ((NIVEL_FLOW ? NIVEL_FLOW[p.perfil] : PERFIL_PARA_PAPEL[p.perfil]) || 'colaborador');
   return p;
+}
+/* 24/09/2026: pessoas, nível e obras que cada um vê se cadastram no portal
+   (Cadastros). A Equipe do Flow vira consulta — antes ela gravava o perfil
+   da suíte por um mapa fixo (gestor → coord_sesmt) e desmentia a tela de
+   Permissões. */
+CADASTROS_NO_PORTAL = true;
+gereUsuarios = function(){ return false; };
+function carregarPermissoesFlow(){
+  /* lista (mesmo vazia) = tabela lida; nulo = erro (tabela ausente, sem rede):
+     aí vale a regra de antes. Vazio é estado válido — o dono desmarcou tudo. */
+  function ler(q){ return Promise.resolve(q).then(function(r){ return r && !r.error && Array.isArray(r.data) ? r.data : null; }, function(){ return null; }); }
+  return Promise.all([
+    ler(sb.schema('flow').from('permissoes').select('perfil,nivel')),
+    ler(sb.schema('core').from('nivel_acoes').select('nivel,acao').eq('modulo', 'flow')),
+    ler(sb.schema('core').from('perfil_modulos').select('perfil').eq('modulo', 'flow'))
+  ]).then(function(r){
+    if(r[0] && r[0].length){ NIVEL_FLOW = {}; r[0].forEach(function(x){ NIVEL_FLOW[x.perfil] = x.nivel; }); }
+    if(r[1]){ ACOES_FLOW = {}; r[1].forEach(function(x){ (ACOES_FLOW[x.nivel] = ACOES_FLOW[x.nivel] || {})[x.acao] = true; }); }
+    if(r[2] && r[2].length){ PERFIS_FLOW = {}; r[2].forEach(function(x){ PERFIS_FLOW[x.perfil] = true; }); }
+  });
 }
 
 /* ---------------- envio ao servidor ---------------- */
@@ -3788,10 +3832,10 @@ function iniciar(sessao){
       if(r.error) throw r.error;
       if(!r.data){
         telaLogin('<span style="color:var(--erro)">Seu acesso ainda não foi finalizado. '+
-          'Peça à Diretoria ou ao TI para criá-lo pelo próprio sistema, em <b>Equipe</b>.</span>');
+          'Peça à Diretoria ou ao TI para cadastrar você no portal, na engrenagem › <b>Cadastros › Pessoas</b>.</span>');
         return sb.auth.signOut().then(function(){ return null; });
       }
-      return comPapel(r.data);
+      return carregarPermissoesFlow().then(function(){ return comPapel(r.data); });
     })
     .then(function(perfil){
       if(perfil === null) return;          // já mostrou a tela de login e saiu

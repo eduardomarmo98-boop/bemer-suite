@@ -107,6 +107,11 @@ table.perm tr.travado td{background:#FAFBFD}
 table.perm input[type=checkbox]{width:20px;height:20px;accent-color:var(--azul);cursor:pointer}
 table.perm select{min-width:170px;width:auto}
 table.perm .trava{font-size:11px;color:var(--texto2)}
+@media (max-width:600px){
+  table.perm th.perfil,table.perm td.perfil{min-width:118px;max-width:130px}
+  table.perm select{min-width:0;max-width:150px}
+  table.perm{min-width:0}
+}
 
 /* ---- formulário ---- */
 .cartao{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:18px}
@@ -173,7 +178,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.24.3';
+var APP_VERSION = '2026.09.25.3';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha).
    Vai ser RENOMEADA antes do passo 8 da virada (o Docs em produção tem uma
@@ -201,7 +206,7 @@ function cnpjValido(c){
 }
 function aviso(msg, erro){
   var a = document.createElement('div'); a.className = 'aviso-flut' + (erro ? ' erro' : ''); a.textContent = msg;
-  document.body.appendChild(a); setTimeout(function(){ a.remove(); }, erro ? 5000 : 2600);
+  document.body.appendChild(a); setTimeout(function(){ a.remove(); }, erro ? Math.max(5000, msg.length * 60) : 2600);
 }
 /* erro do Supabase em português, sem o jargão */
 function msgErro(e){
@@ -242,20 +247,36 @@ sb.auth.getSession().then(function(s){
       ok(r);
       if(!r.data || !r.data.ativo || r.data.tipo !== 'colaborador') return location.replace('../');
       EU = r.data;
-      function f(n){ return sb.schema('core').rpc(n).then(function(x){ return !x.error && x.data === true; }, function(){ return false; }); }
-      return Promise.all([f('eh_admin'), f('pode_gerenciar_pessoas'), f('pode_cadastrar_empresa'), f('pode_conceder_folha')]);
+      return core('perfil_modulos').select('modulo').eq('perfil', EU.perfil).eq('modulo', 'configuracoes')
+        .then(function(pm){
+          if(pm && !pm.error && Array.isArray(pm.data) && pm.data.length === 0){
+            $('conteudo').innerHTML = '<div class="cartao" style="margin-top:20px"><h1>Sem acesso aos Cadastros</h1>'
+              + '<p class="sub" style="margin-top:6px">Seu perfil não tem os Cadastros liberados. Se precisar, peça à diretoria ou à TI.</p>'
+              + '<p style="margin-top:14px"><a href="../">Voltar ao portal</a></p></div>';
+            return null;
+          }
+          return capacidades();
+        }, capacidades);
     })
     .then(function(v){
       if(!v) return;
-      PODE = { admin:v[0], pessoas:v[1], empresas:v[2], folha:v[3] };
+      PODE = { admin:v[0], pessoas:v[1], empresas:v[2], folha:v[3], gere:v[4] };   // gere nulo = 0028 ainda não rodou
       if(!PODE.pessoas) ABA = 'setores';
       return recarregar();
     });
 }).catch(function(e){
   $('conteudo').innerHTML = '<div class="recado erro">Não foi possível carregar: ' + esc(msgErro(e)) + '</div>';
 });
+function capacidades(){
+      function f(n){ return sb.schema('core').rpc(n).then(function(x){ return !x.error && x.data === true; }, function(){ return false; }); }
+      return Promise.all([f('eh_admin'), f('pode_gerenciar_pessoas'), f('pode_cadastrar_empresa'), f('pode_conceder_folha'),
+        sb.schema('core').rpc('perfis_que_gere', { p_ator: EU.perfil })
+          .then(function(x){ return !x.error && Array.isArray(x.data) ? x.data : null; }, function(){ return null; })]);
+}
 
+var RECARGA = 0;
 function recarregar(){
+  var minha = ++RECARGA;   // uma recarga antiga que termina depois não sobrescreve a nova
   var pedidos = [
     core('perfis').select('codigo,nome,eh_externo,ativo').order('nome'),
     core('setores').select('nome,ordem,ativo').order('ordem').order('nome'),
@@ -267,16 +288,23 @@ function recarregar(){
                  : Promise.resolve({ data: [] }),
     PODE.pessoas ? core('pessoa_obras').select('pessoa_id,obra_id') : Promise.resolve({ data: [] }),
     PODE.admin ? core('perfil_modulos').select('perfil,modulo') : Promise.resolve({ data: [] }),
-    PODE.admin ? sb.schema('patrimonio').from('permissoes').select('perfil,nivel') : Promise.resolve({ data: [] })
+    PODE.admin ? sb.schema('patrimonio').from('permissoes').select('perfil,nivel') : Promise.resolve({ data: [] }),
+    PODE.admin ? core('niveis').select('modulo,codigo,nome,ordem,travado').order('ordem') : Promise.resolve({ data: [] }),
+    PODE.admin ? core('acoes').select('modulo,codigo,nome,ordem').order('ordem') : Promise.resolve({ data: [] }),
+    PODE.admin ? core('nivel_acoes').select('modulo,nivel,acao') : Promise.resolve({ data: [] }),
+    PODE.admin ? sb.schema('flow').from('permissoes').select('perfil,nivel') : Promise.resolve({ data: [] })
   ];
   return Promise.all(pedidos).then(function(rs){
-    rs.forEach(function(r, i){ if(r.error && i !== 5 && i !== 9) throw r.error; });
+    if(minha !== RECARGA) return;
+    rs.forEach(function(r, i){ if(r.error && i !== 5 && i < 9) throw r.error; });   // 9+ = 0025/0026 podem faltar
     D.perfis = rs[0].data || []; D.setores = rs[1].data || []; D.obras = rs[2].data || [];
     D.empresas = rs[3].data || []; D.empresaObras = rs[4].data || [];
     D.construtora = rs[5].error ? null : (rs[5].data || null);
     D.construtoraFalta = !!rs[5].error;   // 0024 ainda não rodada
     D.pessoas = rs[6].data || []; D.pessoaObras = rs[7].data || [];
     D.perfilModulos = rs[8].data || []; D.nivelPatrimonio = rs[9].data || [];
+    D.niveis = rs[10].data || []; D.acoes = rs[11].data || []; D.nivelAcoes = rs[12].data || []; D.nivelFlow = rs[13].data || [];
+    D.falta0026 = !!(rs[10].error || rs[11].error || rs[12].error || rs[13].error);
     desenhar();
   }).catch(function(e){
     $('conteudo').innerHTML = '<div class="recado erro">Não foi possível carregar: ' + esc(msgErro(e)) + '</div>';
@@ -306,7 +334,11 @@ function desenhar(){
          + (a[2] != null ? '<span class="n">' + a[2] + '</span>' : '') + '</button>';
   }).join('');
   var fn = { pessoas:telaPessoas, setores:telaSetores, construtora:telaConstrutora, permissoes:telaPermissoes }[ABA];
+  var foco = seletorDoFoco();
   $('conteudo').innerHTML = fn();
+  if(!foco && FOCO_PENDENTE && (!document.activeElement || document.activeElement === document.body)) foco = FOCO_PENDENTE;
+  FOCO_PENDENTE = null;
+  if(foco){ try { var el = $('conteudo').querySelector(foco); if(el) el.focus({ preventScroll: true }); } catch(e){} }
   ligar();
 }
 $('trilho').addEventListener('click', function(e){
@@ -331,9 +363,22 @@ $('conteudo').addEventListener('click', function(e){
   if(a === 'pessoa')      abrirPessoa(id);
   if(a === 'nova-pessoa') novaPessoa();
   if(a === 'novo-setor')  novoSetor();
+  if(a === 'perm-vista')  { PERM_VISTA = id; desenhar(); }
   if(a === 'salvar-construtora') salvarConstrutora(b);
 });
 
+/* identifica o controle com foco pelos data-* (sobrevive ao redesenho). O
+   controle é desabilitado antes de gravar e o navegador tira o foco dele —
+   por isso quem grava guarda o seletor em FOCO_PENDENTE antes. */
+var FOCO_PENDENTE = null;
+function seletorDoFoco(){
+  var a = document.activeElement;
+  if(!a || !$('conteudo').contains(a)) return null;
+  var chaves = ['data-perm','data-m','data-patr-liga','data-flow-nivel','data-na-mod','data-na-nivel','data-na-acao','data-ordem','data-setor-ativo','data-filtro','data-acao','data-id'];
+  var partes = chaves.filter(function(k){ return a.hasAttribute(k); })
+                     .map(function(k){ return '[' + k + '="' + String(a.getAttribute(k)).replace(/["\\]/g, '\\$&').replace(/[\n\r\f]/g, function(c){ return '\\' + c.charCodeAt(0).toString(16) + ' '; }) + '"]'; });
+  return partes.length ? a.tagName.toLowerCase() + partes.join('') : null;
+}
 function cabecalho(titulo, sub, botao){
   return '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;justify-content:space-between">'
        +   '<div><h1>' + titulo + '</h1><div class="sub">' + sub + '</div></div>' + (botao || '') + '</div>';
@@ -378,9 +423,12 @@ function listaPessoas(){
 }
 
 /* Que perfis eu posso dar (espelha a regra do banco — 0004/0024 e a edge) */
+/* no alcance da matriz? (sem a 0028: não restringe aqui; o banco confere) */
+function noAlcance(perfil){ return PODE.admin || !PODE.gere || PODE.gere.indexOf(perfil) >= 0; }
 function perfisQuePossoDar(tipo, atual){
   return D.perfis.filter(function(p){
     if(p.codigo === atual) return true;
+    if(!noAlcance(p.codigo)) return false;
     if(!p.ativo) return false;
     if(tipo === 'externo') return p.codigo === 'fornecedor';
     if(p.eh_externo) return false;
@@ -391,7 +439,7 @@ function perfisQuePossoDar(tipo, atual){
 }
 function opcoesSetor(atual){
   return '<option value="">— sem setor —</option>' + D.setores.filter(function(s){ return s.ativo || s.nome === atual; })
-    .map(function(s){ return '<option' + (s.nome === atual ? ' selected' : '') + '>' + esc(s.nome) + '</option>'; }).join('');
+    .map(function(s){ return '<option value="' + esc(s.nome) + '"' + (s.nome === atual ? ' selected' : '') + '>' + esc(s.nome) + '</option>'; }).join('');
 }
 function caixaMarcar(id, itens, marcados, editavel){
   if(!itens.length) return '<div class="leitura sub">Nenhuma cadastrada.</div>';
@@ -408,16 +456,20 @@ function marcadosEm(id){
 
 function abrirPessoa(id){
   var p = D.pessoas.find(function(x){ return x.id === id; }); if(!p) return;
+  if(p.tipo === 'externo') return verFornecedor(p);
   var sou = p.id === EU.id;
   var protegido = (p.perfil === 'diretoria' || p.perfil === 'ti') && !PODE.admin;   // 0024
   var folhaTrava = (p.perfil === 'diretoria' || p.perfil === 'dp') && !PODE.folha;
-  var travaPerfil = sou || protegido || folhaTrava;
+  var fora = !sou && p.tipo === 'colaborador' && !noAlcance(p.perfil);   // como no Docs: fora do alcance, só consulta nome/perfil
+  var travaPerfil = sou || protegido || folhaTrava || fora;
+  var travaSit = sou || protegido || folhaTrava || !PODE.admin;          // ativar/desativar: só diretoria/TI (como no Docs)
   var obras = D.obras.filter(function(o){ return o.ativa || obrasDaPessoa(p.id).indexOf(o.id) >= 0; })
                      .map(function(o){ return { id:o.id, nome:o.nome + (o.ativa ? '' : ' (encerrada)') }; });
   var marc = obrasDaPessoa(p.id);
   modal('Pessoa',
     '<div class="grade">'
-    + campo('Nome', '<input type="text" id="p-nome" value="' + esc(p.nome) + '">', true)
+    + campo('Nome', '<input type="text" id="p-nome" value="' + esc(p.nome) + '"' + (fora ? ' disabled' : '') + '>'
+        + (fora ? '<div class="sub">Perfil fora do seu alcance: nome, perfil e situação só por quem gerencia esse perfil.</div>' : ''), true)
     + campo('E-mail (login)', '<div class="leitura">' + esc(p.email) + '</div>', true)
     + campo('Perfil', '<select id="p-perfil"' + (travaPerfil ? ' disabled' : '') + '>' + perfisQuePossoDar(p.tipo, p.perfil).map(function(x){
         return '<option value="' + esc(x.codigo) + '"' + (x.codigo === p.perfil ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') + '</select>'
@@ -430,37 +482,55 @@ function abrirPessoa(id){
     + campo('WhatsApp', '<input type="tel" id="p-whats" placeholder="11 91234-5678" value="' + esc(p.whatsapp) + '">')
     + campo('', '<label class="marcar"><input type="checkbox" id="p-avisa"' + (p.avisa_whatsapp ? ' checked' : '') + '> Receber avisos pelo WhatsApp</label>', true)
     + campo('Situação', '<div class="seg" id="p-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
-        + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (sou || protegido ? ' disabled' : '') + '>Ativo</button>'
-        + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (sou || protegido ? ' disabled' : '') + '>Inativo</button></div>', true)
+        + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (travaSit ? ' disabled' : '') + '>Ativo</button>'
+        + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>' + (!PODE.admin && !sou ? '<div class="sub">Ativar ou desativar: só a diretoria ou a TI.</div>' : ''), true)
     + (p.tipo === 'externo' ? '' : campo('Obras que vê',
         '<div class="sub" style="margin-bottom:6px">Nenhuma marcada = vê <b>todas</b> as obras.' + (PODE.admin ? '' : ' Só a diretoria ou a TI altera.') + '</div>'
         + caixaMarcar('p-obras', obras, marc, PODE.admin), true))
     + '</div>',
     function(btn){
-      var dados = {
-        nome: $('p-nome').value.trim(),
+      /* tudo lido AGORA (antes o modal podia trocar durante a gravação) */
+      var tela = {
+        nome: fora ? p.nome : $('p-nome').value.trim(),
         cargo: $('p-cargo').value.trim(),
         whatsapp: soDigitos($('p-whats').value),
         avisa_whatsapp: $('p-avisa').checked,
         ativo: $('p-ativo').getAttribute('data-v') === '1'
       };
-      if(!travaPerfil) dados.perfil = $('p-perfil').value;
-      if(p.tipo !== 'externo') dados.setor = $('p-setor').value || null;
-      if(dados.nome.length < 3) throw new Error('Informe o nome completo.');
-      if(dados.avisa_whatsapp && dados.whatsapp.length < 10) throw new Error('Para receber avisos, informe o WhatsApp com DDD.');
-      return core('pessoas').update(dados).eq('id', p.id).then(ok).then(function(){
-        var novas = PODE.admin && p.tipo !== 'externo' ? marcadosEm('p-obras') : null;
-        return novas ? sincronizar('pessoa_obras', 'pessoa_id', p.id, 'obra_id', marc, novas) : null;
-      });
+      if(!travaPerfil) tela.perfil = $('p-perfil').value;
+      if(p.tipo !== 'externo') tela.setor = $('p-setor').value || null;
+      var novas = PODE.admin && p.tipo !== 'externo' ? marcadosEm('p-obras') : null;
+      if(tela.nome.length < 3) throw new Error('Informe o nome completo.');
+      if(tela.avisa_whatsapp && tela.whatsapp.length < 10) throw new Error('Para receber avisos, informe o WhatsApp com DDD.');
+      /* só o que mudou: a página aberta há horas não desfaz o que outra pessoa gravou */
+      var dados = {};
+      Object.keys(tela).forEach(function(k){ if(tela[k] !== (p[k] == null ? (k === 'setor' ? null : '') : p[k])) dados[k] = tela[k]; });
+      var mudouObras = novas && (novas.length !== marc.length || novas.some(function(x){ return marc.indexOf(x) < 0; }));
+      var passo = Object.keys(dados).length ? core('pessoas').update(dados).eq('id', p.id).then(ok) : Promise.resolve();
+      return passo.then(function(){ return mudouObras ? definirObras(p.id, marc, novas) : null; })
+        .then(function(){ if(!Object.keys(dados).length && !mudouObras) return 'Nada mudou.'; });
     });
   segmento('p-ativo');
+}
+
+/* fornecedor: só consulta (o cadastro dele é no Docs) */
+function verFornecedor(p){
+  modal('Fornecedor',
+    '<div class="dica" style="margin-bottom:12px">O acesso de fornecedor se cadastra e se altera no <b>Docs</b>. Aqui é só consulta.</div>'
+    + '<div class="grade">'
+    + campo('Nome', '<div class="leitura">' + esc(p.nome || '—') + '</div>', true)
+    + campo('E-mail (login)', '<div class="leitura">' + esc(p.email) + '</div>', true)
+    + campo('Empresa', '<div class="leitura">' + esc(empresaNome(p.empresa_id)) + '</div>')
+    + campo('Situação', '<div class="leitura">' + (p.ativo ? 'Ativo' : 'Inativo') + '</div>')
+    + '</div>', null);
 }
 
 function novaPessoa(){
   var tipo = 'colaborador';
   modal('Nova pessoa',
     '<div class="grade">'
-    + campo('Tipo', '<div class="seg" id="n-tipo" data-v="colaborador"><button type="button" data-v="colaborador" class="ativo">Colaborador</button><button type="button" data-v="externo">Externo (fornecedor)</button></div>', true)
+    /* fornecedor (acesso de empresa) se cadastra no Docs — decisão de 25/09/2026 */
+    + '<div class="inteiro dica" style="margin:0">Aqui se cadastra quem é da construtora. Fornecedor (acesso de empresa) se cadastra no Docs.</div>'
     + campo('Nome completo', '<input type="text" id="n-nome" autocomplete="off">', true)
     + campo('E-mail', '<input type="email" id="n-email" autocomplete="off" placeholder="nome' + esc(DOMINIO_EMAIL) + '">', true)
     + '<div id="n-colab" class="inteiro grade" style="padding:0">'
@@ -476,7 +546,7 @@ function novaPessoa(){
     + '<div class="inteiro dica" style="margin:0">A pessoa recebe um e-mail para criar a senha e entra pelo portal.</div>'
     + '</div>',
     function(){
-      tipo = $('n-tipo').getAttribute('data-v');
+      tipo = 'colaborador';
       var email = $('n-email').value.trim().toLowerCase(), nome = $('n-nome').value.trim();
       if(nome.length < 3) throw new Error('Informe o nome completo.');
       if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Informe um e-mail válido.');
@@ -491,10 +561,18 @@ function novaPessoa(){
       }
       var whats = soDigitos($('n-whats').value);
       return criarAcesso(corpo).then(function(dados){
-        if(dados.aviso) aviso(dados.aviso, true);
-        /* o telefone não passa pela edge (ela cuida só do acesso) */
-        if(whats && dados.id) return core('pessoas').update({ whatsapp: whats }).eq('id', dados.id).then(ok);
-      }).then(function(){ aviso('Acesso criado. O e-mail para criar a senha foi enviado.'); });
+        /* o telefone não passa pela edge (ela cuida só do acesso). Se falhar,
+           o acesso JÁ foi criado: não é erro de repetir (daria "já tem acesso") */
+        var tel = whats && dados.id
+          ? core('pessoas').update({ whatsapp: whats }).eq('id', dados.id).then(ok).then(function(){ return ''; },
+              function(){ return ' O WhatsApp não foi salvo — edite a pessoa para incluir.'; })
+          : Promise.resolve('');
+        return tel.then(function(extra){
+          if(dados.aviso) return { ficar: dados.aviso + extra };
+          if(extra) return { erro: 'Acesso criado.' + extra };
+          return 'Acesso criado. O e-mail para criar a senha foi enviado.';
+        });
+      });
     }, 'Criar acesso');
   segmento('n-tipo', function(v){
     $('n-colab').classList.toggle('oculto', v !== 'colaborador');
@@ -521,14 +599,20 @@ function criarAcesso(corpo){
   });
 }
 
-/* troca o conjunto de vínculos (pessoa↔obra, empresa↔obra) pelo marcado */
-function sincronizar(tabela, chave, valor, outra, antes, depois){
-  var tira = antes.filter(function(x){ return depois.indexOf(x) < 0; });
-  var poe  = depois.filter(function(x){ return antes.indexOf(x) < 0; });
-  var p = Promise.resolve();
-  if(tira.length) p = p.then(function(){ return core(tabela).delete().eq(chave, valor).in(outra, tira).then(ok); });
-  if(poe.length)  p = p.then(function(){ return core(tabela).insert(poe.map(function(x){ var o = {}; o[chave] = valor; o[outra] = x; return o; })).then(ok); });
-  return p;
+/* troca as obras que a pessoa vê numa transação só (0027). Sem a função,
+   PÕE antes de TIRAR: se falhar no meio, a pessoa fica com obra a mais —
+   nunca com nenhuma (que quer dizer "vê todas"). */
+function definirObras(pessoa, antes, depois){
+  return sb.schema('core').rpc('definir_obras_da_pessoa', { p_pessoa: pessoa, p_obras: depois }).then(function(r){
+    if(!r || !r.error) return;
+    if(!/definir_obras_da_pessoa|Could not find the function|does not exist/i.test(r.error.message || '')) throw r.error;
+    var tira = antes.filter(function(x){ return depois.indexOf(x) < 0; });
+    var poe  = depois.filter(function(x){ return antes.indexOf(x) < 0; });
+    var p = Promise.resolve();
+    if(poe.length)  p = p.then(function(){ return core('pessoa_obras').upsert(poe.map(function(x){ return { pessoa_id: pessoa, obra_id: x }; }), { onConflict: 'pessoa_id,obra_id', ignoreDuplicates: true }).then(ok); });
+    if(tira.length) p = p.then(function(){ return core('pessoa_obras').delete().eq('pessoa_id', pessoa).in('obra_id', tira).then(ok); });
+    return p;
+  });
 }
 
 /* ---------------------------------------------------------------------
@@ -542,6 +626,9 @@ var SISTEMAS = [
   { m:'docs',          nome:'Docs',        dica:'Até a virada o Docs tem acesso próprio; aqui é só o card' },
   { m:'configuracoes', nome:'Cadastros',   dica:'A engrenagem do portal' }
 ];
+var NIVEIS_FLOW = [['ti', 'TI'], ['gestor', 'Gestor'], ['colaborador', 'Colaborador']];
+function nivelFlowDe(perfil){ var n = (D.nivelFlow || []).find(function(x){ return x.perfil === perfil; }); return n ? n.nivel : 'colaborador'; }
+var PERM_VISTA = 'quem';
 var NIVEIS_PATRIMONIO = [
   ['operador_ti', 'Gestor de TI'],
   ['admin_obras', 'Gestor de Obra (Administrativo)'],
@@ -562,11 +649,22 @@ function telaPermissoes(){
           if(sis.m === 'patrimonio'){
             var nv = nivelPatr(p.codigo);
             if(dir) return '<td><span class="trava">Diretoria (tudo)</span></td>';
-            return '<td><select data-perm="' + esc(p.codigo) + '" data-m="patrimonio" aria-label="Patrimônio para ' + esc(p.nome) + '">'
-              + '<option value="">— sem acesso —</option>'
+            /* mesma caixa dos outros; marcada, aparece o nível (o Patrimônio exige um) */
+            return '<td><div style="display:flex;align-items:center;justify-content:center;gap:8px">'
+              + '<input type="checkbox" data-patr-liga="' + esc(p.codigo) + '"' + (nv ? ' checked' : '') + ' aria-label="Patrimônio para ' + esc(p.nome) + '">'
+              + '<select data-perm="' + esc(p.codigo) + '" data-m="patrimonio" aria-label="Nível no Patrimônio para ' + esc(p.nome) + '"' + (nv ? '' : ' class="oculto"') + '>'
+              + (nv ? '' : '<option value="">— escolha o nível —</option>')
               + NIVEIS_PATRIMONIO.filter(function(n){ return n[0] !== 'admin_ti' || nv === 'admin_ti'; }).map(function(n){
                   return '<option value="' + n[0] + '"' + (nv === n[0] ? ' selected' : '') + '>' + esc(n[1]) + '</option>'; }).join('')
-              + '</select>' + (nv && !temModulo(p.codigo, 'patrimonio') ? '<div class="trava">sem o card no portal</div>' : '') + '</td>';
+              + '</select></div>' + (nv && !temModulo(p.codigo, 'patrimonio') ? '<div class="trava">sem o card no portal</div>' : '') + '</td>';
+          }
+          if(sis.m === 'flow' && !dir && !D.falta0026){
+            var fl = temModulo(p.codigo, 'flow'), nf = nivelFlowDe(p.codigo);
+            return '<td><div style="display:flex;align-items:center;justify-content:center;gap:8px">'
+              + '<input type="checkbox" data-perm="' + esc(p.codigo) + '" data-m="flow"' + (fl ? ' checked' : '') + ' aria-label="Flow para ' + esc(p.nome) + '">'
+              + '<select data-flow-nivel="' + esc(p.codigo) + '" aria-label="Nível no Flow para ' + esc(p.nome) + '"' + (fl ? '' : ' class="oculto"') + '>'
+              + NIVEIS_FLOW.map(function(n){ return '<option value="' + n[0] + '"' + (nf === n[0] ? ' selected' : '') + '>' + esc(n[1]) + '</option>'; }).join('')
+              + '</select></div></td>';
           }
           var trava = dir || (sis.m === 'configuracoes' && p.codigo === 'ti');
           return '<td><input type="checkbox" data-perm="' + esc(p.codigo) + '" data-m="' + sis.m + '"' + (temModulo(p.codigo, sis.m) ? ' checked' : '')
@@ -574,28 +672,78 @@ function telaPermissoes(){
         }).join('') + '</tr>';
   }).join('');
   var externos = perfis.filter(function(p){ return p.eh_externo; }).map(function(p){ return esc(p.nome); }).join(', ');
-  return cabecalho('Permissões', 'Em que sistema cada perfil entra. A mudança vale na hora, para todas as pessoas do perfil.')
-    + '<div class="dica" style="margin-top:14px">Travado de propósito: o perfil Diretoria, a TI nos Cadastros'
+  return cabecalho('Permissões', 'A mudança vale na hora, para todas as pessoas do perfil.')
+    + vistasPermissoes()
+    + (PERM_VISTA !== 'quem' ? telaAcoes(PERM_VISTA) : '<div class="dica" style="margin-top:14px">Travado de propósito: o perfil Diretoria, a TI nos Cadastros'
     + (externos ? ' e os externos (' + externos + ' — só a área do fornecedor)' : '') + '. '
     + 'Dentro de cada sistema, o que a pessoa pode fazer segue as regras dele (no Patrimônio, pelo nível).</div>'
     + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
     + SISTEMAS.map(function(sis){ return '<th title="' + esc(sis.dica) + '">' + esc(sis.nome) + '</th>'; }).join('')
-    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>');
+}
+function vistasPermissoes(){
+  var v = [['quem', 'Quem entra em cada sistema'], ['patrimonio', 'O que cada nível faz · Patrimônio'], ['flow', 'O que cada nível faz · Flow']];
+  return '<div class="seg" style="margin-top:14px;max-width:760px">' + v.map(function(x){
+    return '<button type="button" data-acao="perm-vista" data-id="' + x[0] + '" class="' + (PERM_VISTA === x[0] ? 'ativo' : '') + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>';
+}
+/* nível × ação de um sistema (0026) — o banco obedece a esta tabela */
+function telaAcoes(mod){
+  if(D.falta0026) return '<div class="recado erro">Falta rodar a migração 0026 no banco.</div>';
+  var niveis = D.niveis.filter(function(n){ return n.modulo === mod; });
+  var acoes  = D.acoes.filter(function(a){ return a.modulo === mod; });
+  function tem(n, a){ return D.nivelAcoes.some(function(x){ return x.modulo === mod && x.nivel === n && x.acao === a; }); }
+  var dica = mod === 'patrimonio'
+    ? 'O banco do Patrimônio obedece a esta tabela. Quem gerencia uma área já vê os bens dela; Excluir e Aprovar baixa só valem na área que o nível gerencia. "Cadastrar, editar, movimentar e aprovar" é uma ação só por área porque é a mesma gravação no bem. Quem não gerencia a área só pede (cadastro, movimentação do que está com ele).'
+    : 'No Flow, quem vê cada pendência continua sendo: quem criou, o responsável, os envolvidos e quem vê a obra.';
+  return '<div class="dica" style="margin-top:14px">' + esc(dica) + ' Qual nível cada perfil tem: em "Quem entra".</div>'
+    + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Ação</th>'
+    + niveis.map(function(n){ return '<th>' + esc(n.nome) + (n.travado ? '<div class="trava">tudo</div>' : '') + '</th>'; }).join('')
+    + '</tr></thead><tbody>' + acoes.map(function(a){
+        return '<tr><td class="perfil"><b>' + esc(a.nome) + '</b></td>' + niveis.map(function(n){
+          return '<td><input type="checkbox" data-na-mod="' + esc(mod) + '" data-na-nivel="' + esc(n.codigo) + '" data-na-acao="' + esc(a.codigo) + '"'
+               + (n.travado || tem(n.codigo, a.codigo) ? ' checked' : '') + (n.travado ? ' disabled title="Travado"' : '')
+               + ' aria-label="' + esc(a.nome) + ' — ' + esc(n.nome) + '"></td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>';
 }
 $('conteudo').addEventListener('change', function(e){
-  var t = e.target; if(!t.hasAttribute('data-perm')) return;
+  var t = e.target;
+  if(t.hasAttribute('data-na-acao')){
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    return sb.schema('core').rpc('definir_acao', { p_modulo: t.getAttribute('data-na-mod'), p_nivel: t.getAttribute('data-na-nivel'),
+                                                   p_acao: t.getAttribute('data-na-acao'), p_ligado: t.checked }).then(ok)
+      .then(function(){ aviso('Permissão atualizada.'); return recarregar(); })
+      .catch(function(err){ aviso(msgErro(err), true); recarregar(); });
+  }
+  if(t.hasAttribute('data-flow-nivel')){
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    return definirAcesso(t.getAttribute('data-flow-nivel'), 'flow', true, t.value);
+  }
+  if(t.hasAttribute('data-patr-liga')){
+    var sel = t.parentNode.querySelector('select');
+    if(t.checked){ sel.classList.remove('oculto'); sel.focus(); return; }   // grava quando escolher o nível
+    sel.classList.add('oculto');
+    if(!nivelPatr(t.getAttribute('data-patr-liga'))) return;               // nunca foi gravado
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    return definirAcesso(t.getAttribute('data-patr-liga'), 'patrimonio', false, null);
+  }
+  if(!t.hasAttribute('data-perm')) return;
   var perfil = t.getAttribute('data-perm'), m = t.getAttribute('data-m');
   var ligado = t.tagName === 'SELECT' ? !!t.value : t.checked;
   var nivel = t.tagName === 'SELECT' ? (t.value || null) : null;
-  t.disabled = true;
-  sb.schema('core').rpc('definir_acesso', { p_perfil: perfil, p_modulo: m, p_ligado: ligado, p_nivel: nivel }).then(ok)
+  if(m === 'flow' && ligado){ var sf = t.parentNode.querySelector('select[data-flow-nivel]'); if(sf) nivel = sf.value; }
+  if(t.tagName === 'SELECT' && !t.value) return;
+  FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+  definirAcesso(perfil, m, ligado, nivel);
+});
+function definirAcesso(perfil, m, ligado, nivel){
+  return sb.schema('core').rpc('definir_acesso', { p_perfil: perfil, p_modulo: m, p_ligado: ligado, p_nivel: nivel }).then(ok)
     .then(function(){ aviso('Permissão de ' + perfilNome(perfil) + ' atualizada.'); return recarregar(); })
     .catch(function(err){
       var msg = msgErro(err);
       if(/definir_acesso|function .* does not exist|Could not find the function/i.test(msg)) msg = 'Falta rodar a migração 0025 no banco.';
       aviso(msg, true); recarregar();
     });
-});
+}
 
 /* ---------------------------------------------------------------------
    SETORES
@@ -618,7 +766,7 @@ $('conteudo').addEventListener('change', function(e){
   if(t.hasAttribute('data-ordem')){ nome = t.getAttribute('data-ordem'); dados = { ordem: Math.max(0, Math.min(999, parseInt(t.value, 10) || 0)) }; }
   else if(t.hasAttribute('data-setor-ativo')){ nome = t.getAttribute('data-setor-ativo'); dados = { ativo: t.checked }; }
   else return;
-  t.disabled = true;
+  FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
   core('setores').update(dados).eq('nome', nome).then(ok)
     .then(function(){ aviso('Setor atualizado.'); return recarregar(); })
     .catch(function(err){ aviso(msgErro(err), true); t.disabled = false; });
@@ -630,7 +778,9 @@ function novoSetor(){
     function(){
       var nome = $('s-nome').value.trim();
       if(!nome) throw new Error('Informe o nome do setor.');
-      return core('setores').insert({ nome: nome, ordem: parseInt($('s-ordem').value, 10) || 100 }).then(ok);
+      var ord = parseInt($('s-ordem').value, 10);
+      ord = isNaN(ord) ? 100 : Math.max(0, Math.min(999, ord));
+      return core('setores').insert({ nome: nome, ordem: ord }).then(ok);
     });
 }
 
@@ -693,8 +843,9 @@ function modal(titulo, corpo, salvar, rotulo){
     + '</div></div>';
   document.body.appendChild(f);
   document.body.style.overflow = 'hidden';
-  f.querySelector('.fechar').addEventListener('click', fecharModal);
-  f.querySelector('[data-m="cancelar"]').addEventListener('click', fecharModal);
+  var fechar = function(){ if(!f.hasAttribute('data-salvando')) fecharModal(); };   // gravando: espera
+  f.querySelector('.fechar').addEventListener('click', fechar);
+  f.querySelector('[data-m="cancelar"]').addEventListener('click', fechar);
   /* filtro das caixas de marcar */
   f.querySelectorAll('[data-filtra]').forEach(function(i){
     i.addEventListener('input', function(){
@@ -705,14 +856,28 @@ function modal(titulo, corpo, salvar, rotulo){
   });
   var bs = f.querySelector('[data-m="salvar"]');
   if(bs) bs.addEventListener('click', function(){
-    var rec = $('m-recado'); rec.innerHTML = '';
+    var rec = f.querySelector('#m-recado'); rec.innerHTML = '';
     var p;
     try { p = Promise.resolve(salvar(bs)); } catch(e){ rec.innerHTML = '<div class="recado erro">' + esc(e.message) + '</div>'; return; }
-    bs.disabled = true; bs.textContent = 'Salvando…';
-    p.then(function(){ fecharModal(); aviso('Salvo.'); return recarregar(); })
+    bs.disabled = true; bs.textContent = 'Salvando…'; f.setAttribute('data-salvando', '1');
+    p.then(function(res){
+       f.removeAttribute('data-salvando');
+       if(res && res.ficar){
+         /* deu certo, mas há um recado que a pessoa precisa ler (ex.: o e-mail
+            de senha não saiu): o modal fica aberto, sem "repetir" (daria 409) */
+         rec.innerHTML = '<div class="recado erro">' + esc(res.ficar) + '</div>';
+         bs.remove();
+         var c = f.querySelector('[data-m="cancelar"]'); if(c) c.textContent = 'Fechar';
+         return recarregar();
+       }
+       if($('modal') === f) fecharModal();
+       if(res && res.erro) aviso(res.erro, true); else aviso(typeof res === 'string' ? res : 'Salvo.');
+       return recarregar();
+     })
      .catch(function(e){
-       rec.innerHTML = '<div class="recado erro">' + esc(msgErro(e)) + '</div>';
-       bs.disabled = false; bs.textContent = rotulo || 'Salvar';
+       f.removeAttribute('data-salvando');
+       if($('modal') === f){ rec.innerHTML = '<div class="recado erro">' + esc(msgErro(e)) + '</div>'; bs.disabled = false; bs.textContent = rotulo || 'Salvar'; }
+       else aviso(msgErro(e), true);
        recarregar();   // parte pode ter gravado (ex.: dados sim, vínculos não)
      });
   });
@@ -720,7 +885,7 @@ function modal(titulo, corpo, salvar, rotulo){
   if(pri && window.innerWidth > 600) pri.focus();
 }
 function fecharModal(){ var m = $('modal'); if(m) m.remove(); document.body.style.overflow = ''; }
-document.addEventListener('keydown', function(e){ if(e.key === 'Escape') fecharModal(); });
+document.addEventListener('keydown', function(e){ var m = $('modal'); if(e.key === 'Escape' && m && !m.hasAttribute('data-salvando')) fecharModal(); });
 function segmento(id, aoMudar){
   var s = $(id); if(!s) return;
   s.addEventListener('click', function(e){
