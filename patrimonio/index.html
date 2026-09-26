@@ -415,8 +415,8 @@
 
   .role-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
   .role-chip.diretoria { background: var(--brand-navy); color: var(--brand-orange); }
-  .role-chip.admin_ti, .role-chip.operador_ti { background: var(--brand-navy); color: white; }
-  .role-chip.admin_obras { background: var(--brand-orange); color: white; }
+  .role-chip.ti { background: var(--brand-navy); color: white; }
+  .role-chip.administrativo { background: var(--brand-orange); color: white; }
   .role-chip.operador { background: var(--border); color: var(--brand-navy); }
 
   .alert-bar { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; padding: 12px; border-radius: 10px; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
@@ -444,7 +444,7 @@
 /* Formato AAAA.MM.DD.N, igual ao Flow e ao portal. O publicar.js grava este
    número em version.json — é ele que faz aparecer o aviso de nova versão.
    SUBA A CADA PUBLICAÇÃO. */
-const APP_VERSION = '2026.09.25.1';
+const APP_VERSION = '2026.09.26.1';
 /* símbolo BeMer do cabeçalho (portal/marca/bemer-simbolo.png, reduzido).
    Embutido porque a CSP desta página só aceita imagem da própria origem ou data:. */
 const SIMBOLO_BEMER = 'data:image/png;base64,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';
@@ -466,10 +466,10 @@ const SB = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY)
    o que é do módulo em . T() manda a consulta para o lugar
    certo. Nenhuma tela precisa saber disso.                       */
 const SCHEMA_DE = {
-  pessoas:'core', obras:'core', empresas:'core', setores:'core',
+  pessoas:'core', obras:'core', empresas:'core',
   categorias:'patrimonio', subcategorias:'patrimonio', localizacoes:'patrimonio',
   software_tipos:'patrimonio', patrimonios:'patrimonio',
-  movimentacoes:'patrimonio', inventarios:'patrimonio', permissoes:'patrimonio'
+  movimentacoes:'patrimonio', inventarios:'patrimonio'
 };
 function T(nome){
   const esquema = SCHEMA_DE[nome];
@@ -477,26 +477,26 @@ function T(nome){
   return SB.schema(esquema).from(nome);
 }
 
-/* O core guarda o perfil DA EMPRESA (ti, administrativo, almoxarife...).
-   O Patrimônio trabalha com níveis próprios (operador_ti, admin_obras...).
-   A tabela patrimonio.permissoes faz a ponte; aqui ela vira um mapa.
-   Quem não está no mapa NÃO entra no módulo — perfil fica nulo.     */
-let NIVEL_DE = null;
-/* 23/09/2026 — o mapa só era carregado dentro do fluxo de 2FA (desligado),
-   então nunca era aplicado: a tela recebia 'ti' e 'administrativo' crus e
-   só a diretoria funcionava. Agora o load() chama isto sempre. Só guarda
-   em cache quando a leitura volta com dados (uma falha não congela {}). */
+/* 0030 (26/09/2026): sem níveis. Entra no Patrimônio quem tem o card do
+   módulo (core.perfil_modulos); o que cada um faz vem de core.perfil_acoes
+   (Cadastros › Permissões do portal), e o banco obedece à mesma tabela.
+   Na tela, u.perfil = o perfil da empresa (null = não entra no módulo) e
+   'diretoria' tem tudo. Só guarda em cache quando a leitura volta com dados
+   (uma falha não congela {}). */
+let NIVEL_DE = null;       // perfil → perfil (só os que têm o card)
+let NOME_PERFIL = {};      // perfil → nome, para mostrar
 async function carregarNiveis(forcar){
   if (NIVEL_DE && !forcar) return NIVEL_DE;
-  const { data, error } = await T('permissoes').select('perfil,nivel');
-  if (error || !data || !data.length) return NIVEL_DE || {};
+  const [pm, pf] = await Promise.all([
+    SB.schema('core').from('perfil_modulos').select('perfil').eq('modulo', 'patrimonio'),
+    SB.schema('core').from('perfis').select('codigo,nome')
+  ]);
+  if (pf && !pf.error && Array.isArray(pf.data)) pf.data.forEach(function(r){ NOME_PERFIL[r.codigo] = r.nome; });
+  if (!pm || pm.error || !pm.data || !pm.data.length) return NIVEL_DE || {};
   NIVEL_DE = {};
-  data.forEach(function(r){ NIVEL_DE[r.perfil] = r.nivel; });
+  pm.data.forEach(function(r){ NIVEL_DE[r.perfil] = r.perfil; });
   return NIVEL_DE;
 }
-/* Nível do banco → papel da TELA: o MESMO nome dos dois lados. Atenção: o
-   'operador_ti' é o chefe da TI (0015/0017: eh_admin e gerencia as
-   categorias de TI) — apesar do nome, não é um operador comum. */
 function papelDaTela(perfilCore){
   return (NIVEL_DE && perfilCore) ? (NIVEL_DE[perfilCore] || null) : null;
 }
@@ -513,37 +513,27 @@ function dominioDaCategoria(catId){
   if (c && c.dominio) return c.dominio;
   return catId === 1 ? 'obra' : (catId === 2 || catId === 3) ? 'ti' : 'geral';
 }
-/* O que cada nível pode fazer: Cadastros › Permissões do portal grava em
-   core.nivel_acoes (0026), e o banco obedece (ve_categoria/gerencia_categoria/
-   eh_admin leem a mesma tabela). A tela lê igual, para não oferecer o que o
-   banco recusa. Sem a tabela (0026 não rodada / falha de leitura), vale o
-   padrão abaixo — que é exatamente a regra de antes (0017). Diretoria: tudo. */
-const ACOES_PADRAO = {
-  operador_ti: ['ver_ti', 'gerenciar_ti', 'administrar'],
-  admin_ti:    ['ver_ti', 'gerenciar_ti', 'administrar'],
-  admin_obras: ['ver_obra', 'gerenciar_obra', 'administrar'],
-  almoxarife:  ['ver_obra'],
-  operador:    []
-};
-let ACOES_DE = null;   // nível → Set de ações
+/* O que cada perfil pode fazer (core.perfil_acoes, 0030). A tela lê a mesma
+   tabela que o banco, para não oferecer o que o banco recusa. Sem conseguir
+   ler, ninguém além da diretoria ganha nada (o banco recusaria de qualquer
+   jeito). */
+let ACOES_DE = null;   // perfil → Set de ações
 async function carregarAcoes(){
   try {
-    const { data, error } = await SB.schema('core').from('nivel_acoes').select('nivel,acao').eq('modulo', 'patrimonio');
+    const { data, error } = await SB.schema('core').from('perfil_acoes').select('perfil,acao').eq('modulo', 'patrimonio');
     if (error || !Array.isArray(data)) throw error || new Error('sem resposta');
-    // vazio = o dono desmarcou tudo (estado válido), NÃO "tabela ausente"
     const m = {};
-    data.forEach(r => { (m[r.nivel] = m[r.nivel] || new Set()).add(r.acao); });
+    data.forEach(r => { (m[r.perfil] = m[r.perfil] || new Set()).add(r.acao); });
     ACOES_DE = m;
   } catch (e) {
-    if (!ACOES_DE) { ACOES_DE = {}; Object.keys(ACOES_PADRAO).forEach(k => { ACOES_DE[k] = new Set(ACOES_PADRAO[k]); }); }
+    if (!ACOES_DE) ACOES_DE = {};
   }
   return ACOES_DE;
 }
-function nivelPode(nivel, acao){
-  if (!nivel) return false;
-  if (nivel === 'diretoria') return true;
-  const m = ACOES_DE || {};
-  const lista = m[nivel] || (ACOES_DE ? null : new Set(ACOES_PADRAO[nivel] || []));
+function nivelPode(perfil, acao){
+  if (!perfil) return false;
+  if (perfil === 'diretoria') return true;
+  const lista = (ACOES_DE || {})[perfil];
   return !!(lista && lista.has(acao));
 }
 
@@ -594,7 +584,7 @@ const Auth = {
     if (!SB || !userId) return null;
     await carregarNiveis();
     const { data, error } = await T('pessoas')
-      .select('nome,perfil,setor,ativo')
+      .select('nome,perfil,ativo')
       .eq('id', userId)
       .maybeSingle();
     if (error) { console.warn('[Auth] fetchProfile:', error.message); return null; }
@@ -752,7 +742,7 @@ const BMStore = {
       await carregarNiveis(true);   // sem o mapa, ninguém além da diretoria trabalha
       await carregarAcoes();
       const [profs, cats, subs, locs, swts, patrs, movs, invs] = await Promise.all([
-        T('pessoas').select('id,email,nome,perfil,setor,ativo,whatsapp')
+        T('pessoas').select('id,email,nome,perfil,ativo,whatsapp')
           .eq('tipo','colaborador').order('email'),
         T('categorias').select('*').order('id'),
         T('subcategorias').select('*').order('id'),
@@ -770,7 +760,7 @@ const BMStore = {
           id: p.id, nome: p.nome || p.email, email: p.email,
           /* perfil = papel no Patrimônio (null = não entra no módulo);
              perfilCore = perfil da empresa, é o que se grava em core.pessoas */
-          perfil: papelDaTela(p.perfil), perfilCore: p.perfil, setor: p.setor || '',
+          perfil: papelDaTela(p.perfil), perfilCore: p.perfil,
           ativo: p.ativo !== false,
           whatsapp: p.whatsapp || ''
         })),
@@ -1149,7 +1139,7 @@ const WhatsDest = {
 /* ============== CONTAS-MESTRE (proteção contra desativação acidental) ============== */
 /* Lista de e-mails de contas que NÃO podem ser desativadas pelo app, mesmo por
    outra Diretoria. Também não podem ter o perfil alterado.
-   Nome / setor / WhatsApp continuam editáveis (pelo próprio dono ou Diretoria).
+   Nome / WhatsApp continuam editáveis (pelo próprio dono ou Diretoria).
    Pra excluir de verdade (cenário muito raro, ex: LGPD): só direto no Supabase
    após zerar todas as FKs — operação manual e consciente. */
 const MASTER_EMAILS = new Set([
@@ -1182,14 +1172,17 @@ function whatsFormatar(v) {
 
 /* ============== AUTH & PERMISSIONS ============== */
 
-/* Regras da TELA espelhando as do banco (0017), por domínio da categoria.
-   Papéis: diretoria (tudo) · operador_ti / admin_ti (chefe da TI: vê e gerencia TI) ·
-   admin_obras (Administrativo: vê e gerencia Obra) · almoxarife (vê e
-   movimenta Obra, não edita cadastro, cadastro dele vai para aprovação) ·
-   operador (só o que está com ele). admin_* e diretoria = eh_admin(). */
+/* Regras da TELA espelhando as do banco (0030), por domínio da categoria.
+   Diretoria: tudo. Os demais: as ações marcadas no perfil (ver_<área>,
+   gerenciar_<área>, aprovar_<área>, aprovar_baixa, excluir, listas,
+   inventario, relatorios). Sem nenhuma: só o que está com ele. */
 const Perms = {
-  /* = eh_admin() (0026: ação "administrar") */
-  isAdmin(u) { return !!u && nivelPode(u.perfil, 'administrar'); },
+  /* = eh_admin() (0030: ação "listas" — categorias, locais, softwares, importar) */
+  isAdmin(u) { return !!u && nivelPode(u.perfil, 'listas'); },
+  podeRelatorios(u) { return !!u && nivelPode(u.perfil, 'relatorios'); },
+  /* não vê área nenhuma: só o que está com ele (o antigo "operador") */
+  soMeus(u) { return !!u && u.perfil !== 'diretoria' && !(DB.categorias || []).some(c => Perms.veCategoria(u, c.id)); },
+  gereAlgumaArea(u) { return !!u && (DB.categorias || []).some(c => Perms.canManageCategoria(u, c.id)); },
   isDiretoria(u) { return !!u && u.perfil === 'diretoria'; },
   /* quem precisa de aprovação para cadastrar */
   isOperador(u) { return !!u && !(DB.categorias || []).some(c => Perms.canManageCategoria(u, c.id)); },   // não gerencia área nenhuma
@@ -1197,7 +1190,7 @@ const Perms = {
   veCategoria(u, categoriaId) {
     if (!u) return false;
     const d = dominioDaCategoria(categoriaId);
-    return nivelPode(u.perfil, 'ver_' + d) || nivelPode(u.perfil, 'gerenciar_' + d);
+    return nivelPode(u.perfil, 'ver_' + d) || nivelPode(u.perfil, 'gerenciar_' + d) || nivelPode(u.perfil, 'aprovar_' + d);
   },
   canManageCategoria(u, categoriaId) {
     if (!u) return false;
@@ -1207,7 +1200,8 @@ const Perms = {
   /* excluir / aprovar baixa: a ação E gerenciar a área do bem (o banco confere
      igual — gatilho da 0027). Chamado sem categoria = "em alguma área". */
   canDelete(u, categoriaId) { return !!u && nivelPode(u.perfil, 'excluir') && (arguments.length < 2 || Perms.canManageCategoria(u, categoriaId)); },
-  canApproveCadastro(u, categoriaId) { return Perms.canManageCategoria(u, categoriaId); },
+  /* aprovar/recusar pedido de cadastro e de movimentação: ação "aprovar_<área>" (0030) */
+  canApproveCadastro(u, categoriaId) { return !!u && nivelPode(u.perfil, 'aprovar_' + dominioDaCategoria(categoriaId)); },
   canRequestBaixa(u, categoriaId) { return Perms.canManageCategoria(u, categoriaId); },
   canRequestMove(u, p) {
     if (!u || !p) return false;
@@ -1219,8 +1213,8 @@ const Perms = {
     if (p.responsavelAtualId === u.id) return true;
     return false;
   },
-  /* inventário grava em patrimonio.inventarios, que exige eh_admin() */
-  podeInventariar(u) { return Perms.isAdmin(u); },
+  /* inventário grava em patrimonio.inventarios (0030: ação "inventario") */
+  podeInventariar(u) { return !!u && nivelPode(u.perfil, 'inventario'); },
   movimentacoesPendentesParaAprovador(user) {
     if (!user) return [];
     return DB.patrimonios.filter(p =>
@@ -1240,14 +1234,7 @@ const Perms = {
   },
   perfilLabel(perfil) {
     if (!perfil) return 'Sem acesso ao Patrimônio';
-    return ({
-      diretoria:    'Diretoria',
-      admin_ti:     'TI (gestor)',
-      admin_obras:  'Administrativo',
-      almoxarife:   'Almoxarife',
-      operador:     'Operador Obra',
-      operador_ti:  'TI (gestor)'
-    })[perfil] || perfil;
+    return NOME_PERFIL[perfil] || perfil;
   }
 };
 
@@ -1519,7 +1506,7 @@ function bindNovaSenha() {
 }
 
 /* ===== MFA (TOTP) para perfis administrativos ===== */
-const ADMIN_PERFIS = ['diretoria','admin_ti','admin_obras','operador_ti'];
+/* 0030: administrativo = quem mantém as listas (ação 'listas') */
 
 /* 2FA DESLIGADO durante a implantação (decisão de 11/09/2026).
    Para religar, basta trocar para true — quem já cadastrou o autenticador
@@ -1542,7 +1529,7 @@ async function ensureMfaForAdmins(authUser) {
   if (!MFA_ATIVO) return true;   // desligado na implantação
   if (!SB || !authUser) return true;
   const profile = await Auth.fetchProfile(authUser.id);
-  if (!profile || !ADMIN_PERFIS.includes(profile.perfil)) return true;
+  if (!profile || !Perms.isAdmin(profile)) return true;
   const { data: factors, error: fe } = await SB.auth.mfa.listFactors();
   if (fe) { toast('Erro MFA: ' + fe.message, 'error'); return false; }
   const totp = (factors.totp || []).find(f => f.status === 'verified');
@@ -1629,16 +1616,16 @@ async function syncCurrentUserFromAuth(authUser) {
     // Fallback: busca o próprio profile (RLS sempre permite ler o próprio)
     try {
       const { data } = await T('pessoas')
-        .select('id,email,nome,perfil,setor,ativo').eq('id', authUser.id).maybeSingle();
+        .select('id,email,nome,perfil,ativo').eq('id', authUser.id).maybeSingle();
       if (data) {
         /* Antes caía em 'operador' quando o perfil vinha vazio. Na suíte isso
            daria acesso a quem não está no módulo: comNivel devolve nulo de
-           propósito para quem não consta em patrimonio.permissoes. */
+           propósito para quem não tem o card do Patrimônio. */
         await carregarNiveis();
         comNivel(data);
         entry = { id: data.id, nome: data.nome || data.email, email: data.email,
                   perfil: data.perfil || null, perfilCore: data.perfilCore || null,
-                  setor: data.setor || '', ativo: data.ativo !== false };
+                  ativo: data.ativo !== false };
         if (!DB.usuarios.find(x => x.id === entry.id)) DB.usuarios.push(entry);
       }
     } catch (e) { console.warn('[sync] fallback profile:', e.message); }
@@ -1651,7 +1638,7 @@ async function syncCurrentUserFromAuth(authUser) {
     toast('Sua conta está desativada. Contate a Diretoria.', 'error');
     return null;
   }
-  /* Sem nível no Patrimônio (fora de patrimonio.permissoes): não entra.
+  /* Sem o card do Patrimônio: não entra.
      Antes entrava e via tudo vazio. Mostra a razão em vez de mandar de volta
      ao portal — senão o card do portal traria a pessoa aqui de novo. */
   if (!entry.perfil) { SEM_ACESSO = true; return null; }
@@ -1782,13 +1769,16 @@ function renderHome() {
   const manut = visible.filter(p => p.status === 'manutencao').length;
   const pending = Lookup.pendingForUser(u.id);
   const podeCadastrar = Perms.canCreate(u);
-  const isOperador = u.perfil === 'operador';
+  const isOperador = Perms.soMeus(u);
 
+  /* 0030: o recado sai das ações do perfil, não do nome do nível */
+  const NOME_AREA = { obra: 'Obra', ti: 'TI' };
+  const areasGere = ['obra', 'ti'].filter(d => nivelPode(u.perfil, 'gerenciar_' + d)).map(d => NOME_AREA[d]);
+  const areasVe = ['obra', 'ti'].filter(d => nivelPode(u.perfil, 'ver_' + d) || nivelPode(u.perfil, 'aprovar_' + d)).map(d => NOME_AREA[d]);
   const escopoCat =
-    (u.perfil === 'admin_ti' || u.perfil === 'operador_ti') ? '<div class="card-hint">Você gerencia apenas itens de <strong>TI</strong></div>' :
-    u.perfil === 'admin_obras' ? '<div class="card-hint">Você gerencia apenas itens de <strong>Obra</strong></div>' :
-    u.perfil === 'almoxarife' ? '<div class="card-hint">Você vê os itens de <strong>Obra</strong> e pede movimentação dos que estão com você</div>' :
     u.perfil === 'diretoria' ? '<div class="card-hint">Acesso total ao sistema</div>' :
+    areasGere.length ? '<div class="card-hint">Você gerencia itens de <strong>' + areasGere.join(' e ') + '</strong></div>' :
+    areasVe.length ? '<div class="card-hint">Você vê os itens de <strong>' + areasVe.join(' e ') + '</strong> e pede movimentação dos que estão com você</div>' :
     '<div class="card-hint">Visualizando apenas os bens sob sua custódia</div>';
 
   // Últimas movimentações visíveis ao usuário
@@ -1905,7 +1895,7 @@ function renderList() {
   const u = Lookup.user(DB.currentUser);
   const f = State.filter;
   const isAdmin = Perms.isAdmin(u);
-  const isOperador = u.perfil === 'operador';
+  const isOperador = Perms.soMeus(u);
   let items = Lookup.visibleItems(u);
 
   if (f.q) {
@@ -1923,7 +1913,7 @@ function renderList() {
   if (f.responsavel) items = items.filter(p => String(p.responsavelAtualId) === String(f.responsavel));
 
   // Categorias disponíveis para o usuário (admin_ti só vê TI, etc.)
-  const catsVisiveis = (u.perfil === 'diretoria' || u.perfil === 'operador')
+  const catsVisiveis = (u.perfil === 'diretoria' || Perms.soMeus(u))
                      ? DB.categorias
                      : DB.categorias.filter(c => Perms.veCategoria(u, c.id));
   const showCatFilter = catsVisiveis.length > 1;
@@ -2422,7 +2412,7 @@ function openMove(patrimonioId) {
             <label>Novo responsável</label>
             <select id="m-resp">
               <option value="">— Manter (${escapeHtml((Lookup.user(p.responsavelAtualId)||{}).nome || '—')}) —</option>
-              ${DB.usuarios.filter(c => c.ativo !== false || c.id === p.responsavelAtualId).map(c => `<option value="${c.id}">${escapeHtml(c.nome)}${c.setor ? ' (' + escapeHtml(c.setor) + ')' : ''}</option>`).join('')}
+              ${DB.usuarios.filter(c => c.ativo !== false || c.id === p.responsavelAtualId).map(c => `<option value="${c.id}">${escapeHtml(c.nome)}${c.perfilCore ? ' (' + escapeHtml(NOME_PERFIL[c.perfilCore] || c.perfilCore) + ')' : ''}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
@@ -2559,7 +2549,7 @@ function sendToMaintenance(patrimonioId) {
   const u = Lookup.user(DB.currentUser);
   if (!p) return;
   // Constrói lista de candidatos a recebedor (todos os usuários ativos)
-  const opts = DB.usuarios.filter(x => x.ativo !== false || x.id === p.responsavelAtualId).map(x => `<option value="${x.id}" ${x.id===p.responsavelAtualId?'selected':''}>${escapeHtml(x.nome)}${x.setor ? ' (' + escapeHtml(x.setor) + ')' : ''}</option>`).join('');
+  const opts = DB.usuarios.filter(x => x.ativo !== false || x.id === p.responsavelAtualId).map(x => `<option value="${x.id}" ${x.id===p.responsavelAtualId?'selected':''}>${escapeHtml(x.nome)}${x.perfilCore ? ' (' + escapeHtml(NOME_PERFIL[x.perfilCore] || x.perfilCore) + ')' : ''}</option>`).join('');
   const html = `
     <div class="modal-backdrop" id="modal-mnt">
       <div class="modal" onclick="event.stopPropagation()">
@@ -2968,7 +2958,7 @@ function renderCreate() {
         <div class="form-group">
           <label>Responsável inicial *</label>
           <select id="c-resp" required>
-            ${DB.usuarios.filter(c => c.ativo !== false || c.id === u.id).map(c => `<option value="${c.id}" ${c.id===u.id?'selected':''}>${escapeHtml(c.nome)}${c.setor ? ' (' + escapeHtml(c.setor) + ')' : ''}</option>`).join('')}
+            ${DB.usuarios.filter(c => c.ativo !== false || c.id === u.id).map(c => `<option value="${c.id}" ${c.id===u.id?'selected':''}>${escapeHtml(c.nome)}${c.perfilCore ? ' (' + escapeHtml(NOME_PERFIL[c.perfilCore] || c.perfilCore) + ')' : ''}</option>`).join('')}
           </select>
           <div class="form-help">O responsável precisará confirmar o recebimento.</div>
         </div>
@@ -3229,7 +3219,7 @@ function renderPending() {
   const u = Lookup.user(DB.currentUser);
   const meus = Lookup.pendingForUser(u.id);
   const todosPending = DB.patrimonios.filter(p => p.status === 'aguardando_aceite');
-  const noEscopo = Perms.isAdmin(u)
+  const noEscopo = Perms.gereAlgumaArea(u)
     ? todosPending.filter(p => Perms.isDiretoria(u) || Perms.canManageCategoria(u, p.categoriaId))
     : [];
   const cadastrosParaAprovar = Lookup.pendingCadastrosForApprover(u);
@@ -3298,7 +3288,7 @@ function renderPending() {
       </div>
     ` : ''}
 
-    ${Perms.isAdmin(u) ? `
+    ${Perms.gereAlgumaArea(u) ? `
       <div class="card">
         <h2>Outros aceites pendentes (sua área) <span class="pill">${noEscopo.filter(p => p.responsavelAtualId !== u.id).length}</span></h2>
         <div class="card-hint">Itens aguardando aceite de outros usuários.</div>
@@ -3321,13 +3311,15 @@ function renderMore() {
   return `
     <div class="page-title">Mais</div>
 
-    ${isAdmin ? `
+    ${Perms.podeInventariar(u) ? `
       <div class="card">
         <h2>Inventário</h2>
         <div class="card-hint">Faça uma conferência por local escaneando os códigos.</div>
         <button class="btn" data-action="inv-start">📦 Iniciar inventário</button>
       </div>
+    ` : ''}
 
+    ${Perms.podeRelatorios(u) ? `
       <div class="card">
         <h2>Relatórios</h2>
         <div class="quick-actions">
@@ -3337,6 +3329,9 @@ function renderMore() {
           <button class="quick-action" data-action="export"><span class="qa-icon">⬇</span>Exportar CSV</button>
         </div>
       </div>
+    ` : ''}
+
+    ${isAdmin ? `
 
       <div class="card">
         <h2>Cadastros auxiliares</h2>
@@ -3607,7 +3602,7 @@ function openReport(kind) {
     titulo = 'Por responsável';
     rows = DB.usuarios.map(u => {
       const items = base.filter(p => p.responsavelAtualId === u.id);
-      return { nome: u.nome + (u.setor ? ' ('+u.setor+')' : ''), qtd: items.length, valor: items.reduce((s,p) => s+(p.valorAquisicao||0), 0) };
+      return { nome: u.nome, qtd: items.length, valor: items.reduce((s,p) => s+(p.valorAquisicao||0), 0) };
     }).filter(r => r.qtd > 0);
   }
   const html = `

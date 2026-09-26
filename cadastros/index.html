@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Cadastros da construtora (24/09/2026). Decisão do Saurin: pessoas, obras,
-   empresas, setores e os dados da construtora moram AQUI — os módulos só
+/* Cadastros da construtora (24/09/2026; simplificado em 26/09/2026): pessoas,
+   perfis, permissões e os dados da construtora moram AQUI — os módulos só
    consomem. Mesma identidade do portal: laranja nunca em texto sobre branco. */
 :root{
   --azul:#00296B; --azul-escuro:#001B4D; --laranja:#FE9400; --laranja-claro:#FFF1DC;
@@ -88,11 +88,6 @@ select{padding-right:28px}
 .vazio{padding:28px 16px;text-align:center;color:var(--texto2)}
 .dica{background:#fff;border:1px dashed var(--borda-forte);border-radius:10px;padding:10px 12px;color:var(--texto2);font-size:12.5px;margin-bottom:12px}
 
-/* ---- setores ---- */
-.setor{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--borda)}
-.setor:first-child{border-top:0}
-.setor .nome{flex:1 1 auto}
-.setor input[type=number]{width:80px;flex:0 0 auto}
 
 /* ---- permissões ---- */
 .tabela-rolagem{background:#fff;border:1px solid var(--borda);border-radius:12px;overflow-x:auto}
@@ -107,6 +102,17 @@ table.perm tr.travado td{background:#FAFBFD}
 table.perm input[type=checkbox]{width:20px;height:20px;accent-color:var(--azul);cursor:pointer}
 table.perm select{min-width:170px;width:auto}
 table.perm .trava{font-size:11px;color:var(--texto2)}
+table.perm th.grupo{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--azul);background:#EEF2F9}
+table.perm th.grupo.fazer{background:var(--laranja-claro);color:#6B3F00}
+table.perm th.acao{min-width:92px;max-width:130px;white-space:normal;line-height:1.3;font-size:11.5px}
+table.perm td.docs select{min-width:170px}
+table.perm td.txt{text-align:left;font-size:13px;color:var(--texto)}
+table.perm.acoes-tab{min-width:0}
+.legenda{margin-top:12px;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:4px 14px}
+.legenda div{padding:9px 0;border-top:1px solid var(--borda);font-size:12.5px;color:var(--texto2);line-height:1.45}
+.legenda div:first-child{border-top:0}
+.legenda b{color:var(--azul);font-weight:600}
+.botao.mini{min-height:34px;padding:0 12px;font-size:13px}
 @media (max-width:600px){
   table.perm th.perfil,table.perm td.perfil{min-width:118px;max-width:130px}
   table.perm select{min-width:0;max-width:150px}
@@ -178,7 +184,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.26.1';
+var APP_VERSION = '2026.09.26.2';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -211,7 +217,7 @@ function msgErro(e){
   var m = (e && (e.message || e.error_description)) || String(e || 'erro desconhecido');
   if(/duplicate key.*cnpj|empresas_cnpj_key/i.test(m)) return 'Já existe uma empresa com esse CNPJ.';
   if(/empresas_cnpj_digito|cnpj_valido/i.test(m)) return 'CNPJ inválido (confira os dígitos).';
-  if(/duplicate key.*setores|setores_pkey/i.test(m)) return 'Já existe um setor com esse nome.';
+  if(/duplicate key.*perfis|perfis_pkey/i.test(m)) return 'Já existe um perfil com esse código.';
   if(/row-level security|permission denied/i.test(m)) return 'Seu perfil não pode fazer essa alteração.';
   if(/Failed to fetch|NetworkError/i.test(m)) return 'Sem conexão. Confira a internet e tente de novo.';
   return m;
@@ -225,12 +231,14 @@ $('btn-sair').addEventListener('click', function(){ sb.auth.signOut().then(funct
    Estado
    --------------------------------------------------------------------- */
 var EU = null;
-var PODE = { admin:false, pessoas:false, empresas:false, folha:false };
-var D = { pessoas:[], perfis:[], setores:[], obras:[], empresas:[], pessoaObras:[], empresaObras:[], construtora:null, perfilModulos:[], nivelPatrimonio:[] };
+/* o que eu posso aqui (0030: tabela perfil × ação; diretoria e TI têm tudo) */
+var PODE = { admin:false, pessoas:false, verPessoas:false, verPermissoes:false, obrasPessoa:false, construtora:false, folha:false, gere:null };
+var D = { pessoas:[], perfis:[], obras:[], empresas:[], pessoaObras:[], construtora:null, perfilModulos:[], acoes:[], perfilAcoes:[] };
 var ABA = 'pessoas';
 var F = { pessoas:{ busca:'', sit:'ativos', tipo:'' } };
 
 function perfilNome(c){ var p = D.perfis.find(function(x){ return x.codigo === c; }); return p ? p.nome : (c || '—'); }
+function perfilDe(c){ return D.perfis.find(function(x){ return x.codigo === c; }) || null; }
 function empresaNome(id){ var e = D.empresas.find(function(x){ return x.id === id; }); return e ? (e.nome_fantasia || e.razao_social) : '—'; }
 function obrasDaPessoa(id){ return D.pessoaObras.filter(function(x){ return x.pessoa_id === id; }).map(function(x){ return x.obra_id; }); }
 
@@ -258,51 +266,48 @@ sb.auth.getSession().then(function(s){
     })
     .then(function(v){
       if(!v) return;
-      PODE = { admin:v[0], pessoas:v[1], empresas:v[2], folha:v[3], gere:v[4] };   // gere nulo = 0028 ainda não rodou
-      if(!PODE.pessoas) ABA = 'setores';
+      PODE = { admin:v[0], pessoas:v[1], folha:v[2], verPessoas:v[1] || v[3], verPermissoes:v[0] || v[4],
+               obrasPessoa:v[5], construtora:v[6], gere:v[7] };
+      ABA = PODE.verPessoas ? 'pessoas' : PODE.verPermissoes ? 'perfis' : 'construtora';
       return recarregar();
     });
 }).catch(function(e){
   $('conteudo').innerHTML = '<div class="recado erro">Não foi possível carregar: ' + esc(msgErro(e)) + '</div>';
 });
 function capacidades(){
-      function f(n){ return sb.schema('core').rpc(n).then(function(x){ return !x.error && x.data === true; }, function(){ return false; }); }
-      return Promise.all([f('eh_admin'), f('pode_gerenciar_pessoas'), f('pode_cadastrar_empresa'), f('pode_conceder_folha'),
-        sb.schema('core').rpc('perfis_que_gere', { p_ator: EU.perfil })
-          .then(function(x){ return !x.error && Array.isArray(x.data) ? x.data : null; }, function(){ return null; })]);
+  function f(n, a){ return sb.schema('core').rpc(n, a).then(function(x){ return !x.error && x.data === true; }, function(){ return false; }); }
+  function pode(acao){ return f('pode', { p_modulo:'configuracoes', p_acao:acao }); }
+  return Promise.all([f('eh_admin'), f('pode_gerenciar_pessoas'), f('pode_conceder_folha'),
+    pode('ver_pessoas'), pode('ver_permissoes'), pode('obras_pessoa'), pode('editar_construtora'),
+    sb.schema('core').rpc('perfis_que_gere', { p_ator: EU.perfil })
+      .then(function(x){ return !x.error && Array.isArray(x.data) ? x.data : null; }, function(){ return null; })]);
 }
 
 var RECARGA = 0;
 function recarregar(){
   var minha = ++RECARGA;   // uma recarga antiga que termina depois não sobrescreve a nova
+  var nada = Promise.resolve({ data: [] });
   var pedidos = [
-    core('perfis').select('codigo,nome,eh_externo,ativo').order('nome'),
-    core('setores').select('nome,ordem,ativo').order('ordem').order('nome'),
+    core('perfis').select('codigo,nome,descricao,eh_externo,ativo,tipo_docs').order('nome'),
     core('obras').select('id,nome,cno,ativa').order('nome'),
     core('empresas').select('id,cnpj,razao_social,nome_fantasia,ativa').order('razao_social'),
-    Promise.resolve({ data: [] }),   // era a empresa_obras (saiu com a aba Empresas)
     core('construtora').select('*').maybeSingle(),
-    PODE.pessoas ? core('pessoas').select('id,nome,email,tipo,perfil,setor,cargo,empresa_id,ativo,whatsapp,avisa_whatsapp').order('nome')
-                 : Promise.resolve({ data: [] }),
-    PODE.pessoas ? core('pessoa_obras').select('pessoa_id,obra_id') : Promise.resolve({ data: [] }),
-    PODE.admin ? core('perfil_modulos').select('perfil,modulo') : Promise.resolve({ data: [] }),
-    PODE.admin ? sb.schema('patrimonio').from('permissoes').select('perfil,nivel') : Promise.resolve({ data: [] }),
-    PODE.admin ? core('niveis').select('modulo,codigo,nome,ordem,travado').order('ordem') : Promise.resolve({ data: [] }),
-    PODE.admin ? core('acoes').select('modulo,codigo,nome,ordem').order('ordem') : Promise.resolve({ data: [] }),
-    PODE.admin ? core('nivel_acoes').select('modulo,nivel,acao') : Promise.resolve({ data: [] }),
-    PODE.admin ? sb.schema('flow').from('permissoes').select('perfil,nivel') : Promise.resolve({ data: [] })
+    PODE.verPessoas || PODE.verPermissoes
+      ? core('pessoas').select('id,nome,email,tipo,perfil,cargo,empresa_id,ativo,whatsapp,avisa_whatsapp').order('nome') : nada,
+    PODE.verPessoas ? core('pessoa_obras').select('pessoa_id,obra_id') : nada,
+    core('perfil_modulos').select('perfil,modulo'),
+    core('acoes').select('modulo,codigo,nome,descricao,consulta,ordem').order('ordem'),
+    core('perfil_acoes').select('perfil,modulo,acao')
   ];
   return Promise.all(pedidos).then(function(rs){
     if(minha !== RECARGA) return;
-    rs.forEach(function(r, i){ if(r.error && i !== 5 && i < 9) throw r.error; });   // 9+ = 0025/0026 podem faltar
-    D.perfis = rs[0].data || []; D.setores = rs[1].data || []; D.obras = rs[2].data || [];
-    D.empresas = rs[3].data || []; D.empresaObras = rs[4].data || [];
-    D.construtora = rs[5].error ? null : (rs[5].data || null);
-    D.construtoraFalta = !!rs[5].error;   // 0024 ainda não rodada
-    D.pessoas = rs[6].data || []; D.pessoaObras = rs[7].data || [];
-    D.perfilModulos = rs[8].data || []; D.nivelPatrimonio = rs[9].data || [];
-    D.niveis = rs[10].data || []; D.acoes = rs[11].data || []; D.nivelAcoes = rs[12].data || []; D.nivelFlow = rs[13].data || [];
-    D.falta0026 = !!(rs[10].error || rs[11].error || rs[12].error || rs[13].error);
+    rs.forEach(function(r, i){ if(r.error && i !== 3 && i < 7) throw r.error; });   // 7+ = 0030 pode faltar
+    D.perfis = rs[0].data || []; D.obras = rs[1].data || []; D.empresas = rs[2].data || [];
+    D.construtora = rs[3].error ? null : (rs[3].data || null);
+    D.construtoraFalta = !!rs[3].error;   // 0024 ainda não rodada
+    D.pessoas = rs[4].data || []; D.pessoaObras = rs[5].data || [];
+    D.perfilModulos = rs[6].data || []; D.acoes = rs[7].data || []; D.perfilAcoes = rs[8].data || [];
+    D.falta0030 = !!(rs[7].error || rs[8].error);
     desenhar();
   }).catch(function(e){
     $('conteudo').innerHTML = '<div class="recado erro">Não foi possível carregar: ' + esc(msgErro(e)) + '</div>';
@@ -312,26 +317,29 @@ function recarregar(){
 /* ---------------------------------------------------------------------
    Abas
    --------------------------------------------------------------------- */
+function internosAtivos(){ return D.perfis.filter(function(p){ return !p.eh_externo && p.ativo; }); }
 function abas(){
   var l = [];
-  if(PODE.pessoas) l.push(['pessoas', 'Pessoas', D.pessoas.filter(function(p){ return p.ativo; }).length]);
+  if(PODE.verPessoas) l.push(['pessoas', 'Pessoas', D.pessoas.filter(function(p){ return p.ativo; }).length]);
   /* Obras e Empresas NÃO se cadastram aqui (decisão do Saurin, 24/09/2026):
-     a empresa nasce no Docs (é lá que ela acessa e manda documentação) e a
-     obra em cada sistema que precisa dela, de forma apartada. Aqui só se
-     usam as listas: quais obras uma pessoa vê e de que empresa é o externo. */
-  l.push(['setores', 'Setores', D.setores.filter(function(s){ return s.ativo; }).length]);
+     a empresa nasce no Docs e a obra em cada sistema. Setor saiu (26/09/2026):
+     o perfil basta. */
+  if(PODE.verPermissoes){
+    l.push(['perfis', 'Perfis', internosAtivos().length]);
+    l.push(['permissoes', 'Permissões', null]);
+  }
   l.push(['construtora', 'Construtora', null]);
-  if(PODE.admin) l.push(['permissoes', 'Permissões', null]);
   return l;
 }
 function desenhar(){
   var l = abas();
+  if(!l.some(function(a){ return a[0] === ABA; })) ABA = l[0][0];
   $('abas').classList.remove('oculto');
   $('trilho').innerHTML = l.map(function(a){
     return '<button type="button" data-aba="' + a[0] + '" class="' + (ABA === a[0] ? 'ativa' : '') + '">' + esc(a[1])
          + (a[2] != null ? '<span class="n">' + a[2] + '</span>' : '') + '</button>';
   }).join('');
-  var fn = { pessoas:telaPessoas, setores:telaSetores, construtora:telaConstrutora, permissoes:telaPermissoes }[ABA];
+  var fn = { pessoas:telaPessoas, perfis:telaPerfis, permissoes:telaPermissoes, construtora:telaConstrutora }[ABA];
   var foco = seletorDoFoco();
   $('conteudo').innerHTML = fn();
   if(!foco && FOCO_PENDENTE && (!document.activeElement || document.activeElement === document.body)) foco = FOCO_PENDENTE;
@@ -360,8 +368,9 @@ $('conteudo').addEventListener('click', function(e){
   var a = b.getAttribute('data-acao'), id = b.getAttribute('data-id');
   if(a === 'pessoa')      abrirPessoa(id);
   if(a === 'nova-pessoa') novaPessoa();
-  if(a === 'novo-setor')  novoSetor();
-  if(a === 'perm-vista')  { PERM_VISTA = id; desenhar(); }
+  if(a === 'novo-perfil') abrirPerfil(null);
+  if(a === 'perfil')      abrirPerfil(id);
+  if(a === 'perm-vista')  { PERM_MOD = id; desenhar(); }
   if(a === 'salvar-construtora') salvarConstrutora(b);
 });
 
@@ -372,7 +381,7 @@ var FOCO_PENDENTE = null;
 function seletorDoFoco(){
   var a = document.activeElement;
   if(!a || !$('conteudo').contains(a)) return null;
-  var chaves = ['data-perm','data-m','data-patr-liga','data-flow-nivel','data-na-mod','data-na-nivel','data-na-acao','data-ordem','data-setor-ativo','data-filtro','data-acao','data-id'];
+  var chaves = ['data-mod-perfil','data-mod','data-tipo-docs','data-pa-perfil','data-pa-acao','data-ver-inativos','data-filtro','data-acao','data-id'];
   var partes = chaves.filter(function(k){ return a.hasAttribute(k); })
                      .map(function(k){ return '[' + k + '="' + String(a.getAttribute(k)).replace(/["\\]/g, '\\$&').replace(/[\n\r\f]/g, function(c){ return '\\' + c.charCodeAt(0).toString(16) + ' '; }) + '"]'; });
   return partes.length ? a.tagName.toLowerCase() + partes.join('') : null;
@@ -390,9 +399,10 @@ function selSit(chave, valor, opcoes){
    PESSOAS
    --------------------------------------------------------------------- */
 function telaPessoas(){
-  return cabecalho('Pessoas', 'Quem tem acesso ao BeMer. O perfil define o que cada um vê em cada sistema.',
-           '<button class="botao" data-acao="nova-pessoa">+ Nova pessoa</button>')
-    + '<div class="barra"><input class="busca" type="search" placeholder="Buscar por nome, e-mail, setor ou cargo" data-filtro="pessoas.busca" value="' + esc(F.pessoas.busca) + '">'
+  return cabecalho('Pessoas', 'Quem tem acesso ao BeMer. O perfil define o que cada um vê em cada módulo.'
+             + (PODE.pessoas ? '' : ' Seu perfil só consulta.'),
+           PODE.pessoas ? '<button class="botao" data-acao="nova-pessoa">+ Nova pessoa</button>' : '')
+    + '<div class="barra"><input class="busca" type="search" placeholder="Buscar por nome, e-mail, perfil ou cargo" data-filtro="pessoas.busca" value="' + esc(F.pessoas.busca) + '">'
     + selSit('pessoas.sit', F.pessoas.sit, [['ativos','Ativos'],['inativos','Inativos'],['','Todos']])
     + selSit('pessoas.tipo', F.pessoas.tipo, [['','Colaboradores e externos'],['colaborador','Só colaboradores'],['externo','Só externos']])
     + '</div><div class="lista" id="lista-pessoas">' + listaPessoas() + '</div>';
@@ -403,13 +413,12 @@ function listaPessoas(){
     if(F.pessoas.sit === 'ativos' && !p.ativo) return false;
     if(F.pessoas.sit === 'inativos' && p.ativo) return false;
     if(F.pessoas.tipo && p.tipo !== F.pessoas.tipo) return false;
-    return !b || sem([p.nome, p.email, p.setor, p.cargo, perfilNome(p.perfil)].join(' ')).indexOf(b) >= 0;
+    return !b || sem([p.nome, p.email, p.cargo, perfilNome(p.perfil)].join(' ')).indexOf(b) >= 0;
   });
   if(!l.length) return '<div class="vazio">Ninguém encontrado.</div>';
   return l.map(function(p){
     var ch = '<span class="chip">' + esc(perfilNome(p.perfil)) + '</span>'
-           + (p.tipo === 'externo' ? '<span class="chip laranja">' + esc(empresaNome(p.empresa_id)) + '</span>'
-                                   : (p.setor ? '<span class="chip cinza">' + esc(p.setor) + '</span>' : ''))
+           + (p.tipo === 'externo' ? '<span class="chip laranja">' + esc(empresaNome(p.empresa_id)) + '</span>' : '')
            + (p.ativo ? '' : '<span class="chip cinza">Inativo</span>');
     return '<button type="button" class="linha' + (p.ativo ? '' : ' inativa') + '" data-acao="pessoa" data-id="' + esc(p.id) + '">'
          +   '<span class="av">' + esc(inicial(p.nome)) + '</span>'
@@ -420,9 +429,10 @@ function listaPessoas(){
   }).join('');
 }
 
-/* Que perfis eu posso dar (espelha a regra do banco — 0004/0024 e a edge) */
-/* perfis que veem a folha interna (core.perfil_ve_folha, 0028): dar ou tirar é da diretoria/DP */
-var FOLHA = ['diretoria', 'dp', 'visualizador_dp', 'visualizador_total'];
+/* Que perfis eu posso dar (espelha a regra do banco — 0030 e a edge) */
+/* perfil que vê a folha interna = tipo no Docs com folha (core.perfil_ve_folha): dar ou tirar é da diretoria/DP */
+var TIPOS_FOLHA = ['diretoria', 'dp', 'visualizador_dp', 'visualizador_total'];
+function veFolha(codigo){ var p = perfilDe(codigo); return !!(p && TIPOS_FOLHA.indexOf(p.tipo_docs) >= 0); }
 /* no alcance da matriz? (sem a 0028: não restringe aqui; o banco confere) */
 function noAlcance(perfil){ return PODE.admin || !PODE.gere || PODE.gere.indexOf(perfil) >= 0; }
 function perfisQuePossoDar(tipo, atual){
@@ -433,13 +443,9 @@ function perfisQuePossoDar(tipo, atual){
     if(tipo === 'externo') return p.codigo === 'fornecedor';
     if(p.eh_externo) return false;
     if((p.codigo === 'diretoria' || p.codigo === 'ti') && !PODE.admin) return false;
-    if(FOLHA.indexOf(p.codigo) >= 0 && !PODE.folha) return false;
+    if(veFolha(p.codigo) && !PODE.folha) return false;
     return true;
   });
-}
-function opcoesSetor(atual){
-  return '<option value="">— sem setor —</option>' + D.setores.filter(function(s){ return s.ativo || s.nome === atual; })
-    .map(function(s){ return '<option value="' + esc(s.nome) + '"' + (s.nome === atual ? ' selected' : '') + '>' + esc(s.nome) + '</option>'; }).join('');
 }
 function caixaMarcar(id, itens, marcados, editavel){
   if(!itens.length) return '<div class="leitura sub">Nenhuma cadastrada.</div>';
@@ -458,53 +464,54 @@ function abrirPessoa(id){
   var p = D.pessoas.find(function(x){ return x.id === id; }); if(!p) return;
   if(p.tipo === 'externo') return verFornecedor(p);
   var sou = p.id === EU.id;
+  var consulta = !PODE.pessoas && !sou;                                  // só "Ver pessoas"
   var protegido = (p.perfil === 'diretoria' || p.perfil === 'ti') && !PODE.admin;   // 0024
-  var folhaTrava = FOLHA.indexOf(p.perfil) >= 0 && !PODE.folha;
+  var folhaTrava = veFolha(p.perfil) && !PODE.folha;
   var fora = !sou && p.tipo === 'colaborador' && !noAlcance(p.perfil);   // como no Docs: fora do alcance, só consulta nome/perfil
-  var travaPerfil = sou || protegido || folhaTrava || fora;
-  var travaSit = sou || protegido || folhaTrava || !PODE.admin;          // ativar/desativar: só diretoria/TI (como no Docs)
+  var travaPerfil = sou || consulta || protegido || folhaTrava || fora;
+  var travaSit = sou || consulta || protegido || folhaTrava || !PODE.admin;   // ativar/desativar: só diretoria/TI (como no Docs)
   var obras = D.obras.filter(function(o){ return o.ativa || obrasDaPessoa(p.id).indexOf(o.id) >= 0; })
                      .map(function(o){ return { id:o.id, nome:o.nome + (o.ativa ? '' : ' (encerrada)') }; });
   var marc = obrasDaPessoa(p.id);
+  var dis = consulta ? ' disabled' : '';
   modal('Pessoa',
     '<div class="grade">'
-    + campo('Nome', '<input type="text" id="p-nome" value="' + esc(p.nome) + '"' + (fora ? ' disabled' : '') + '>'
-        + (fora ? '<div class="sub">Perfil fora do seu alcance: nome, perfil e situação só por quem gerencia esse perfil.</div>' : ''), true)
+    + campo('Nome', '<input type="text" id="p-nome" value="' + esc(p.nome) + '"' + (fora || consulta ? ' disabled' : '') + '>'
+        + (fora && !consulta ? '<div class="sub">Perfil fora do seu alcance: nome, perfil e situação só por quem gerencia esse perfil.</div>' : ''), true)
     + campo('E-mail (login)', '<div class="leitura">' + esc(p.email) + '</div>', true)
     + campo('Perfil', '<select id="p-perfil"' + (travaPerfil ? ' disabled' : '') + '>' + perfisQuePossoDar(p.tipo, p.perfil).map(function(x){
         return '<option value="' + esc(x.codigo) + '"' + (x.codigo === p.perfil ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') + '</select>'
-        + (sou ? '<div class="sub">Ninguém muda o próprio perfil.</div>' : protegido ? '<div class="sub">Perfil da diretoria/TI: só a diretoria ou a TI altera.</div>'
+        + (sou ? '<div class="sub">Ninguém muda o próprio perfil.</div>' : consulta ? '' : protegido ? '<div class="sub">Perfil da diretoria/TI: só a diretoria ou a TI altera.</div>'
            : folhaTrava ? '<div class="sub">Perfil com acesso à folha: só a diretoria ou o DP altera.</div>' : ''))
-    + (p.tipo === 'externo'
-        ? campo('Empresa', '<div class="leitura">' + esc(empresaNome(p.empresa_id)) + '</div>')
-        : campo('Setor', '<select id="p-setor">' + opcoesSetor(p.setor) + '</select>'))
-    + campo('Cargo', '<input type="text" id="p-cargo" value="' + esc(p.cargo) + '">')
-    + campo('WhatsApp', '<input type="tel" id="p-whats" placeholder="11 91234-5678" value="' + esc(p.whatsapp) + '">')
-    + campo('', '<label class="marcar"><input type="checkbox" id="p-avisa"' + (p.avisa_whatsapp ? ' checked' : '') + '> Receber avisos pelo WhatsApp</label>', true)
+    + campo('Cargo', '<input type="text" id="p-cargo" value="' + esc(p.cargo) + '"' + dis + '>')
+    + campo('WhatsApp', '<input type="tel" id="p-whats" placeholder="11 91234-5678" value="' + esc(p.whatsapp) + '"' + dis + '>')
+    + campo('', '<label class="marcar"><input type="checkbox" id="p-avisa"' + (p.avisa_whatsapp ? ' checked' : '') + dis + '> Receber avisos pelo WhatsApp</label>')
     + campo('Situação', '<div class="seg" id="p-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
         + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (travaSit ? ' disabled' : '') + '>Ativo</button>'
-        + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>' + (!PODE.admin && !sou ? '<div class="sub">Ativar ou desativar: só a diretoria ou a TI.</div>' : ''), true)
-    + (p.tipo === 'externo' ? '' : campo('Obras que vê',
-        '<div class="sub" style="margin-bottom:6px">Nenhuma marcada = vê <b>todas</b> as obras.' + (PODE.admin ? '' : ' Só a diretoria ou a TI altera.') + '</div>'
-        + caixaMarcar('p-obras', obras, marc, PODE.admin), true))
+        + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>'
+        + (!PODE.admin && !sou && !consulta ? '<div class="sub">Ativar ou desativar: só a diretoria ou a TI.</div>' : ''), true)
+    + campo('Obras que vê',
+        '<div class="sub" style="margin-bottom:6px">Nenhuma marcada = vê <b>todas</b> as obras.' + (PODE.obrasPessoa ? '' : ' Seu perfil não altera.') + '</div>'
+        + caixaMarcar('p-obras', obras, marc, PODE.obrasPessoa), true)
     + '</div>',
-    function(btn){
+    consulta && !PODE.obrasPessoa ? null : function(){
       /* tudo lido AGORA (antes o modal podia trocar durante a gravação) */
-      var tela = {
-        nome: fora ? p.nome : $('p-nome').value.trim(),
-        cargo: $('p-cargo').value.trim(),
-        whatsapp: soDigitos($('p-whats').value),
-        avisa_whatsapp: $('p-avisa').checked,
-        ativo: $('p-ativo').getAttribute('data-v') === '1'
-      };
-      if(!travaPerfil) tela.perfil = $('p-perfil').value;
-      if(p.tipo !== 'externo') tela.setor = $('p-setor').value || null;
-      var novas = PODE.admin && p.tipo !== 'externo' ? marcadosEm('p-obras') : null;
-      if(tela.nome.length < 3) throw new Error('Informe o nome completo.');
-      if(tela.avisa_whatsapp && tela.whatsapp.length < 10) throw new Error('Para receber avisos, informe o WhatsApp com DDD.');
-      /* só o que mudou: a página aberta há horas não desfaz o que outra pessoa gravou */
       var dados = {};
-      Object.keys(tela).forEach(function(k){ if(tela[k] !== (p[k] == null ? (k === 'setor' ? null : '') : p[k])) dados[k] = tela[k]; });
+      if(!consulta){
+        var tela = {
+          nome: fora ? p.nome : $('p-nome').value.trim(),
+          cargo: $('p-cargo').value.trim(),
+          whatsapp: soDigitos($('p-whats').value),
+          avisa_whatsapp: $('p-avisa').checked,
+          ativo: $('p-ativo').getAttribute('data-v') === '1'
+        };
+        if(!travaPerfil) tela.perfil = $('p-perfil').value;
+        if(tela.nome.length < 3) throw new Error('Informe o nome completo.');
+        if(tela.avisa_whatsapp && tela.whatsapp.length < 10) throw new Error('Para receber avisos, informe o WhatsApp com DDD.');
+        /* só o que mudou: a página aberta há horas não desfaz o que outra pessoa gravou */
+        Object.keys(tela).forEach(function(k){ if(tela[k] !== (p[k] == null ? '' : p[k])) dados[k] = tela[k]; });
+      }
+      var novas = PODE.obrasPessoa ? marcadosEm('p-obras') : null;
       var mudouObras = novas && (novas.length !== marc.length || novas.some(function(x){ return marc.indexOf(x) < 0; }));
       var passo = Object.keys(dados).length ? core('pessoas').update(dados).eq('id', p.id).then(ok) : Promise.resolve();
       return passo.then(function(){ return mudouObras ? definirObras(p.id, marc, novas) : null; })
@@ -526,39 +533,27 @@ function verFornecedor(p){
 }
 
 function novaPessoa(){
-  var tipo = 'colaborador';
+  var opcoes = perfisQuePossoDar('colaborador', null);
   modal('Nova pessoa',
     '<div class="grade">'
     /* fornecedor (acesso de empresa) se cadastra no Docs — decisão de 25/09/2026 */
     + '<div class="inteiro dica" style="margin:0">Aqui se cadastra quem é da construtora. Fornecedor (acesso de empresa) se cadastra no Docs.</div>'
     + campo('Nome completo', '<input type="text" id="n-nome" autocomplete="off">', true)
     + campo('E-mail', '<input type="email" id="n-email" autocomplete="off" placeholder="nome' + esc(DOMINIO_EMAIL) + '">', true)
-    + '<div id="n-colab" class="inteiro grade" style="padding:0">'
-    +   campo('Perfil', '<select id="n-perfil">' + perfisQuePossoDar('colaborador', null).map(function(x){
+    + campo('Perfil', '<select id="n-perfil">' + opcoes.map(function(x){
           return '<option value="' + esc(x.codigo) + '"' + (x.codigo === 'colaborador' ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') + '</select>')
-    +   campo('Setor', '<select id="n-setor">' + opcoesSetor(null) + '</select>')
-    + '</div>'
-    + '<div id="n-ext" class="inteiro oculto">' + campo('Empresa', '<select id="n-empresa"><option value="">— escolha —</option>'
-        + D.empresas.filter(function(e){ return e.ativa; }).map(function(e){ return '<option value="' + esc(e.id) + '">' + esc(e.razao_social) + ' · ' + esc(fmtCnpj(e.cnpj)) + '</option>'; }).join('')
-        + '</select>') + '</div>'
     + campo('Cargo', '<input type="text" id="n-cargo">')
     + campo('WhatsApp', '<input type="tel" id="n-whats" placeholder="11 91234-5678">')
     + '<div class="inteiro dica" style="margin:0">A pessoa recebe um e-mail para criar a senha e entra pelo portal.</div>'
     + '</div>',
     function(){
-      tipo = 'colaborador';
       var email = $('n-email').value.trim().toLowerCase(), nome = $('n-nome').value.trim();
       if(nome.length < 3) throw new Error('Informe o nome completo.');
       if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Informe um e-mail válido.');
-      var corpo = { email:email, nome:nome, tipo:tipo, cargo:$('n-cargo').value.trim(),
+      if(email.slice(-DOMINIO_EMAIL.length) !== DOMINIO_EMAIL) throw new Error('Colaborador usa e-mail ' + DOMINIO_EMAIL + '.');
+      if(!$('n-perfil').value) throw new Error('Escolha o perfil.');
+      var corpo = { email:email, nome:nome, tipo:'colaborador', perfil:$('n-perfil').value, cargo:$('n-cargo').value.trim(),
                     redirect: new URL('../', location.href).href };
-      if(tipo === 'colaborador'){
-        if(email.slice(-DOMINIO_EMAIL.length) !== DOMINIO_EMAIL) throw new Error('Colaborador usa e-mail ' + DOMINIO_EMAIL + '.');
-        corpo.perfil = $('n-perfil').value; corpo.setor = $('n-setor').value || null;
-      } else {
-        corpo.perfil = 'fornecedor'; corpo.empresa_id = $('n-empresa').value;
-        if(!corpo.empresa_id) throw new Error('Escolha a empresa do fornecedor.');
-      }
       var whats = soDigitos($('n-whats').value);
       return criarAcesso(corpo).then(function(dados){
         /* o telefone não passa pela edge (ela cuida só do acesso). Se falhar,
@@ -574,10 +569,6 @@ function novaPessoa(){
         });
       });
     }, 'Criar acesso');
-  segmento('n-tipo', function(v){
-    $('n-colab').classList.toggle('oculto', v !== 'colaborador');
-    $('n-ext').classList.toggle('oculto', v !== 'externo');
-  });
 }
 
 function criarAcesso(corpo){
@@ -616,173 +607,220 @@ function definirObras(pessoa, antes, depois){
 }
 
 /* ---------------------------------------------------------------------
-   PERMISSÕES — perfil × sistema (só diretoria/TI). Grava por
-   core.definir_acesso (0025): card do portal + nível do Patrimônio juntos,
-   e as travas (Diretoria, TI nos Cadastros, externos) conferidas no banco.
+   PERFIS — o cargo de cada pessoa: módulos em que entra + tipo no Docs.
+   Grava por core.salvar_perfil / definir_modulo / excluir_perfil (0030),
+   que conferem as travas (Diretoria, TI nos Cadastros, folha).
    --------------------------------------------------------------------- */
-var SISTEMAS = [
-  { m:'flow',          nome:'Flow',        dica:'Pendências' },
-  { m:'patrimonio',    nome:'Patrimônio',  dica:'Bens — escolha o nível' },
-  { m:'docs',          nome:'Docs',        dica:'Até a virada o Docs tem acesso próprio; aqui é só o card' },
-  { m:'configuracoes', nome:'Cadastros',   dica:'A engrenagem do portal' }
+var MODULOS = [
+  { m:'flow',          nome:'Flow',       dica:'Pendências' },
+  { m:'patrimonio',    nome:'Patrimônio', dica:'Bens' },
+  { m:'configuracoes', nome:'Cadastros',  dica:'A engrenagem do portal' }
 ];
-var NIVEIS_FLOW = [['ti', 'TI'], ['gestor', 'Gestor'], ['colaborador', 'Colaborador']];
-function nivelFlowDe(perfil){ var n = (D.nivelFlow || []).find(function(x){ return x.perfil === perfil; }); return n ? n.nivel : 'colaborador'; }
-var PERM_VISTA = 'quem';
-var NIVEIS_PATRIMONIO = [
-  ['operador_ti', 'Gestor de TI'],
-  ['admin_obras', 'Gestor de Obra (Administrativo)'],
-  ['almoxarife',  'Almoxarife'],
-  ['operador',    'Só o que está com ele'],
-  ['admin_ti',    'Administrador de TI']
+/* o que cada tipo faz DENTRO do Docs (as regras são do Docs; aqui é só a legenda) */
+var TIPOS_DOCS = [
+  ['diretoria',          'Diretoria',          'Tudo no Docs, inclusive a folha interna.'],
+  ['ti',                 'TI',                 'Administra o Docs: acessos, empresas e obras.'],
+  ['coord_sesmt',        'Coordenação SESMT',  'Documentação SESMT. Cadastra SESMT, coordenador, engenheiro, TST, cliente, visualizador e vigia.'],
+  ['sesmt',              'SESMT',              'Documentação SESMT. Cadastra coordenador, engenheiro, TST, visualizador e vigia.'],
+  ['dp',                 'DP',                 'Folha interna e FOPAG. Cadastra visualizador DP, coordenador, engenheiro, TST, cliente, visualizador e vigia.'],
+  ['coordenador',        'Coordenador de obra','As obras dele; envia documento.'],
+  ['engenheiro',         'Engenheiro',         'Leitura das obras dele.'],
+  ['tst',                'TST',                'As obras dele; envia documento.'],
+  ['vigia',              'Vigia / portaria',   'Registra entrada e saída nas obras dele.'],
+  ['visualizador',       'Visualizador',       'Só leitura, sem a folha.'],
+  ['visualizador_dp',    'Visualizador DP',    'Só leitura da folha interna.'],
+  ['visualizador_total', 'Visualizador total', 'Só leitura de tudo, inclusive a folha.']
 ];
+function tipoDocsNome(t){ var x = TIPOS_DOCS.find(function(y){ return y[0] === t; }); return x ? x[1] : 'Sem Docs'; }
 function temModulo(perfil, m){ return D.perfilModulos.some(function(x){ return x.perfil === perfil && x.modulo === m; }); }
-function nivelPatr(perfil){ var n = D.nivelPatrimonio.find(function(x){ return x.perfil === perfil; }); return n ? n.nivel : ''; }
-function telaPermissoes(){
-  var perfis = D.perfis.filter(function(p){ return p.ativo || D.perfilModulos.some(function(x){ return x.perfil === p.codigo; }); });
-  var internos = perfis.filter(function(p){ return !p.eh_externo; });
-  function qtd(c){ var n = D.pessoas.filter(function(p){ return p.ativo && p.perfil === c; }).length; return n + (n === 1 ? ' pessoa' : ' pessoas'); }
-  var linhas = internos.map(function(p){
-    var dir = p.codigo === 'diretoria';
-    return '<tr' + (dir ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + '</b><small>' + qtd(p.codigo) + (dir ? ' · travado' : '') + '</small></td>'
-      + SISTEMAS.map(function(sis){
-          if(sis.m === 'patrimonio'){
-            var nv = nivelPatr(p.codigo);
-            if(dir) return '<td><span class="trava">Diretoria (tudo)</span></td>';
-            /* mesma caixa dos outros; marcada, aparece o nível (o Patrimônio exige um) */
-            return '<td><div style="display:flex;align-items:center;justify-content:center;gap:8px">'
-              + '<input type="checkbox" data-patr-liga="' + esc(p.codigo) + '"' + (nv ? ' checked' : '') + ' aria-label="Patrimônio para ' + esc(p.nome) + '">'
-              + '<select data-perm="' + esc(p.codigo) + '" data-m="patrimonio" aria-label="Nível no Patrimônio para ' + esc(p.nome) + '"' + (nv ? '' : ' class="oculto"') + '>'
-              + (nv ? '' : '<option value="">— escolha o nível —</option>')
-              + NIVEIS_PATRIMONIO.filter(function(n){ return n[0] !== 'admin_ti' || nv === 'admin_ti'; }).map(function(n){
-                  return '<option value="' + n[0] + '"' + (nv === n[0] ? ' selected' : '') + '>' + esc(n[1]) + '</option>'; }).join('')
-              + '</select></div>' + (nv && !temModulo(p.codigo, 'patrimonio') ? '<div class="trava">sem o card no portal</div>' : '') + '</td>';
-          }
-          if(sis.m === 'flow' && !dir && !D.falta0026){
-            var fl = temModulo(p.codigo, 'flow'), nf = nivelFlowDe(p.codigo);
-            return '<td><div style="display:flex;align-items:center;justify-content:center;gap:8px">'
-              + '<input type="checkbox" data-perm="' + esc(p.codigo) + '" data-m="flow"' + (fl ? ' checked' : '') + ' aria-label="Flow para ' + esc(p.nome) + '">'
-              + '<select data-flow-nivel="' + esc(p.codigo) + '" aria-label="Nível no Flow para ' + esc(p.nome) + '"' + (fl ? '' : ' class="oculto"') + '>'
-              + NIVEIS_FLOW.map(function(n){ return '<option value="' + n[0] + '"' + (nf === n[0] ? ' selected' : '') + '>' + esc(n[1]) + '</option>'; }).join('')
-              + '</select></div></td>';
-          }
-          var trava = dir || (sis.m === 'configuracoes' && p.codigo === 'ti');
-          return '<td><input type="checkbox" data-perm="' + esc(p.codigo) + '" data-m="' + sis.m + '"' + (temModulo(p.codigo, sis.m) ? ' checked' : '')
-               + (trava ? ' disabled title="Travado"' : '') + ' aria-label="' + esc(sis.nome) + ' para ' + esc(p.nome) + '"></td>';
-        }).join('') + '</tr>';
+function qtdPessoas(c, todas){ return D.pessoas.filter(function(p){ return p.perfil === c && (todas || p.ativo); }).length; }
+function rotPessoas(n){ return n + (n === 1 ? ' pessoa' : ' pessoas'); }
+function ordemPerfis(a, b){
+  var pa = a.codigo === 'diretoria' ? 0 : a.codigo === 'ti' ? 1 : 2, pb = b.codigo === 'diretoria' ? 0 : b.codigo === 'ti' ? 1 : 2;
+  return pa - pb || a.nome.localeCompare(b.nome, 'pt-BR');
+}
+function opcoesTipoDocs(atual){
+  return '<option value="">Sem Docs</option>' + TIPOS_DOCS.map(function(t){
+    return '<option value="' + t[0] + '"' + (atual === t[0] ? ' selected' : '') + '>' + esc(t[1]) + '</option>'; }).join('');
+}
+var VER_INATIVOS = false;
+function telaPerfis(){
+  if(D.falta0030) return cabecalho('Perfis', '') + '<div class="recado erro">Falta rodar a migração 0030 no banco.</div>';
+  var ed = PODE.admin;
+  var inativos = D.perfis.filter(function(p){ return !p.eh_externo && !p.ativo; }).length;
+  var lista = D.perfis.filter(function(p){ return !p.eh_externo && (p.ativo || VER_INATIVOS); }).sort(ordemPerfis);
+  var linhas = lista.map(function(p){
+    var dir = p.codigo === 'diretoria', ti = p.codigo === 'ti';
+    return '<tr' + (dir ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + (p.ativo ? '' : ' <span class="chip cinza">Inativo</span>') + '</b>'
+      + '<small>' + rotPessoas(qtdPessoas(p.codigo)) + (p.descricao ? ' · ' + esc(p.descricao) : '') + '</small></td>'
+      + MODULOS.map(function(mo){
+          if(dir) return '<td><span class="trava">tudo</span></td>';
+          var trava = !ed || (mo.m === 'configuracoes' && ti);
+          return '<td><input type="checkbox" data-mod-perfil="' + esc(p.codigo) + '" data-mod="' + mo.m + '"' + (temModulo(p.codigo, mo.m) ? ' checked' : '')
+               + (trava ? ' disabled' : '') + (trava && ed ? ' title="Travado"' : '') + ' aria-label="' + esc(mo.nome) + ' para ' + esc(p.nome) + '"></td>';
+        }).join('')
+      + '<td class="docs">' + (ed && !dir && !ti
+          ? '<select data-tipo-docs="' + esc(p.codigo) + '" aria-label="Tipo no Docs de ' + esc(p.nome) + '">' + opcoesTipoDocs(p.tipo_docs) + '</select>'
+          : '<span class="' + (p.tipo_docs ? '' : 'trava') + '">' + esc(tipoDocsNome(p.tipo_docs)) + '</span>') + '</td>'
+      + (ed ? '<td><button type="button" class="botao sec mini" data-acao="perfil" data-id="' + esc(p.codigo) + '">Editar</button></td>' : '')
+      + '</tr>';
   }).join('');
-  var externos = perfis.filter(function(p){ return p.eh_externo; }).map(function(p){ return esc(p.nome); }).join(', ');
-  return cabecalho('Permissões', 'A mudança vale na hora, para todas as pessoas do perfil.')
-    + vistasPermissoes()
-    + (PERM_VISTA !== 'quem' ? telaAcoes(PERM_VISTA) : '<div class="dica" style="margin-top:14px">Travado de propósito: o perfil Diretoria, a TI nos Cadastros'
-    + (externos ? ' e os externos (' + externos + ' — só a área do fornecedor)' : '') + '. '
-    + 'Dentro de cada sistema, o que a pessoa pode fazer segue as regras dele (no Patrimônio, pelo nível).</div>'
+  return cabecalho('Perfis', 'O cargo de cada pessoa: em que módulos ela entra e qual é o tipo dela no Docs. O que ela pode fazer dentro de cada módulo fica em <b>Permissões</b>.',
+           ed ? '<button class="botao" data-acao="novo-perfil">+ Novo perfil</button>' : '')
+    + '<div class="dica" style="margin-top:14px">Travado de propósito: a Diretoria tem tudo; a TI sempre entra nos Cadastros e só a diretoria e a TI mexem em perfis e permissões. Tipo no Docs com acesso à folha interna: só a diretoria ou o DP. Fornecedor se cadastra no Docs e não entra no portal.'
+    + (ed ? '' : ' Seu perfil só consulta.') + '</div>'
+    + (inativos ? '<label class="marcar" style="margin:-4px 0 6px"><input type="checkbox" data-ver-inativos' + (VER_INATIVOS ? ' checked' : '') + '> Mostrar perfis inativos (' + inativos + ')</label>' : '')
     + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
-    + SISTEMAS.map(function(sis){ return '<th title="' + esc(sis.dica) + '">' + esc(sis.nome) + '</th>'; }).join('')
-    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>');
+    + MODULOS.map(function(mo){ return '<th title="' + esc(mo.dica) + '">' + esc(mo.nome) + '</th>'; }).join('')
+    + '<th>Tipo no Docs</th>' + (ed ? '<th><span class="oculto">Editar</span></th>' : '') + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
-function vistasPermissoes(){
-  var v = [['quem', 'Quem entra em cada sistema'], ['patrimonio', 'O que cada nível faz · Patrimônio'], ['flow', 'O que cada nível faz · Flow']];
-  return '<div class="seg" style="margin-top:14px;max-width:760px">' + v.map(function(x){
-    return '<button type="button" data-acao="perm-vista" data-id="' + x[0] + '" class="' + (PERM_VISTA === x[0] ? 'ativo' : '') + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>';
-}
-/* nível × ação de um sistema (0026) — o banco obedece a esta tabela */
-function telaAcoes(mod){
-  if(D.falta0026) return '<div class="recado erro">Falta rodar a migração 0026 no banco.</div>';
-  var niveis = D.niveis.filter(function(n){ return n.modulo === mod; });
-  var acoes  = D.acoes.filter(function(a){ return a.modulo === mod; });
-  function tem(n, a){ return D.nivelAcoes.some(function(x){ return x.modulo === mod && x.nivel === n && x.acao === a; }); }
-  var dica = mod === 'patrimonio'
-    ? 'O banco do Patrimônio obedece a esta tabela. Quem gerencia uma área já vê os bens dela; Excluir e Aprovar baixa só valem na área que o nível gerencia. "Cadastrar, editar, movimentar e aprovar" é uma ação só por área porque é a mesma gravação no bem. Quem não gerencia a área só pede (cadastro, movimentação do que está com ele).'
-    : 'No Flow, quem vê cada pendência continua sendo: quem criou, o responsável, os envolvidos e quem vê a obra.';
-  return '<div class="dica" style="margin-top:14px">' + esc(dica) + ' Qual nível cada perfil tem: em "Quem entra".</div>'
-    + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Ação</th>'
-    + niveis.map(function(n){ return '<th>' + esc(n.nome) + (n.travado ? '<div class="trava">tudo</div>' : '') + '</th>'; }).join('')
-    + '</tr></thead><tbody>' + acoes.map(function(a){
-        return '<tr><td class="perfil"><b>' + esc(a.nome) + '</b></td>' + niveis.map(function(n){
-          return '<td><input type="checkbox" data-na-mod="' + esc(mod) + '" data-na-nivel="' + esc(n.codigo) + '" data-na-acao="' + esc(a.codigo) + '"'
-               + (n.travado || tem(n.codigo, a.codigo) ? ' checked' : '') + (n.travado ? ' disabled title="Travado"' : '')
-               + ' aria-label="' + esc(a.nome) + ' — ' + esc(n.nome) + '"></td>'; }).join('') + '</tr>';
-      }).join('') + '</tbody></table></div>';
-}
-$('conteudo').addEventListener('change', function(e){
-  var t = e.target;
-  if(t.hasAttribute('data-na-acao')){
-    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
-    return sb.schema('core').rpc('definir_acao', { p_modulo: t.getAttribute('data-na-mod'), p_nivel: t.getAttribute('data-na-nivel'),
-                                                   p_acao: t.getAttribute('data-na-acao'), p_ligado: t.checked }).then(ok)
-      .then(function(){ aviso('Permissão atualizada.'); return recarregar(); })
-      .catch(function(err){ aviso(msgErro(err), true); recarregar(); });
-  }
-  if(t.hasAttribute('data-flow-nivel')){
-    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
-    return definirAcesso(t.getAttribute('data-flow-nivel'), 'flow', true, t.value);
-  }
-  if(t.hasAttribute('data-patr-liga')){
-    var sel = t.parentNode.querySelector('select');
-    if(t.checked){ sel.classList.remove('oculto'); sel.focus(); return; }   // grava quando escolher o nível
-    sel.classList.add('oculto');
-    if(!nivelPatr(t.getAttribute('data-patr-liga'))) return;               // nunca foi gravado
-    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
-    return definirAcesso(t.getAttribute('data-patr-liga'), 'patrimonio', false, null);
-  }
-  if(!t.hasAttribute('data-perm')) return;
-  var perfil = t.getAttribute('data-perm'), m = t.getAttribute('data-m');
-  var ligado = t.tagName === 'SELECT' ? !!t.value : t.checked;
-  var nivel = t.tagName === 'SELECT' ? (t.value || null) : null;
-  if(m === 'flow' && ligado){ var sf = t.parentNode.querySelector('select[data-flow-nivel]'); if(sf) nivel = sf.value; }
-  if(t.tagName === 'SELECT' && !t.value) return;
-  FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
-  definirAcesso(perfil, m, ligado, nivel);
-});
-function definirAcesso(perfil, m, ligado, nivel){
-  return sb.schema('core').rpc('definir_acesso', { p_perfil: perfil, p_modulo: m, p_ligado: ligado, p_nivel: nivel }).then(ok)
-    .then(function(){ aviso('Permissão de ' + perfilNome(perfil) + ' atualizada.'); return recarregar(); })
-    .catch(function(err){
-      var msg = msgErro(err);
-      if(/definir_acesso|function .* does not exist|Could not find the function/i.test(msg)) msg = 'Falta rodar a migração 0025 no banco.';
-      aviso(msg, true); recarregar();
+function abrirPerfil(codigo){
+  var p = codigo ? perfilDe(codigo) : null;
+  if(codigo && !p) return;
+  var novo = !p, sistema = p && (p.codigo === 'diretoria' || p.codigo === 'ti');
+  var total = p ? qtdPessoas(p.codigo, true) : 0;
+  modal(novo ? 'Novo perfil' : 'Perfil',
+    '<div class="grade">'
+    + campo('Nome do perfil (cargo)', '<input type="text" id="f-nome" maxlength="60" placeholder="ex.: Engenheiro de obra" value="' + esc(p ? p.nome : '') + '">', true)
+    + campo('Descrição (opcional)', '<input type="text" id="f-desc" maxlength="140" value="' + esc(p ? p.descricao : '') + '">', true)
+    + campo('Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
+        + '<div class="sub" id="f-tipo-dica" style="margin-top:6px"></div>', true)
+    + (novo ? campo('Módulos', MODULOS.map(function(mo){
+          return '<label class="marcar"><input type="checkbox" data-novo-mod="' + mo.m + '"' + (mo.m === 'flow' ? ' checked' : '') + '> ' + esc(mo.nome) + '</label>'; }).join(''), true)
+        : campo('Situação', '<div class="seg" id="f-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
+            + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (sistema ? ' disabled' : '') + '>Ativo</button>'
+            + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (sistema ? ' disabled' : '') + '>Inativo</button></div>'
+            + '<div class="sub">' + rotPessoas(total) + ' com este perfil. Inativo não aparece para novos cadastros.</div>', true))
+    + (!novo && !sistema && total === 0 ? '<div class="inteiro"><button type="button" class="botao perigo" id="f-excluir">Excluir perfil</button></div>' : '')
+    + '</div>',
+    function(){
+      var nome = $('f-nome').value.trim(), desc = $('f-desc').value.trim(), tipo = $('f-tipo').value || null;
+      if(nome.length < 2) throw new Error('Informe o nome do perfil.');
+      if(novo){
+        var mods = Array.prototype.filter.call(document.querySelectorAll('[data-novo-mod]'), function(i){ return i.checked; })
+                        .map(function(i){ return i.getAttribute('data-novo-mod'); });
+        return sb.schema('core').rpc('salvar_perfil', { p_codigo: null, p_nome: nome, p_descricao: desc, p_tipo_docs: tipo, p_ativo: true }).then(ok)
+          .then(function(r){
+            var cod = r.data;
+            return mods.reduce(function(pr, m){
+              return pr.then(function(){ return sb.schema('core').rpc('definir_modulo', { p_perfil: cod, p_modulo: m, p_ligado: true }).then(ok); });
+            }, Promise.resolve());
+          })
+          .then(function(){ return 'Perfil criado. Marque o que ele pode fazer em Permissões.'; });
+      }
+      var ativo = $('f-ativo').getAttribute('data-v') === '1';
+      if(tipo !== (p.tipo_docs || null) && total && !confirm('Mudar o tipo no Docs muda o que as ' + rotPessoas(total) + ' deste perfil fazem no Docs. Continuar?'))
+        throw new Error('Nada mudou.');
+      return sb.schema('core').rpc('salvar_perfil', { p_codigo: p.codigo, p_nome: nome, p_descricao: desc, p_tipo_docs: tipo, p_ativo: ativo }).then(ok)
+        .then(function(){ return 'Perfil salvo.'; });
     });
+  segmento('f-ativo');
+  function dica(){ var t = TIPOS_DOCS.find(function(x){ return x[0] === $('f-tipo').value; });
+    $('f-tipo-dica').textContent = t ? 'No Docs: ' + t[2] : 'Não entra no Docs.'; }
+  $('f-tipo').addEventListener('change', dica); dica();
+  var ex = $('f-excluir');
+  if(ex) ex.addEventListener('click', function(){
+    if(!confirm('Excluir o perfil "' + p.nome + '"?')) return;
+    ex.disabled = true;
+    sb.schema('core').rpc('excluir_perfil', { p_codigo: p.codigo }).then(ok)
+      .then(function(){ fecharModal(); aviso('Perfil excluído.'); return recarregar(); })
+      .catch(function(e){ ex.disabled = false; aviso(msgErro(e), true); });
+  });
 }
 
 /* ---------------------------------------------------------------------
-   SETORES
+   PERMISSÕES — perfil × ação, uma tabela por módulo (core.perfil_acoes).
+   O banco obedece. Grava por core.definir_permissao (diretoria/TI).
    --------------------------------------------------------------------- */
-function telaSetores(){
-  var ed = PODE.admin;
-  return cabecalho('Setores', 'Os departamentos da construtora. A ordem é a das listas nos sistemas.',
-           ed ? '<button class="botao" data-acao="novo-setor">+ Novo setor</button>' : '')
-    + (ed ? '' : '<div class="dica" style="margin-top:14px">Só a diretoria e a TI alteram os setores.</div>')
-    + '<div class="lista" style="margin-top:14px">' + (D.setores.length ? D.setores.map(function(s){
-        return '<div class="setor"><span class="nome' + (s.ativo ? '' : ' sub') + '">' + esc(s.nome) + '</span>'
-          + (ed ? '<input type="number" min="0" max="999" value="' + s.ordem + '" data-ordem="' + esc(s.nome) + '" aria-label="Ordem de ' + esc(s.nome) + '">'
-                + '<label class="marcar"><input type="checkbox" data-setor-ativo="' + esc(s.nome) + '"' + (s.ativo ? ' checked' : '') + '> Ativo</label>'
-                : (s.ativo ? '' : '<span class="chip cinza">Inativo</span>'))
-          + '</div>';
-      }).join('') : '<div class="vazio">Nenhum setor.</div>') + '</div>';
+var PERM_MOD = 'flow';
+var MOD_PERM = [['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['configuracoes', 'Cadastros'], ['docs', 'Docs']];
+var NOTA_MOD = {
+  flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
+  patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta.',
+  configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI tem tudo aqui.'
+};
+function travado(perfil, mod){ return perfil === 'diretoria' || (perfil === 'ti' && mod === 'configuracoes'); }
+function temAcao(perfil, mod, acao){ return D.perfilAcoes.some(function(x){ return x.perfil === perfil && x.modulo === mod && x.acao === acao; }); }
+function telaPermissoes(){
+  var seg = '<div class="seg" style="margin-top:14px;max-width:560px">' + MOD_PERM.map(function(x){
+    return '<button type="button" data-acao="perm-vista" data-id="' + x[0] + '" class="' + (PERM_MOD === x[0] ? 'ativo' : '') + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>';
+  var topo = cabecalho('Permissões', 'O que cada perfil pode fazer dentro de cada módulo. Vale na hora, para todas as pessoas do perfil.' + (PODE.admin ? '' : ' Seu perfil só consulta.')) + seg;
+  if(D.falta0030) return topo + '<div class="recado erro">Falta rodar a migração 0030 no banco.</div>';
+  if(PERM_MOD === 'docs') return topo + telaDocs();
+  var mod = PERM_MOD, ed = PODE.admin;
+  var acoes = D.acoes.filter(function(a){ return a.modulo === mod; })
+                     .sort(function(a, b){ return (b.consulta ? 1 : 0) - (a.consulta ? 1 : 0) || a.ordem - b.ordem; });
+  var nC = acoes.filter(function(a){ return a.consulta; }).length, nF = acoes.length - nC;
+  var ativos = internosAtivos().sort(ordemPerfis);
+  var com = ativos.filter(function(p){ return temModulo(p.codigo, mod); });
+  var sem_ = ativos.filter(function(p){ return !temModulo(p.codigo, mod); });
+  var corpo = com.length ? '<div class="tabela-rolagem"><table class="perm acoes-tab"><thead>'
+    + '<tr><th class="perfil" rowspan="2">Perfil</th>'
+    + (nC ? '<th class="grupo" colspan="' + nC + '">Só consulta</th>' : '') + (nF ? '<th class="grupo fazer" colspan="' + nF + '">Fazer</th>' : '') + '</tr>'
+    + '<tr>' + acoes.map(function(a){ return '<th class="acao" title="' + esc(a.descricao) + '">' + esc(a.nome) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + com.map(function(p){
+        var tr = travado(p.codigo, mod);
+        return '<tr' + (tr ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + '</b><small>' + rotPessoas(qtdPessoas(p.codigo)) + (tr ? ' · tudo' : '') + '</small></td>'
+          + acoes.map(function(a){
+              return '<td><input type="checkbox" data-pa-perfil="' + esc(p.codigo) + '" data-pa-acao="' + esc(a.codigo) + '"'
+                   + (tr || temAcao(p.codigo, mod, a.codigo) ? ' checked' : '') + (tr || !ed ? ' disabled' : '')
+                   + ' aria-label="' + esc(a.nome) + ' — ' + esc(p.nome) + '"></td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>'
+    : '<div class="lista"><div class="vazio">Nenhum perfil entra neste módulo. Ligue o módulo na aba Perfis.</div></div>';
+  return topo
+    + '<div class="dica" style="margin-top:14px">' + esc(NOTA_MOD[mod]) + '</div>'
+    + corpo
+    + (sem_.length ? '<div class="sub" style="margin-top:8px">Sem este módulo: ' + sem_.map(function(p){ return esc(p.nome); }).join(', ') + ' — ligue na aba Perfis.</div>' : '')
+    + '<div class="legenda">' + acoes.map(function(a){
+        return '<div><b>' + esc(a.nome) + '</b>' + (a.consulta ? ' <span class="chip cinza">só consulta</span>' : '') + '<br>' + esc(a.descricao) + '</div>'; }).join('') + '</div>';
 }
+/* Docs: as regras são do Docs; aqui só se vê o tipo de cada perfil */
+function telaDocs(){
+  var ativos = internosAtivos();
+  function usam(t){ return ativos.filter(function(p){ return (p.tipo_docs || '') === t; }).map(function(p){ return esc(p.nome); }).join(', ') || '<span class="trava">—</span>'; }
+  return '<div class="dica" style="margin-top:14px">No Docs vale o <b>tipo no Docs</b> de cada perfil — as regras de dentro do Docs não mudam por aqui. Para mudar o que um perfil faz no Docs, troque o tipo dele na aba Perfis.</div>'
+    + '<div class="tabela-rolagem"><table class="perm docs-tab"><thead><tr><th class="perfil">Tipo no Docs</th><th>O que faz no Docs</th><th>Perfis que usam</th></tr></thead><tbody>'
+    + TIPOS_DOCS.map(function(t){
+        return '<tr><td class="perfil"><b>' + esc(t[1]) + '</b>' + (TIPOS_FOLHA.indexOf(t[0]) >= 0 ? '<small>vê a folha interna</small>' : '') + '</td>'
+             + '<td class="txt">' + esc(t[2]) + '</td><td class="txt">' + usam(t[0]) + '</td></tr>'; }).join('')
+    + '<tr><td class="perfil"><b>Sem Docs</b></td><td class="txt">Não entra no Docs.</td><td class="txt">' + usam('') + '</td></tr>'
+    + '</tbody></table></div>';
+}
+
 $('conteudo').addEventListener('change', function(e){
-  var t = e.target, nome, dados;
-  if(t.hasAttribute('data-ordem')){ nome = t.getAttribute('data-ordem'); dados = { ordem: Math.max(0, Math.min(999, parseInt(t.value, 10) || 0)) }; }
-  else if(t.hasAttribute('data-setor-ativo')){ nome = t.getAttribute('data-setor-ativo'); dados = { ativo: t.checked }; }
-  else return;
-  FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
-  core('setores').update(dados).eq('nome', nome).then(ok)
-    .then(function(){ aviso('Setor atualizado.'); return recarregar(); })
-    .catch(function(err){ aviso(msgErro(err), true); t.disabled = false; });
+  var t = e.target;
+  if(t.hasAttribute('data-ver-inativos')){ VER_INATIVOS = t.checked; return desenhar(); }
+  if(t.hasAttribute('data-pa-acao')){
+    var pf = t.getAttribute('data-pa-perfil');
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    return grava('definir_permissao', { p_perfil: pf, p_modulo: PERM_MOD, p_acao: t.getAttribute('data-pa-acao'), p_ligado: t.checked },
+                 'Permissão de ' + perfilNome(pf) + ' atualizada.');
+  }
+  if(t.hasAttribute('data-mod')){
+    var pm = t.getAttribute('data-mod-perfil');
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    return grava('definir_modulo', { p_perfil: pm, p_modulo: t.getAttribute('data-mod'), p_ligado: t.checked },
+                 'Módulos de ' + perfilNome(pm) + ' atualizados.');
+  }
+  if(t.hasAttribute('data-tipo-docs')){
+    var p = perfilDe(t.getAttribute('data-tipo-docs')); if(!p) return;
+    var n = qtdPessoas(p.codigo, true);
+    if(n && !confirm('Mudar o tipo no Docs muda o que as ' + rotPessoas(n) + ' deste perfil fazem no Docs. Continuar?')){ t.value = p.tipo_docs || ''; return; }
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    return grava('salvar_perfil', { p_codigo: p.codigo, p_nome: p.nome, p_descricao: p.descricao || '', p_tipo_docs: t.value || null, p_ativo: p.ativo },
+                 'Tipo no Docs de ' + p.nome + ' atualizado.');
+  }
 });
-function novoSetor(){
-  var max = D.setores.reduce(function(m, s){ return Math.max(m, s.ordem || 0); }, 0);
-  modal('Novo setor', '<div class="grade">' + campo('Nome do setor', '<input type="text" id="s-nome" maxlength="60">', true)
-      + campo('Ordem', '<input type="number" id="s-ordem" min="0" max="999" value="' + (max + 10) + '">') + '</div>',
-    function(){
-      var nome = $('s-nome').value.trim();
-      if(!nome) throw new Error('Informe o nome do setor.');
-      var ord = parseInt($('s-ordem').value, 10);
-      ord = isNaN(ord) ? 100 : Math.max(0, Math.min(999, ord));
-      return core('setores').insert({ nome: nome, ordem: ord }).then(ok);
+function grava(fn, args, msg){
+  return sb.schema('core').rpc(fn, args).then(ok)
+    .then(function(){ aviso(msg); return recarregar(); })
+    .catch(function(err){
+      var m = msgErro(err);
+      if(/Could not find the function|does not exist/i.test(m)) m = 'Falta rodar a migração 0030 no banco.';
+      aviso(m, true); recarregar();
     });
 }
+
 
 /* ---------------------------------------------------------------------
    CONSTRUTORA
@@ -790,7 +828,7 @@ function novoSetor(){
 function telaConstrutora(){
   if(D.construtoraFalta) return cabecalho('Construtora', 'Dados cadastrais da construtora.')
     + '<div class="recado erro">A tabela da construtora ainda não existe neste banco (migração 0024).</div>';
-  var c = D.construtora || {}, ed = PODE.admin;
+  var c = D.construtora || {}, ed = PODE.construtora;
   function cp(rot, k, tipo, inteiro, extra){
     var v = c[k] || '';
     if(k === 'cnpj') v = fmtCnpj(v);
@@ -798,7 +836,7 @@ function telaConstrutora(){
     return campo(rot, ed ? '<input type="' + (tipo || 'text') + '" id="c-' + k + '" value="' + esc(v) + '"' + (extra || '') + '>'
                          : '<div class="leitura">' + esc(v || '—') + '</div>', inteiro);
   }
-  return cabecalho('Construtora', 'Dados cadastrais da empresa que usa o BeMer.' + (ed ? '' : ' Só a diretoria e a TI alteram.'))
+  return cabecalho('Construtora', 'Dados cadastrais da empresa que usa o BeMer.' + (ed ? '' : ' Seu perfil só consulta.'))
     + '<div class="cartao" style="margin-top:14px"><div class="grade">'
     + cp('Razão social', 'razao_social', 'text', true) + cp('Nome fantasia', 'nome_fantasia')
     + cp('CNPJ', 'cnpj', 'text', false, ' inputmode="numeric" placeholder="00.000.000/0000-00"')

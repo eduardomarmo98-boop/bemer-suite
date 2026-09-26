@@ -597,7 +597,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.09.26.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -617,7 +617,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.09.26.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -630,15 +630,13 @@
     <form id="form-perfil">
       <label class="primeiro" for="p-nome">Nome completo</label>
       <input type="text" id="p-nome" required placeholder="Ex.: Eduardo S. Marmo">
-      <label for="p-setor">Setor</label>
-      <select id="p-setor"></select>
       <label for="p-cargo">Cargo</label>
       <input type="text" id="p-cargo" placeholder="Ex.: Engenheiro de obra">
       <button type="submit" class="btn btn-p">Salvar e entrar</button>
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.09.26.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -768,14 +766,14 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.09.26.1';
+var APP_VERSAO = '2026.09.26.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
 
 var CHAVE = 'pendencias_bm_v3';
 var CHAVE_SINO = 'bemerflow_visto';
-var DB = null, EU = null, ABA = 'fazer', SUB = 'setor';
+var DB = null, EU = null, ABA = 'fazer', SUB = 'obra';
 
 var ST = { aguardando_prazo:'Aguardando prazo', em_andamento:'Em andamento',
            aguardando:'Aguardando terceiros', resolvida:'Resolvida', cancelada:'Cancelada' };
@@ -864,8 +862,12 @@ function usaFlow(c){ return !PERFIS_FLOW || !c || !c.perfil || !!PERFIS_FLOW[c.p
 var CADASTROS_NO_PORTAL = false;
 function podeNoFlow(acao){
   if(EU.papel==='diretor') return true;
-  if(!ACOES_FLOW) return acao==='ver_painel' ? EU.papel!=='colaborador' : false;
-  return !!(ACOES_FLOW[EU.papel] && ACOES_FLOW[EU.papel][acao]);
+  /* sem a tabela (versão local): a regra de antes — painel para quem não é
+     colaborador, todo mundo cria, obras e assuntos só a diretoria */
+  if(!ACOES_FLOW) return acao==='ver_painel' ? EU.papel!=='colaborador' : acao==='criar';
+  /* 0030: na suíte a tabela é por PERFIL (core.perfil_acoes) */
+  var k = EU.perfil || EU.papel;
+  return !!(ACOES_FLOW[k] && ACOES_FLOW[k][acao]);
 }
 /* Diretoria e TI criam e editam pessoas. Só a Diretoria mexe em obras e cadastros. */
 function gereUsuarios(){ return EU.papel==='diretor' || EU.papel==='ti'; }
@@ -1283,8 +1285,9 @@ function desenhar(){
   $('c-fazer').className = 'cont'+(agir ? (agir>semPrazo ? ' vermelho' : ' laranja') : '');
   $('c-esperando').textContent = comOutros.length;
   $('aba-painel').classList.toggle('oculto', !podeNoFlow('ver_painel'));
-  $('btn-cadastros').classList.toggle('oculto', !ehAdmin());
-  $('menu-cadastros').classList.toggle('oculto', !ehAdmin());
+  $('btn-cadastros').classList.toggle('oculto', !podeNoFlow('assuntos'));
+  $('menu-cadastros').classList.toggle('oculto', !podeNoFlow('assuntos'));
+  $('btn-nova').classList.toggle('oculto', !podeNoFlow('criar'));
   if(ABA==='painel' && !podeNoFlow('ver_painel')){
     ABA='fazer';
     for(var j=0;j<botoesNav.length;j++) botoesNav[j].classList.toggle('on', botoesNav[j].dataset.aba==='fazer');
@@ -2305,7 +2308,7 @@ var Painel = {
     var semPrazo  = abertas.filter(function(p){ return !p.prazo; });
     var resolvidas = vis.filter(function(p){ return p.status==='resolvida' && p.prazo_original; });
     var ppc = resolvidas.length ? Math.round(resolvidas.filter(pontual).length/resolvidas.length*100) : null;
-    var abas = [['setor','Por setor'],['obra','Por obra'],['pessoas','Por pessoa'],['causas','Causas de atraso']];
+    var abas = [['obra','Por obra'],['pessoas','Por responsável'],['causas','Causas de atraso']];
 
     $('conteudo').innerHTML =
       '<div class="indicadores">'+
@@ -2326,7 +2329,8 @@ var Painel = {
     for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){
       SUB = this.dataset.sub; Painel.desenhar(vis); });
 
-    ({setor:Painel.porSetor, obra:Painel.porObra, pessoas:Painel.porPessoa, causas:Painel.porCausa}[SUB])(vis, abertas);
+    if(!Painel[{obra:'porObra', pessoas:'porPessoa', causas:'porCausa'}[SUB]]) SUB = 'obra';
+    ({obra:Painel.porObra, pessoas:Painel.porPessoa, causas:Painel.porCausa}[SUB])(vis, abertas);
   },
 
   /* abre a lista de uma linha clicada */
@@ -2400,13 +2404,6 @@ var Painel = {
     });
   },
 
-  porSetor: function(vis, abertas){
-    var ch = function(p){ return p.setor; };
-    var linhas = Painel.agrupar(vis, abertas, ch, function(k){ return k; });
-    $('painel-corpo').innerHTML = Painel.tabela(linhas,'Setor') + Painel.listaCritica(abertas);
-    Painel.ligarLinhas(linhas, abertas, ch, 'Setor');
-    ligarCartoes($('painel-corpo'));
-  },
 
   porObra: function(vis, abertas){
     var ch = function(p){ return p.obra_id||'__sem'; };
@@ -2571,8 +2568,8 @@ $('btn-obras').addEventListener('click', function(){
     '<div class="modal-corpo">'+
     '<div class="rolagem"><table><thead><tr><th>Obra ou local</th>'+
     '<th style="text-align:center">Em aberto</th><th style="text-align:center">Vencidas</th>'+
-    (ehAdmin()?'<th></th>':'')+'</tr></thead><tbody id="tb-obras"></tbody></table></div>'+
-    (ehAdmin() ? '<h3 class="secao">Cadastrar obra</h3>'+
+    (podeNoFlow('obras')?'<th></th>':'')+'</tr></thead><tbody id="tb-obras"></tbody></table></div>'+
+    (podeNoFlow('obras') ? '<h3 class="secao">Cadastrar obra</h3>'+
       '<form id="f-obra-nova">'+
       '<label class="primeiro">Obra ou local</label>'+
       '<input type="text" id="o-nome" required placeholder="Ex.: Hospital São Luiz — Unidade Itaim">'+
@@ -2588,7 +2585,7 @@ $('btn-obras').addEventListener('click', function(){
         '<td class="num" data-l="Em aberto">'+ps.length+'</td>'+
         '<td class="num" data-l="Vencidas" data-zero="'+(at?0:1)+'" style="color:'+
           (at?'var(--erro)':'var(--tinta3)')+'">'+at+'</td>'+
-        (ehAdmin()?'<td data-l="Situação"><button class="link-topo" data-obra="'+o.id+
+        (podeNoFlow('obras')?'<td data-l="Situação"><button class="link-topo" data-obra="'+o.id+
           '" style="color:var(--tinta3);border-color:var(--linha)">'+
           (o.status==='ativa'?'Encerrar':'Reabrir')+'</button></td>':'')+'</tr>';
     }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--tinta3);padding:26px">Nenhuma obra cadastrada.</td></tr>';
@@ -2772,16 +2769,14 @@ $('btn-cadastros').addEventListener('click', function(){
   var m = abrirModal(
     '<div class="modal-topo"><h2>Cadastros</h2><button class="fechar">&times;</button></div>'+
     '<div class="modal-corpo">'+
-    '<div class="dupla" style="align-items:start">'+
+    '<div class="'+(CADASTROS_NO_PORTAL ? '' : 'dupla')+'" style="align-items:start">'+
+    (CADASTROS_NO_PORTAL ? '' :
     '<div><div class="rot">Setores</div>'+
-      (CADASTROS_NO_PORTAL
-        ? '<div class="dica" style="margin:0 0 8px">Setor é da construtora: cadastra-se no portal, na engrenagem › <b>Cadastros › Setores</b>.</div>'
-        : '<div class="dica" style="margin:0 0 8px">Usados para classificar cada pessoa da equipe.</div>')+
+      '<div class="dica" style="margin:0 0 8px">Usados para classificar cada pessoa da equipe.</div>'+
       '<div class="listagem" id="l-setores"></div>'+
-      (CADASTROS_NO_PORTAL ? '' :
       '<div style="display:flex;gap:7px;margin-top:9px">'+
       '<input type="text" id="c-setor" placeholder="Novo setor…" style="flex:1">'+
-      '<button class="btn btn-s btn-mini" id="add-setor">Incluir</button></div>')+'</div>'+
+      '<button class="btn btn-s btn-mini" id="add-setor">Incluir</button></div></div>')+
     '<div><div class="rot">Assuntos</div>'+
       '<div class="dica" style="margin:0 0 8px">Classificam a pendência. Alimentam o painel por obra.</div>'+
       '<div class="listagem" id="l-assuntos"></div>'+
@@ -2795,7 +2790,7 @@ $('btn-cadastros').addEventListener('click', function(){
   function usoAssunto(a){ return DB.pendencias.filter(function(p){ return p.frente===a; }).length; }
 
   function pintar(){
-    m.querySelector('#l-setores').innerHTML = DB.setores.map(function(s){
+    if(m.querySelector('#l-setores')) m.querySelector('#l-setores').innerHTML = DB.setores.map(function(s){
       var u = usoSetor(s);
       return '<div class="ln"><span>'+esc(s)+'</span>'+
         (u?'<span class="uso">'+u+(u===1?' pessoa':' pessoas')+'</span>':'')+
@@ -3006,28 +3001,19 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
 });
 
-var CAMPOS_COLAB = 'id,nome,setor,cargo,perfil,ativo,whatsapp,avisa_whatsapp';
+var CAMPOS_COLAB = 'id,nome,cargo,perfil,ativo,whatsapp,avisa_whatsapp';
 
-/* O core chama de PERFIL o que o Flow chama de PAPEL, e usa uma lista
-   maior (a da empresa inteira). A tradução acontece aqui, na camada de
-   banco — a interface continua falando papel, como sempre falou. */
-var PERFIL_PARA_PAPEL = { diretoria:'diretor', ti:'ti', coord_sesmt:'gestor',
-                          dp:'gestor', sesmt:'gestor' };
-var PAPEL_PARA_PERFIL = { diretor:'diretoria', ti:'ti', gestor:'coord_sesmt',
-                          colaborador:'colaborador' };
-/* A interface manda o nome da lista ('setores' ou 'assuntos') como variável.
-   Setor é cadastro da empresa e mora no core; assunto é do módulo. */
-function tabelaDaLista(lista){
-  return lista === 'setores' ? sb.schema('core').from('setores')
-                             : sb.schema('flow').from(lista);
-}
-/* 0026: o nível do Flow de cada perfil vem de flow.permissoes (Cadastros ›
-   Permissões). Sem a tabela, vale o mapa fixo acima (a regra de antes). */
-var NIVEL_FLOW = null;
+/* 0030 (26/09/2026): sem níveis e sem setor. O que cada um faz no Flow vem
+   de core.perfil_acoes (Cadastros › Permissões do portal), por PERFIL; a
+   Diretoria tem tudo. Onde a interface mostrava o setor da pessoa, mostra
+   o nome do perfil dela. */
+var PAPEL_PARA_PERFIL = { diretor:'diretoria', colaborador:'colaborador' };
+var NOME_PERFIL = {};
+function tabelaDaLista(lista){ return sb.schema('flow').from(lista); }
 function comPapel(p){
   if(!p) return p;
-  p.papel = p.perfil === 'diretoria' ? 'diretor'   // travado: a Diretoria tem tudo
-          : ((NIVEL_FLOW ? NIVEL_FLOW[p.perfil] : PERFIL_PARA_PAPEL[p.perfil]) || 'colaborador');
+  p.papel = p.perfil === 'diretoria' ? 'diretor' : 'colaborador';
+  p.setor = NOME_PERFIL[p.perfil] || p.cargo || '';
   return p;
 }
 /* 24/09/2026: pessoas, nível e obras que cada um vê se cadastram no portal
@@ -3041,12 +3027,12 @@ function carregarPermissoesFlow(){
      aí vale a regra de antes. Vazio é estado válido — o dono desmarcou tudo. */
   function ler(q){ return Promise.resolve(q).then(function(r){ return r && !r.error && Array.isArray(r.data) ? r.data : null; }, function(){ return null; }); }
   return Promise.all([
-    ler(sb.schema('flow').from('permissoes').select('perfil,nivel')),
-    ler(sb.schema('core').from('nivel_acoes').select('nivel,acao').eq('modulo', 'flow')),
+    ler(sb.schema('core').from('perfis').select('codigo,nome')),
+    ler(sb.schema('core').from('perfil_acoes').select('perfil,acao').eq('modulo', 'flow')),
     ler(sb.schema('core').from('perfil_modulos').select('perfil').eq('modulo', 'flow'))
   ]).then(function(r){
-    if(r[0] && r[0].length){ NIVEL_FLOW = {}; r[0].forEach(function(x){ NIVEL_FLOW[x.perfil] = x.nivel; }); }
-    if(r[1]){ ACOES_FLOW = {}; r[1].forEach(function(x){ (ACOES_FLOW[x.nivel] = ACOES_FLOW[x.nivel] || {})[x.acao] = true; }); }
+    if(r[0]) r[0].forEach(function(x){ NOME_PERFIL[x.codigo] = x.nome; });
+    if(r[1]){ ACOES_FLOW = {}; r[1].forEach(function(x){ (ACOES_FLOW[x.perfil] = ACOES_FLOW[x.perfil] || {})[x.acao] = true; }); }
     if(r[2] && r[2].length){ PERFIS_FLOW = {}; r[2].forEach(function(x){ PERFIS_FLOW[x.perfil] = true; }); }
   });
 }
@@ -3126,7 +3112,6 @@ function recarregarTudo(){
 function carregarTudo(){
   return Promise.all([
     lerTudo(function(){ return sb.schema('core').from('obras').select('*').order('nome'); }),
-    lerTudo(function(){ return sb.schema('core').from('setores').select('nome').order('nome'); }),
     lerTudo(function(){ return sb.schema('flow').from('assuntos').select('nome').order('nome'); }),
     lerTudo(function(){ return sb.schema('core').from('pessoas').select(CAMPOS_COLAB).order('nome'); }),
     lerTudo(function(){ return sb.schema('core').from('pessoa_obras').select('*').order('pessoa_id'); }),
@@ -3137,9 +3122,9 @@ function carregarTudo(){
     lerTudo(function(){ return sb.schema('flow').from('pendencia_envolvidos').select('*').order('pendencia_id'); })
   ]).then(function(r){
     for(var i=0;i<r.length;i++) if(r[i].error) throw r[i].error;
-    var obras=r[0].data||[], setores=r[1].data||[], assuntos=r[2].data||[],
-        colab=r[3].data||[], co=r[4].data||[], pend=r[5].data||[],
-        notas=r[6].data||[], repro=r[7].data||[], anx=r[8].data||[], env=r[9].data||[];
+    var obras=r[0].data||[], assuntos=r[1].data||[],
+        colab=r[2].data||[], co=r[3].data||[], pend=r[4].data||[],
+        notas=r[5].data||[], repro=r[6].data||[], anx=r[7].data||[], env=r[8].data||[];
 
     /* core.obras guarda 'ativa' como sim/não; a interface fala 'status'. */
     obras.forEach(function(o){ o.status = o.ativa === false ? 'encerrada' : 'ativa'; });
@@ -3162,7 +3147,7 @@ function carregarTudo(){
       p.anexos = mAnx[p.id] || [];
     });
 
-    DB = { obras:obras, setores:setores.map(function(s){return s.nome;}),
+    DB = { obras:obras, setores:[],
            assuntos:assuntos.map(function(a){return a.nome;}),
            colaboradores:colab, pendencias:pend, notas:notas,
            seq:{pendencia:0, nota:0}, versao:'supabase' };
@@ -3476,7 +3461,7 @@ Admin = {
       return Promise.reject(new Error('Use um e-mail @brandaoemarmo.com.br.'));
     return sb.functions.invoke('core-criar-usuario', {   // NUNCA 'criar-usuario': é a do Docs
       /* a função da suíte fala perfil, não papel */
-      body: { email:d.email.trim().toLowerCase(), nome:d.nome, setor:d.setor,
+      body: { email:d.email.trim().toLowerCase(), nome:d.nome,
               cargo:d.cargo, tipo:'colaborador',
               perfil: PAPEL_PARA_PERFIL[d.papel] || 'colaborador',
               redirect: location.href.split('#')[0] }
@@ -3787,7 +3772,6 @@ document.getElementById('form-perfil').addEventListener('submit', function(e){
   e.preventDefault();
   sb.schema('core').from('pessoas').update({
     nome:  $('p-nome').value.trim(),
-    setor: $('p-setor').value,
     cargo: $('p-cargo').value.trim()
   }).eq('id', SESSAO.user.id).then(function(r){
     if(r.error) return aviso(r.error.message,'erro');
@@ -3840,12 +3824,9 @@ function iniciar(sessao){
     .then(function(perfil){
       if(perfil === null) return;          // já mostrou a tela de login e saiu
       if(!perfil.nome || !perfil.nome.trim()){
-        return sb.schema('core').from('setores').select('nome').order('nome').then(function(s){
-          $('p-setor').innerHTML = (s.data||[]).map(function(x){
-            return '<option>'+esc(x.nome)+'</option>'; }).join('');
-          $('carregando').classList.add('oculto');
-          $('tela-perfil').classList.remove('oculto');
-        });
+        $('carregando').classList.add('oculto');
+        $('tela-perfil').classList.remove('oculto');
+        return;
       }
       if(!perfil.ativo){
         telaLogin('<span style="color:var(--erro)">Seu acesso foi desativado. '+
