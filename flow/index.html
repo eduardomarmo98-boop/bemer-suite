@@ -597,7 +597,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.09.26.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -617,7 +617,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.09.26.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -630,13 +630,11 @@
     <form id="form-perfil">
       <label class="primeiro" for="p-nome">Nome completo</label>
       <input type="text" id="p-nome" required placeholder="Ex.: Eduardo S. Marmo">
-      <label for="p-cargo">Cargo</label>
-      <input type="text" id="p-cargo" placeholder="Ex.: Engenheiro de obra">
       <button type="submit" class="btn btn-p">Salvar e entrar</button>
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.09.26.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -766,7 +764,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.09.26.2';
+var APP_VERSAO = '2026.09.26.3';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3001,7 +2999,7 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
 });
 
-var CAMPOS_COLAB = 'id,nome,cargo,perfil,ativo,whatsapp,avisa_whatsapp';
+var CAMPOS_COLAB = 'id,nome,perfil,ativo,whatsapp,avisa_whatsapp';
 
 /* 0030 (26/09/2026): sem níveis e sem setor. O que cada um faz no Flow vem
    de core.perfil_acoes (Cadastros › Permissões do portal), por PERFIL; a
@@ -3013,7 +3011,7 @@ function tabelaDaLista(lista){ return sb.schema('flow').from(lista); }
 function comPapel(p){
   if(!p) return p;
   p.papel = p.perfil === 'diretoria' ? 'diretor' : 'colaborador';
-  p.setor = NOME_PERFIL[p.perfil] || p.cargo || '';
+  p.setor = NOME_PERFIL[p.perfil] || '';
   return p;
 }
 /* 24/09/2026: pessoas, nível e obras que cada um vê se cadastram no portal
@@ -3462,7 +3460,7 @@ Admin = {
     return sb.functions.invoke('core-criar-usuario', {   // NUNCA 'criar-usuario': é a do Docs
       /* a função da suíte fala perfil, não papel */
       body: { email:d.email.trim().toLowerCase(), nome:d.nome,
-              cargo:d.cargo, tipo:'colaborador',
+              tipo:'colaborador',
               perfil: PAPEL_PARA_PERFIL[d.papel] || 'colaborador',
               redirect: location.href.split('#')[0] }
     }).then(function(r){
@@ -3771,8 +3769,7 @@ document.getElementById('form-nova-senha').addEventListener('submit', function(e
 document.getElementById('form-perfil').addEventListener('submit', function(e){
   e.preventDefault();
   sb.schema('core').from('pessoas').update({
-    nome:  $('p-nome').value.trim(),
-    cargo: $('p-cargo').value.trim()
+    nome:  $('p-nome').value.trim()
   }).eq('id', SESSAO.user.id).then(function(r){
     if(r.error) return aviso(r.error.message,'erro');
     location.reload();

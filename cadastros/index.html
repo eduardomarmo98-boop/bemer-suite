@@ -113,6 +113,11 @@ table.perm.acoes-tab{min-width:0}
 .legenda div:first-child{border-top:0}
 .legenda b{color:var(--azul);font-weight:600}
 .botao.mini{min-height:34px;padding:0 12px;font-size:13px}
+.resumo{border:1px solid var(--borda);border-radius:10px;background:#FAFBFD}
+.resumo div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:8px 12px;border-top:1px solid var(--borda);font-size:13px;line-height:1.45}
+.resumo div:first-child{border-top:0}
+.resumo b{color:var(--azul);font-weight:600}
+@media (max-width:600px){ .resumo div{grid-template-columns:minmax(0,1fr);gap:2px} }
 @media (max-width:600px){
   table.perm th.perfil,table.perm td.perfil{min-width:118px;max-width:130px}
   table.perm select{min-width:0;max-width:150px}
@@ -184,7 +189,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.26.2';
+var APP_VERSION = '2026.09.26.4';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -293,7 +298,7 @@ function recarregar(){
     core('empresas').select('id,cnpj,razao_social,nome_fantasia,ativa').order('razao_social'),
     core('construtora').select('*').maybeSingle(),
     PODE.verPessoas || PODE.verPermissoes
-      ? core('pessoas').select('id,nome,email,tipo,perfil,cargo,empresa_id,ativo,whatsapp,avisa_whatsapp').order('nome') : nada,
+      ? core('pessoas').select('id,nome,email,tipo,perfil,empresa_id,ativo,whatsapp,avisa_whatsapp').order('nome') : nada,
     PODE.verPessoas ? core('pessoa_obras').select('pessoa_id,obra_id') : nada,
     core('perfil_modulos').select('perfil,modulo'),
     core('acoes').select('modulo,codigo,nome,descricao,consulta,ordem').order('ordem'),
@@ -402,7 +407,7 @@ function telaPessoas(){
   return cabecalho('Pessoas', 'Quem tem acesso ao BeMer. O perfil define o que cada um vê em cada módulo.'
              + (PODE.pessoas ? '' : ' Seu perfil só consulta.'),
            PODE.pessoas ? '<button class="botao" data-acao="nova-pessoa">+ Nova pessoa</button>' : '')
-    + '<div class="barra"><input class="busca" type="search" placeholder="Buscar por nome, e-mail, perfil ou cargo" data-filtro="pessoas.busca" value="' + esc(F.pessoas.busca) + '">'
+    + '<div class="barra"><input class="busca" type="search" placeholder="Buscar por nome, e-mail ou perfil" data-filtro="pessoas.busca" value="' + esc(F.pessoas.busca) + '">'
     + selSit('pessoas.sit', F.pessoas.sit, [['ativos','Ativos'],['inativos','Inativos'],['','Todos']])
     + selSit('pessoas.tipo', F.pessoas.tipo, [['','Colaboradores e externos'],['colaborador','Só colaboradores'],['externo','Só externos']])
     + '</div><div class="lista" id="lista-pessoas">' + listaPessoas() + '</div>';
@@ -413,17 +418,19 @@ function listaPessoas(){
     if(F.pessoas.sit === 'ativos' && !p.ativo) return false;
     if(F.pessoas.sit === 'inativos' && p.ativo) return false;
     if(F.pessoas.tipo && p.tipo !== F.pessoas.tipo) return false;
-    return !b || sem([p.nome, p.email, p.cargo, perfilNome(p.perfil)].join(' ')).indexOf(b) >= 0;
+    return !b || sem([p.nome, p.email, perfilNome(p.perfil)].join(' ')).indexOf(b) >= 0;
   });
   if(!l.length) return '<div class="vazio">Ninguém encontrado.</div>';
   return l.map(function(p){
+    var nOb = obrasDaPessoa(p.id).length;
     var ch = '<span class="chip">' + esc(perfilNome(p.perfil)) + '</span>'
-           + (p.tipo === 'externo' ? '<span class="chip laranja">' + esc(empresaNome(p.empresa_id)) + '</span>' : '')
+           + (p.tipo === 'externo' ? '<span class="chip laranja">' + esc(empresaNome(p.empresa_id)) + '</span>'
+                                   : '<span class="chip cinza">' + (nOb ? nOb + (nOb === 1 ? ' obra' : ' obras') : 'Todas as obras') + '</span>')
            + (p.ativo ? '' : '<span class="chip cinza">Inativo</span>');
     return '<button type="button" class="linha' + (p.ativo ? '' : ' inativa') + '" data-acao="pessoa" data-id="' + esc(p.id) + '">'
          +   '<span class="av">' + esc(inicial(p.nome)) + '</span>'
          +   '<span class="corpo"><div class="nome">' + esc(p.nome || '(sem nome)') + (p.id === EU.id ? ' · você' : '') + '</div>'
-         +     '<div class="det">' + esc(p.email) + (p.cargo ? ' · ' + esc(p.cargo) : '') + '</div>'
+         +     '<div class="det">' + esc(p.email) + '</div>'
          +     '<div class="chips-mob">' + ch + '</div></span>'
          +   '<span class="chips">' + ch + '</span></button>';
   }).join('');
@@ -483,7 +490,6 @@ function abrirPessoa(id){
         return '<option value="' + esc(x.codigo) + '"' + (x.codigo === p.perfil ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') + '</select>'
         + (sou ? '<div class="sub">Ninguém muda o próprio perfil.</div>' : consulta ? '' : protegido ? '<div class="sub">Perfil da diretoria/TI: só a diretoria ou a TI altera.</div>'
            : folhaTrava ? '<div class="sub">Perfil com acesso à folha: só a diretoria ou o DP altera.</div>' : ''))
-    + campo('Cargo', '<input type="text" id="p-cargo" value="' + esc(p.cargo) + '"' + dis + '>')
     + campo('WhatsApp', '<input type="tel" id="p-whats" placeholder="11 91234-5678" value="' + esc(p.whatsapp) + '"' + dis + '>')
     + campo('', '<label class="marcar"><input type="checkbox" id="p-avisa"' + (p.avisa_whatsapp ? ' checked' : '') + dis + '> Receber avisos pelo WhatsApp</label>')
     + campo('Situação', '<div class="seg" id="p-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
@@ -491,8 +497,12 @@ function abrirPessoa(id){
         + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>'
         + (!PODE.admin && !sou && !consulta ? '<div class="sub">Ativar ou desativar: só a diretoria ou a TI.</div>' : ''), true)
     + campo('Obras que vê',
-        '<div class="sub" style="margin-bottom:6px">Nenhuma marcada = vê <b>todas</b> as obras.' + (PODE.obrasPessoa ? '' : ' Seu perfil não altera.') + '</div>'
-        + caixaMarcar('p-obras', obras, marc, PODE.obrasPessoa), true)
+        '<div class="seg" id="p-obras-modo" data-v="' + (marc.length ? 'estas' : 'todas') + '" style="max-width:360px;margin-bottom:8px">'
+        + '<button type="button" data-v="todas" class="' + (marc.length ? '' : 'ativo') + '"' + (PODE.obrasPessoa ? '' : ' disabled') + '>Todas as obras</button>'
+        + '<button type="button" data-v="estas" class="' + (marc.length ? 'ativo' : '') + '"' + (PODE.obrasPessoa ? '' : ' disabled') + '>Só estas</button></div>'
+        + '<div id="p-obras-lista"' + (marc.length ? '' : ' class="oculto"') + '>' + caixaMarcar('p-obras', obras, marc, PODE.obrasPessoa) + '</div>'
+        + '<div class="sub">Vale no Flow (pendências das obras).' + (PODE.obrasPessoa ? '' : ' Seu perfil não altera.') + '</div>', true)
+    + (PODE.verPermissoes && D.acoes.length ? campo('O que vê e faz (pelo perfil ' + perfilNome(p.perfil) + ')', resumoPerfil(p.perfil), true) : '')
     + '</div>',
     consulta && !PODE.obrasPessoa ? null : function(){
       /* tudo lido AGORA (antes o modal podia trocar durante a gravação) */
@@ -500,7 +510,6 @@ function abrirPessoa(id){
       if(!consulta){
         var tela = {
           nome: fora ? p.nome : $('p-nome').value.trim(),
-          cargo: $('p-cargo').value.trim(),
           whatsapp: soDigitos($('p-whats').value),
           avisa_whatsapp: $('p-avisa').checked,
           ativo: $('p-ativo').getAttribute('data-v') === '1'
@@ -511,13 +520,19 @@ function abrirPessoa(id){
         /* só o que mudou: a página aberta há horas não desfaz o que outra pessoa gravou */
         Object.keys(tela).forEach(function(k){ if(tela[k] !== (p[k] == null ? '' : p[k])) dados[k] = tela[k]; });
       }
-      var novas = PODE.obrasPessoa ? marcadosEm('p-obras') : null;
+      var novas = null;
+      if(PODE.obrasPessoa){
+        novas = $('p-obras-modo').getAttribute('data-v') === 'todas' ? [] : (marcadosEm('p-obras') || []);
+        if($('p-obras-modo').getAttribute('data-v') === 'estas' && !novas.length)
+          throw new Error('Marque ao menos uma obra, ou escolha "Todas as obras".');
+      }
       var mudouObras = novas && (novas.length !== marc.length || novas.some(function(x){ return marc.indexOf(x) < 0; }));
       var passo = Object.keys(dados).length ? core('pessoas').update(dados).eq('id', p.id).then(ok) : Promise.resolve();
       return passo.then(function(){ return mudouObras ? definirObras(p.id, marc, novas) : null; })
         .then(function(){ if(!Object.keys(dados).length && !mudouObras) return 'Nada mudou.'; });
     });
   segmento('p-ativo');
+  segmento('p-obras-modo', function(v){ $('p-obras-lista').classList.toggle('oculto', v !== 'estas'); });
 }
 
 /* fornecedor: só consulta (o cadastro dele é no Docs) */
@@ -542,7 +557,6 @@ function novaPessoa(){
     + campo('E-mail', '<input type="email" id="n-email" autocomplete="off" placeholder="nome' + esc(DOMINIO_EMAIL) + '">', true)
     + campo('Perfil', '<select id="n-perfil">' + opcoes.map(function(x){
           return '<option value="' + esc(x.codigo) + '"' + (x.codigo === 'colaborador' ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') + '</select>')
-    + campo('Cargo', '<input type="text" id="n-cargo">')
     + campo('WhatsApp', '<input type="tel" id="n-whats" placeholder="11 91234-5678">')
     + '<div class="inteiro dica" style="margin:0">A pessoa recebe um e-mail para criar a senha e entra pelo portal.</div>'
     + '</div>',
@@ -552,7 +566,7 @@ function novaPessoa(){
       if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Informe um e-mail válido.');
       if(email.slice(-DOMINIO_EMAIL.length) !== DOMINIO_EMAIL) throw new Error('Colaborador usa e-mail ' + DOMINIO_EMAIL + '.');
       if(!$('n-perfil').value) throw new Error('Escolha o perfil.');
-      var corpo = { email:email, nome:nome, tipo:'colaborador', perfil:$('n-perfil').value, cargo:$('n-cargo').value.trim(),
+      var corpo = { email:email, nome:nome, tipo:'colaborador', perfil:$('n-perfil').value,
                     redirect: new URL('../', location.href).href };
       var whats = soDigitos($('n-whats').value);
       return criarAcesso(corpo).then(function(dados){
@@ -662,7 +676,7 @@ function telaPerfis(){
       + '<td class="docs">' + (ed && !dir && !ti
           ? '<select data-tipo-docs="' + esc(p.codigo) + '" aria-label="Tipo no Docs de ' + esc(p.nome) + '">' + opcoesTipoDocs(p.tipo_docs) + '</select>'
           : '<span class="' + (p.tipo_docs ? '' : 'trava') + '">' + esc(tipoDocsNome(p.tipo_docs)) + '</span>') + '</td>'
-      + (ed ? '<td><button type="button" class="botao sec mini" data-acao="perfil" data-id="' + esc(p.codigo) + '">Editar</button></td>' : '')
+      + '<td><button type="button" class="botao sec mini" data-acao="perfil" data-id="' + esc(p.codigo) + '">' + (ed ? 'Editar' : 'Ver') + '</button></td>'
       + '</tr>';
   }).join('');
   return cabecalho('Perfis', 'O cargo de cada pessoa: em que módulos ela entra e qual é o tipo dela no Docs. O que ela pode fazer dentro de cada módulo fica em <b>Permissões</b>.',
@@ -672,16 +686,17 @@ function telaPerfis(){
     + (inativos ? '<label class="marcar" style="margin:-4px 0 6px"><input type="checkbox" data-ver-inativos' + (VER_INATIVOS ? ' checked' : '') + '> Mostrar perfis inativos (' + inativos + ')</label>' : '')
     + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
     + MODULOS.map(function(mo){ return '<th title="' + esc(mo.dica) + '">' + esc(mo.nome) + '</th>'; }).join('')
-    + '<th>Tipo no Docs</th>' + (ed ? '<th><span class="oculto">Editar</span></th>' : '') + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+    + '<th>Tipo no Docs</th><th><span class="oculto">Abrir</span></th>' + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
 function abrirPerfil(codigo){
   var p = codigo ? perfilDe(codigo) : null;
   if(codigo && !p) return;
   var novo = !p, sistema = p && (p.codigo === 'diretoria' || p.codigo === 'ti');
   var total = p ? qtdPessoas(p.codigo, true) : 0;
+  var so = !PODE.admin;   // só consulta: vê o resumo, não grava
   modal(novo ? 'Novo perfil' : 'Perfil',
     '<div class="grade">'
-    + campo('Nome do perfil (cargo)', '<input type="text" id="f-nome" maxlength="60" placeholder="ex.: Engenheiro de obra" value="' + esc(p ? p.nome : '') + '">', true)
+    + campo('Nome do perfil (o cargo)', '<input type="text" id="f-nome" maxlength="60" placeholder="ex.: Engenheiro de obra" value="' + esc(p ? p.nome : '') + '">', true)
     + campo('Descrição (opcional)', '<input type="text" id="f-desc" maxlength="140" value="' + esc(p ? p.descricao : '') + '">', true)
     + campo('Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
         + '<div class="sub" id="f-tipo-dica" style="margin-top:6px"></div>', true)
@@ -691,9 +706,11 @@ function abrirPerfil(codigo){
             + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (sistema ? ' disabled' : '') + '>Ativo</button>'
             + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (sistema ? ' disabled' : '') + '>Inativo</button></div>'
             + '<div class="sub">' + rotPessoas(total) + ' com este perfil. Inativo não aparece para novos cadastros.</div>', true))
+    + (novo ? '' : campo('O que este perfil vê e faz hoje', resumoPerfil(p.codigo)
+        + '<div class="sub" style="margin-top:6px">Para mudar: módulos e tipo no Docs na aba Perfis; o resto na aba Permissões.</div>', true))
     + (!novo && !sistema && total === 0 ? '<div class="inteiro"><button type="button" class="botao perigo" id="f-excluir">Excluir perfil</button></div>' : '')
     + '</div>',
-    function(){
+    so ? null : function(){
       var nome = $('f-nome').value.trim(), desc = $('f-desc').value.trim(), tipo = $('f-tipo').value || null;
       if(nome.length < 2) throw new Error('Informe o nome do perfil.');
       if(novo){
@@ -715,6 +732,7 @@ function abrirPerfil(codigo){
         .then(function(){ return 'Perfil salvo.'; });
     });
   segmento('f-ativo');
+  if(so) document.querySelectorAll('#modal input, #modal select, #modal .seg button').forEach(function(x){ x.disabled = true; });
   function dica(){ var t = TIPOS_DOCS.find(function(x){ return x[0] === $('f-tipo').value; });
     $('f-tipo-dica').textContent = t ? 'No Docs: ' + t[2] : 'Não entra no Docs.'; }
   $('f-tipo').addEventListener('change', dica); dica();
@@ -728,12 +746,49 @@ function abrirPerfil(codigo){
   });
 }
 
+/* O que o perfil vê e faz, em frases (lido da mesma tabela que o banco usa) */
+function resumoPerfil(c){
+  var p = perfilDe(c); if(!p) return '';
+  var dir = c === 'diretoria';
+  function pode(m, a){ return temModulo(c, m) && (travado(c, m) || temAcao(c, m, a)); }
+  function nomes(m, consulta){
+    return D.acoes.filter(function(a){ return a.modulo === m && !!a.consulta === consulta && pode(m, a.codigo); })
+                  .map(function(a){ return a.nome.toLowerCase(); });
+  }
+  var l = [];
+  if(dir){ l.push(['Tudo', 'Diretoria: vê e faz tudo em todos os módulos.']); }
+  else {
+    if(temModulo(c, 'flow')){
+      var fv = 'Vê as pendências em que é quem criou, o responsável ou um envolvido'
+             + (pode('flow', 'ver_obras') ? ', e todas as das obras que enxerga' : '') + '.';
+      var ff = nomes('flow', false);
+      l.push(['Flow', fv + (pode('flow', 'ver_painel') ? ' Vê o Painel.' : '') + (ff.length ? ' Pode: ' + ff.join(', ') + '.' : ' Só responde as pendências dele.')]);
+    } else l.push(['Flow', 'Não entra.']);
+    if(temModulo(c, 'patrimonio')){
+      var areas = ['obra', 'ti'].filter(function(d){ return pode('patrimonio', 'ver_' + d) || pode('patrimonio', 'gerenciar_' + d) || pode('patrimonio', 'aprovar_' + d); })
+                                .map(function(d){ return d === 'obra' ? 'Obra' : 'TI'; });
+      var pv = areas.length ? 'Vê todos os bens de ' + areas.join(' e ') + ', além dos que estão com ele.' : 'Vê só os bens que estão com ele (custódia) e pede cadastro e movimentação.';
+      var pf = nomes('patrimonio', false);
+      l.push(['Patrimônio', pv + (pode('patrimonio', 'relatorios') ? ' Vê relatórios.' : '') + (pf.length ? ' Pode: ' + pf.join(', ') + '.' : '')]);
+    } else l.push(['Patrimônio', 'Não entra.']);
+    if(temModulo(c, 'configuracoes')){
+      var cv = nomes('configuracoes', true), cf = nomes('configuracoes', false);
+      l.push(['Cadastros', (cv.length || cf.length ? [].concat(cv, cf).join(', ').replace(/^./, function(x){ return x.toUpperCase(); }) + '.' : 'Vê só os dados da construtora.')
+              + (c === 'ti' ? ' (A TI tem tudo aqui.)' : '')]);
+    } else l.push(['Cadastros', 'Não entra.']);
+  }
+  var td = TIPOS_DOCS.find(function(x){ return x[0] === p.tipo_docs; });
+  l.push(['Docs', td ? td[1] + ': ' + td[2] : 'Não entra.']);
+  l.push(['Obras', 'Quais obras cada pessoa enxerga se define no cadastro dela (aba Pessoas): todas ou só algumas.']);
+  return '<div class="resumo">' + l.map(function(x){ return '<div><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('') + '</div>';
+}
+
 /* ---------------------------------------------------------------------
    PERMISSÕES — perfil × ação, uma tabela por módulo (core.perfil_acoes).
    O banco obedece. Grava por core.definir_permissao (diretoria/TI).
    --------------------------------------------------------------------- */
-var PERM_MOD = 'flow';
-var MOD_PERM = [['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['configuracoes', 'Cadastros'], ['docs', 'Docs']];
+var PERM_MOD = 'geral';
+var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['configuracoes', 'Cadastros'], ['docs', 'Docs']];
 var NOTA_MOD = {
   flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
   patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta.',
@@ -742,11 +797,12 @@ var NOTA_MOD = {
 function travado(perfil, mod){ return perfil === 'diretoria' || (perfil === 'ti' && mod === 'configuracoes'); }
 function temAcao(perfil, mod, acao){ return D.perfilAcoes.some(function(x){ return x.perfil === perfil && x.modulo === mod && x.acao === acao; }); }
 function telaPermissoes(){
-  var seg = '<div class="seg" style="margin-top:14px;max-width:560px">' + MOD_PERM.map(function(x){
+  var seg = '<div class="seg" style="margin-top:14px;max-width:700px">' + MOD_PERM.map(function(x){
     return '<button type="button" data-acao="perm-vista" data-id="' + x[0] + '" class="' + (PERM_MOD === x[0] ? 'ativo' : '') + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>';
   var topo = cabecalho('Permissões', 'O que cada perfil pode fazer dentro de cada módulo. Vale na hora, para todas as pessoas do perfil.' + (PODE.admin ? '' : ' Seu perfil só consulta.')) + seg;
   if(D.falta0030) return topo + '<div class="recado erro">Falta rodar a migração 0030 no banco.</div>';
   if(PERM_MOD === 'docs') return topo + telaDocs();
+  if(PERM_MOD === 'geral') return topo + telaGeral();
   var mod = PERM_MOD, ed = PODE.admin;
   var acoes = D.acoes.filter(function(a){ return a.modulo === mod; })
                      .sort(function(a, b){ return (b.consulta ? 1 : 0) - (a.consulta ? 1 : 0) || a.ordem - b.ordem; });
@@ -773,6 +829,16 @@ function telaPermissoes(){
     + (sem_.length ? '<div class="sub" style="margin-top:8px">Sem este módulo: ' + sem_.map(function(p){ return esc(p.nome); }).join(', ') + ' — ligue na aba Perfis.</div>' : '')
     + '<div class="legenda">' + acoes.map(function(a){
         return '<div><b>' + esc(a.nome) + '</b>' + (a.consulta ? ' <span class="chip cinza">só consulta</span>' : '') + '<br>' + esc(a.descricao) + '</div>'; }).join('') + '</div>';
+}
+/* Visão geral: cada perfil, em frases, em todos os módulos — um lugar só para consultar */
+function telaGeral(){
+  var l = internosAtivos().sort(ordemPerfis);
+  return '<div class="dica" style="margin-top:14px">O que cada perfil vê e faz em todos os módulos, em frases. Para mudar: módulos e tipo no Docs na aba Perfis; o resto nas abas de cada módulo aqui ao lado. O Financeiro entra aqui quando vier para a suíte.</div>'
+    + l.map(function(p){
+        return '<div class="cartao" style="margin-top:10px;padding:14px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:8px">'
+          + '<b style="color:var(--azul);font-size:15px">' + esc(p.nome) + '</b><span class="sub">' + rotPessoas(qtdPessoas(p.codigo)) + '</span></div>'
+          + resumoPerfil(p.codigo) + '</div>';
+      }).join('');
 }
 /* Docs: as regras são do Docs; aqui só se vê o tipo de cada perfil */
 function telaDocs(){
