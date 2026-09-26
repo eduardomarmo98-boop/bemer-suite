@@ -597,7 +597,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.09.25.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -617,7 +617,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.09.25.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -638,7 +638,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.09.25.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.09.26.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -768,7 +768,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.09.25.2';
+var APP_VERSAO = '2026.09.26.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3474,7 +3474,7 @@ Admin = {
   pessoaNova: function(d){
     if(!d.email || d.email.toLowerCase().indexOf('@brandaoemarmo.com.br') < 0)
       return Promise.reject(new Error('Use um e-mail @brandaoemarmo.com.br.'));
-    return sb.functions.invoke('criar-usuario', {
+    return sb.functions.invoke('core-criar-usuario', {   // NUNCA 'criar-usuario': é a do Docs
       /* a função da suíte fala perfil, não papel */
       body: { email:d.email.trim().toLowerCase(), nome:d.nome, setor:d.setor,
               cargo:d.cargo, tipo:'colaborador',
@@ -3497,11 +3497,11 @@ Admin = {
       if(r.error || dados.erro){
         var m = dados.erro || (r.error && r.error.message) || 'Falha ao criar o acesso.';
         if(/Failed to send a request|Failed to fetch|FunctionsFetchError/i.test(m))
-          m = 'A função "criar-usuario" ainda não foi publicada no Supabase. '+
+          m = 'A função "core-criar-usuario" ainda não foi publicada no Supabase. '+
               'Vá em Edge Functions › Deploy a new function, use esse nome exato e cole o arquivo '+
               'edge-function-criar-usuario.ts.';
         else if(/non-2xx|FunctionsHttpError/i.test(m))
-          m = 'A função respondeu com erro. Veja Edge Functions › criar-usuario › Logs para o motivo.';
+          m = 'A função respondeu com erro. Veja Edge Functions › core-criar-usuario › Logs para o motivo.';
         throw new Error(m);
       }
       if(dados.aviso) aviso(dados.aviso, 'erro');
@@ -3824,7 +3824,7 @@ function iniciar(sessao){
   if(location.hash.indexOf('access_token') >= 0)
     history.replaceState(null,'',location.pathname+location.search);
 
-  /* O cadastro é fechado: quem cria o perfil é a função criar-usuario.
+  /* O cadastro é fechado: quem cria o perfil é a função core-criar-usuario.
      Não existe mais insert aqui — o RLS barraria de qualquer jeito, e o
      usuário cairia numa tela de erro sem instrução. */
   sb.schema('core').from('pessoas').select(CAMPOS_COLAB).eq('id', sessao.user.id).maybeSingle()

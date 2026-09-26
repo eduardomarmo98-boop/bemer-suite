@@ -360,7 +360,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.09.24.2';
+var VERSAO   = '2026.09.26.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -495,7 +495,7 @@ $('form-esqueci').addEventListener('submit', function(e){
 
 /* ---------- senha nova (chegou pelo link do e-mail) ----------
    Serve para o "esqueci" e para o primeiro acesso de quem foi cadastrado
-   pela tela de pessoas (a edge `criar-usuario` manda o mesmo link). */
+   pela tela de pessoas (a edge `core-criar-usuario` manda o mesmo link). */
 $('form-nova').addEventListener('submit', function(e){
   e.preventDefault();
   var s1 = $('nova1').value, s2 = $('nova2').value;

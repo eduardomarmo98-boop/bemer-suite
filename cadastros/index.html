@@ -178,12 +178,10 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.25.3';
+var APP_VERSION = '2026.09.26.1';
 var AMBIENTE    = 'homologação';
-/* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha).
-   Vai ser RENOMEADA antes do passo 8 da virada (o Docs em produção tem uma
-   de mesmo nome) — é só trocar aqui. */
-var FUNCAO_CRIAR_PESSOA = 'criar-usuario';
+/* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
+var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
 /* Domínio do e-mail de colaborador — é da construtora cliente, não do BeMer. */
 var DOMINIO_EMAIL = '@brandaoemarmo.com.br';
 /* ===================================================================== */
@@ -423,6 +421,8 @@ function listaPessoas(){
 }
 
 /* Que perfis eu posso dar (espelha a regra do banco — 0004/0024 e a edge) */
+/* perfis que veem a folha interna (core.perfil_ve_folha, 0028): dar ou tirar é da diretoria/DP */
+var FOLHA = ['diretoria', 'dp', 'visualizador_dp', 'visualizador_total'];
 /* no alcance da matriz? (sem a 0028: não restringe aqui; o banco confere) */
 function noAlcance(perfil){ return PODE.admin || !PODE.gere || PODE.gere.indexOf(perfil) >= 0; }
 function perfisQuePossoDar(tipo, atual){
@@ -433,7 +433,7 @@ function perfisQuePossoDar(tipo, atual){
     if(tipo === 'externo') return p.codigo === 'fornecedor';
     if(p.eh_externo) return false;
     if((p.codigo === 'diretoria' || p.codigo === 'ti') && !PODE.admin) return false;
-    if((p.codigo === 'diretoria' || p.codigo === 'dp') && !PODE.folha) return false;
+    if(FOLHA.indexOf(p.codigo) >= 0 && !PODE.folha) return false;
     return true;
   });
 }
@@ -459,7 +459,7 @@ function abrirPessoa(id){
   if(p.tipo === 'externo') return verFornecedor(p);
   var sou = p.id === EU.id;
   var protegido = (p.perfil === 'diretoria' || p.perfil === 'ti') && !PODE.admin;   // 0024
-  var folhaTrava = (p.perfil === 'diretoria' || p.perfil === 'dp') && !PODE.folha;
+  var folhaTrava = FOLHA.indexOf(p.perfil) >= 0 && !PODE.folha;
   var fora = !sou && p.tipo === 'colaborador' && !noAlcance(p.perfil);   // como no Docs: fora do alcance, só consulta nome/perfil
   var travaPerfil = sou || protegido || folhaTrava || fora;
   var travaSit = sou || protegido || folhaTrava || !PODE.admin;          // ativar/desativar: só diretoria/TI (como no Docs)
