@@ -717,7 +717,7 @@ function renderRoute(){
     case"fornecedores":return renderFornecedores();
     case"relatorio":return renderRelatorio();
     case"saldos":return renderSaldos();
-    case"usuarios":return renderUsuarios();
+    case"usuarios":location.href="../cadastros/";return "";
     case"config":return renderConfig();
     case"formalizar":return renderFormalizar(R.params.id);
     case"contratos":return renderContratos();
@@ -746,7 +746,7 @@ function bindRoute(){
     case"fornecedores":bindFornecedores();break;
     case"relatorio":bindRelatorio();break;
     case"saldos":bindSaldos();break;
-    case"usuarios":bindUsuarios();break;
+    case"usuarios":break;
     case"config":bindConfig();break;
     case"formalizar":bindFormalizar();break;
     case"contratos":bindContratos();break;
@@ -933,7 +933,7 @@ function renderHeader(){
       ${permVer('financeiro')?`<button id="h-financeiro" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">💵 Financeiro</button>`:""}
       ${permVer('indiretos')?`<button id="h-indiretos" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">📦 Indiretos</button>`:""}
       ${permVer('relatorios')?`<button id="h-relatorios" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">📊 Relatórios</button>`:""}
-      ${permVer('usuarios')?`<button id="h-usu" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">👥 Usuários</button>`:""}
+      
       ${permVer('config')?`<button id="h-insumos" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">📋 Insumos</button>`:""}
       </nav>
       <div class="relative">
@@ -943,7 +943,7 @@ function renderHeader(){
       <button id="h-print" onclick="imprimirTela()" title="Imprimir" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">🖨</button>
       ${permVer('config')?`<button id="h-cfg" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">⚙</button>`:""}
       
-      <button id="h-trocar" class="text-sm px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold ml-1">Sair</button>
+      <button id="h-trocar" class="text-sm px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold ml-1" title="Voltar ao portal BeMer">← Portal</button>
       <button id="h-menu" class="md:hidden text-xl leading-none px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700" aria-label="Menu">☰</button>
     </div>
   </div></header>`;
@@ -16039,7 +16039,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.09.28.2';
+var APP_VERSION = '2026.09.28.4';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',

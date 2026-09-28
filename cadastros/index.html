@@ -99,6 +99,7 @@ table.perm thead th.perfil{background:#FAFBFD}
 table.perm td.perfil b{display:block;font-weight:600}
 table.perm td.perfil small{color:var(--texto2);font-size:11.5px}
 table.perm tr.travado td{background:#FAFBFD}
+table.perm td.base{background:#EEF2F8}   /* 0037: vem da base (tipo no Docs) */
 table.perm input[type=checkbox]{width:20px;height:20px;accent-color:var(--azul);cursor:pointer}
 table.perm select{min-width:170px;width:auto}
 table.perm .trava{font-size:11px;color:var(--texto2)}
@@ -189,7 +190,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.28.3';
+var APP_VERSION = '2026.09.28.7';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -293,7 +294,7 @@ function recarregar(){
   var minha = ++RECARGA;   // uma recarga antiga que termina depois não sobrescreve a nova
   var nada = Promise.resolve({ data: [] });
   var pedidos = [
-    core('perfis').select('codigo,nome,descricao,eh_externo,ativo,tipo_docs').order('nome'),
+    core('perfis').select('*').order('nome'),
     core('obras').select('id,nome,cno,ativa').order('nome'),
     core('empresas').select('id,cnpj,razao_social,nome_fantasia,ativa').order('razao_social'),
     core('construtora').select('*').maybeSingle(),
@@ -313,7 +314,18 @@ function recarregar(){
     D.pessoas = rs[4].data || []; D.pessoaObras = rs[5].data || [];
     D.perfilModulos = rs[6].data || []; D.acoes = rs[7].data || []; D.perfilAcoes = rs[8].data || [];
     D.falta0030 = !!(rs[7].error || rs[8].error);
-    desenhar();
+    /* 28/09/2026: as obras do Custos também se marcam aqui (0035) — o Custos
+       não tem mais tela de usuários. Sem o Custos no banco, a seção não aparece. */
+    D.fin = null; D.docsObras = null;
+    var fim = Promise.all([
+      temFin() && PODE.verPessoas
+        ? sb.schema('financeiro').rpc('obras_para_cadastro').then(function(r){ if(!r.error && r.data) D.fin = r.data; }, function(){})
+        : null,
+      /* 28/09/2026 (0036): as obras que a pessoa interna vê no DOCS também se marcam aqui */
+      PODE.verPessoas
+        ? sb.schema('core').rpc('obras_docs_para_cadastro').then(function(r){ if(!r.error && r.data) D.docsObras = r.data; }, function(){})
+        : null]);
+    return fim.then(function(){ if(minha === RECARGA) desenhar(); });
   }).catch(function(e){
     $('conteudo').innerHTML = '<div class="recado erro">Não foi possível carregar: ' + esc(msgErro(e)) + '</div>';
   });
@@ -386,7 +398,7 @@ var FOCO_PENDENTE = null;
 function seletorDoFoco(){
   var a = document.activeElement;
   if(!a || !$('conteudo').contains(a)) return null;
-  var chaves = ['data-mod-perfil','data-mod','data-tipo-docs','data-pa-perfil','data-pa-acao','data-ver-inativos','data-filtro','data-acao','data-id'];
+  var chaves = ['data-mod-perfil','data-mod','data-tipo-docs','data-docs-perfil','data-pa-perfil','data-pa-acao','data-ver-inativos','data-filtro','data-acao','data-id'];
   var partes = chaves.filter(function(k){ return a.hasAttribute(k); })
                      .map(function(k){ return '[' + k + '="' + String(a.getAttribute(k)).replace(/["\\]/g, '\\$&').replace(/[\n\r\f]/g, function(c){ return '\\' + c.charCodeAt(0).toString(16) + ' '; }) + '"]'; });
   return partes.length ? a.tagName.toLowerCase() + partes.join('') : null;
@@ -480,6 +492,10 @@ function abrirPessoa(id){
   var obras = D.obras.filter(function(o){ return o.ativa || obrasDaPessoa(p.id).indexOf(o.id) >= 0; })
                      .map(function(o){ return { id:o.id, nome:o.nome + (o.ativa ? '' : ' (encerrada)') }; });
   var marc = obrasDaPessoa(p.id);
+  var marcDocs = D.docsObras ? ((D.docsObras.marcadas || []).find(function(x){ return x.pessoa_id === p.id; }) || {obra_ids: []}).obra_ids.map(Number) : [];
+  var tipoDocsP = (D.perfis.find(function(x){ return x.codigo === p.perfil; }) || {}).tipo_docs || null;
+  var DOCS_TODAS = ['diretoria','ti','sesmt','coord_sesmt','dp','visualizador','visualizador_dp','visualizador_total'];
+  var marcFin = D.fin ? (D.fin.marcadas || []).filter(function(x){ return x.pessoa_id === p.id; }).map(function(x){ return x.obra_id; }) : [];
   var dis = consulta ? ' disabled' : '';
   modal('Pessoa',
     '<div class="grade">'
@@ -502,9 +518,16 @@ function abrirPessoa(id){
         + '<button type="button" data-v="estas" class="' + (marc.length ? 'ativo' : '') + '"' + (PODE.obrasPessoa ? '' : ' disabled') + '>Só estas</button></div>'
         + '<div id="p-obras-lista"' + (marc.length ? '' : ' class="oculto"') + '>' + caixaMarcar('p-obras', obras, marc, PODE.obrasPessoa) + '</div>'
         + '<div class="sub">Vale no Flow (pendências das obras).' + (PODE.obrasPessoa ? '' : ' Seu perfil não altera.') + '</div>', true)
+    + (D.docsObras && tipoDocsP && p.tipo === 'colaborador' ? campo('Obras no Docs', (DOCS_TODAS.indexOf(tipoDocsP) >= 0
+        ? '<div class="leitura">No Docs, o tipo do perfil (' + esc(tipoDocsNome(tipoDocsP)) + ') já vê todas as obras.</div>'
+        : caixaMarcar('p-obras-docs', (D.docsObras.obras || []).filter(function(o){ return o.ativa || marcDocs.indexOf(Number(o.id)) >= 0; }).map(function(o){ return { id: Number(o.id), nome: o.nome + (o.ativa ? '' : ' (encerrada)') }; }), marcDocs, !!D.docsObras.pode)
+          + '<div class="sub">As obras do Docs (documentação, portaria). Nenhuma marcada, nenhuma obra.' + (D.docsObras.pode ? '' : ' Seu perfil não altera.') + '</div>'), true) : '')
+    + (D.fin ? campo('Obras no Custos', caixaMarcar('p-obras-fin', D.fin.obras || [], marcFin, !!D.fin.pode)
+        + '<div class="sub">' + ((p.perfil === 'diretoria' || temAcao(p.perfil, 'financeiro', 'todas_obras')) ? 'O perfil ' + esc(perfilNome(p.perfil)) + ' já vê todas as obras do Custos.' : 'Sem "Ver todas as obras" no perfil, vê só as marcadas — nenhuma marcada, nenhuma obra.')
+        + (D.fin.pode ? '' : ' Seu perfil não altera.') + '</div>', true) : '')
     + (PODE.verPermissoes && D.acoes.length ? campo('O que vê e faz (pelo perfil ' + perfilNome(p.perfil) + ')', resumoPerfil(p.perfil), true) : '')
     + '</div>',
-    consulta && !PODE.obrasPessoa ? null : function(){
+    consulta && !PODE.obrasPessoa && !(D.fin && D.fin.pode) && !(D.docsObras && D.docsObras.pode) ? null : function(){
       /* tudo lido AGORA (antes o modal podia trocar durante a gravação) */
       var dados = {};
       if(!consulta){
@@ -527,10 +550,16 @@ function abrirPessoa(id){
           throw new Error('Marque ao menos uma obra, ou escolha "Todas as obras".');
       }
       var mudouObras = novas && (novas.length !== marc.length || novas.some(function(x){ return marc.indexOf(x) < 0; }));
+      var novasFin = (D.fin && D.fin.pode) ? (marcadosEm('p-obras-fin') || []) : null;
+      var novasDocs = (D.docsObras && D.docsObras.pode && document.getElementById('p-obras-docs')) ? (marcadosEm('p-obras-docs') || []).map(Number) : null;
+      var mudouDocs = novasDocs && (novasDocs.length !== marcDocs.length || novasDocs.some(function(x){ return marcDocs.indexOf(x) < 0; }));
+      var mudouFin = novasFin && (novasFin.length !== marcFin.length || novasFin.some(function(x){ return marcFin.indexOf(x) < 0; }));
       var passo = Object.keys(dados).length ? core('pessoas').update(dados).eq('id', p.id).then(ok) : Promise.resolve();
       return passo.then(function(){ return mudouObras ? definirObras(p.id, marc, novas) : null; })
+        .then(function(){ return mudouDocs ? sb.schema('core').rpc('definir_obras_docs', { p_pessoa: p.id, p_obras: novasDocs }).then(ok) : null; })
+        .then(function(){ return mudouFin ? sb.schema('financeiro').rpc('definir_obras_da_pessoa', { p_pessoa: p.id, p_obras: novasFin }).then(ok) : null; })
         .then(function(){ return 'ativo' in dados ? loginDocs(p.id, dados.ativo) : null; })
-        .then(function(aviso){ if(aviso) return aviso; if(!Object.keys(dados).length && !mudouObras) return 'Nada mudou.'; });
+        .then(function(aviso){ if(aviso) return aviso; if(!Object.keys(dados).length && !mudouObras && !mudouFin && !mudouDocs) return 'Nada mudou.'; });
     });
   segmento('p-ativo');
   segmento('p-obras-modo', function(v){ $('p-obras-lista').classList.toggle('oculto', v !== 'estas'); });
@@ -694,9 +723,12 @@ function telaPerfis(){
           return '<td><input type="checkbox" data-mod-perfil="' + esc(p.codigo) + '" data-mod="' + mo.m + '"' + (temModulo(p.codigo, mo.m) ? ' checked' : '')
                + (trava ? ' disabled' : '') + (trava && ed ? ' title="Travado"' : '') + ' aria-label="' + esc(mo.nome) + ' para ' + esc(p.nome) + '"></td>';
         }).join('')
-      + '<td class="docs">' + (ed && !dir && !ti
+      + (docsPelaTabela()
+        ? '<td>' + (dir ? '<span class="trava">tudo</span>' : '<input type="checkbox" data-docs-perfil="' + esc(p.codigo) + '"' + (p.tipo_docs ? ' checked' : '')
+            + (!ed || ti ? ' disabled' : '') + ' title="' + (p.tipo_docs ? 'Base: ' + esc(tipoDocsNome(p.tipo_docs)) : 'Não entra no Docs') + '" aria-label="Docs para ' + esc(p.nome) + '">') + '</td>'
+        : '<td class="docs">' + (ed && !dir && !ti
           ? '<select data-tipo-docs="' + esc(p.codigo) + '" aria-label="Tipo no Docs de ' + esc(p.nome) + '">' + opcoesTipoDocs(p.tipo_docs) + '</select>'
-          : '<span class="' + (p.tipo_docs ? '' : 'trava') + '">' + esc(tipoDocsNome(p.tipo_docs)) + '</span>') + '</td>'
+          : '<span class="' + (p.tipo_docs ? '' : 'trava') + '">' + esc(tipoDocsNome(p.tipo_docs)) + '</span>') + '</td>')
       + '<td><button type="button" class="botao sec mini" data-acao="perfil" data-id="' + esc(p.codigo) + '">' + (ed ? 'Editar' : 'Ver') + '</button></td>'
       + '</tr>';
   }).join('');
@@ -707,7 +739,7 @@ function telaPerfis(){
     + (inativos ? '<label class="marcar" style="margin:-4px 0 6px"><input type="checkbox" data-ver-inativos' + (VER_INATIVOS ? ' checked' : '') + '> Mostrar perfis inativos (' + inativos + ')</label>' : '')
     + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
     + modulosAtivos().map(function(mo){ return '<th title="' + esc(mo.dica) + '">' + esc(mo.nome) + '</th>'; }).join('')
-    + '<th>Tipo no Docs</th><th><span class="oculto">Abrir</span></th>' + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+    + '<th' + (docsPelaTabela() ? ' title="Entra no Docs. O que faz lá: Permissões › Docs. A base fica em Editar."' : '') + '>' + (docsPelaTabela() ? 'Docs' : 'Tipo no Docs') + '</th><th><span class="oculto">Abrir</span></th>' + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
 function abrirPerfil(codigo){
   var p = codigo ? perfilDe(codigo) : null;
@@ -719,7 +751,7 @@ function abrirPerfil(codigo){
     '<div class="grade">'
     + campo('Nome do perfil (o cargo)', '<input type="text" id="f-nome" maxlength="60" placeholder="ex.: Engenheiro de obra" value="' + esc(p ? p.nome : '') + '">', true)
     + campo('Descrição (opcional)', '<input type="text" id="f-desc" maxlength="140" value="' + esc(p ? p.descricao : '') + '">', true)
-    + campo('Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
+    + campo(docsPelaTabela() ? 'Base no Docs (avançado)' : 'Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
         + '<div class="sub" id="f-tipo-dica" style="margin-top:6px"></div>', true)
     + (novo ? campo('Módulos', modulosAtivos().map(function(mo){
           return '<label class="marcar"><input type="checkbox" data-novo-mod="' + mo.m + '"' + (mo.m === 'flow' ? ' checked' : '') + '> ' + esc(mo.nome) + '</label>'; }).join(''), true)
@@ -806,7 +838,8 @@ function resumoPerfil(c){
     } else l.push(['Cadastros', 'Não entra.']);
   }
   var td = TIPOS_DOCS.find(function(x){ return x[0] === p.tipo_docs; });
-  l.push(['Docs', td ? td[1] + ': ' + td[2] : 'Não entra.']);
+  var extrasDocs = td ? D.acoes.filter(function(a){ return a.modulo === 'docs' && temAcao(c, 'docs', a.codigo) && !daBaseDocs(c, a.codigo); }).map(function(a){ return a.nome.toLowerCase(); }) : [];
+  l.push(['Docs', td ? td[1] + ': ' + td[2] + (extrasDocs.length ? ' Também: ' + extrasDocs.join(', ') + '.' : '') : 'Não entra.']);
   l.push(['Obras', 'Quais obras cada pessoa enxerga se define no cadastro dela (aba Pessoas): todas ou só algumas.']);
   return '<div class="resumo">' + l.map(function(x){ return '<div><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('') + '</div>';
 }
@@ -826,8 +859,29 @@ var NOTA_MOD = {
   flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
   patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta.',
   configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI tem tudo aqui.',
+  docs: 'Marque o que cada perfil vê e faz no Docs; vale na hora (a pessoa sai e entra de novo). Desmarcar tira da tela do Docs. A trava do banco segue a BASE do perfil (Perfis › Editar › Base no Docs) — para travar também no banco, baixe a base. Folha interna e o que o fornecedor vê: fixos, pela base.',
   financeiro: 'Sem "Ver todas as obras", a pessoa vê só as obras marcadas para ela em Custos — nenhuma marcada, nenhuma obra. Decidir contratação e SAE, aprovar compra acima da alçada e excluir são só da diretoria.'
 };
+/* 28/09/2026 (0037): no Docs o "tipo" do perfil é a BASE. O que ela dá aparece
+   marcado e travado; o resto se marca e SOMA. Espelha core.docs_base_da(). */
+var DOCS_BASE = {
+  diretoria:   ['todas_obras','indicadores','enviar_doc','aprovar_doc','administrar','portaria','obra_docs','cobrar_email','cobrar_whats','fopag'],
+  ti:          ['todas_obras','indicadores','enviar_doc','aprovar_doc','administrar','portaria','obra_docs','cobrar_email','cobrar_whats','fopag'],
+  sesmt:       ['todas_obras','indicadores','enviar_doc','aprovar_doc','administrar','portaria','obra_docs','cobrar_email','cobrar_whats'],
+  coord_sesmt: ['todas_obras','indicadores','enviar_doc','aprovar_doc','administrar','portaria','obra_docs','cobrar_email','cobrar_whats'],
+  dp:          ['todas_obras','enviar_doc','administrar','portaria','obra_docs','cobrar_email','cobrar_whats','fopag'],
+  tst:         ['enviar_doc','portaria','obra_docs','cobrar_email'],
+  coordenador: ['enviar_doc','portaria','cobrar_email'],
+  vigia:       ['portaria'],
+  visualizador: ['todas_obras'], visualizador_total: ['todas_obras']
+};
+function daBaseDocs(perfil, acao){
+  var p = D.perfis.find(function(x){ return x.codigo === perfil; });
+  if(p && p.docs_por_acoes) return false;   // 0038: pela tabela, nada travado
+  return !!(p && p.tipo_docs && (DOCS_BASE[p.tipo_docs] || []).indexOf(acao) >= 0);
+}
+function docsPelaTabela(){ return (D.perfis || []).some(function(p){ return 'docs_por_acoes' in p; }); }
+function temDocsAcoes(){ return (D.acoes || []).some(function(a){ return a.modulo === 'docs'; }); }
 function travado(perfil, mod){ return perfil === 'diretoria' || (perfil === 'ti' && mod === 'configuracoes'); }
 function temAcao(perfil, mod, acao){ return D.perfilAcoes.some(function(x){ return x.perfil === perfil && x.modulo === mod && x.acao === acao; }); }
 function telaPermissoes(){
@@ -835,7 +889,7 @@ function telaPermissoes(){
     return '<button type="button" data-acao="perm-vista" data-id="' + x[0] + '" class="' + (PERM_MOD === x[0] ? 'ativo' : '') + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>';
   var topo = cabecalho('Permissões', 'O que cada perfil pode fazer dentro de cada módulo. Vale na hora, para todas as pessoas do perfil.' + (PODE.admin ? '' : ' Seu perfil só consulta.')) + seg;
   if(D.falta0030) return topo + '<div class="recado erro">Falta rodar a migração 0030 no banco.</div>';
-  if(PERM_MOD === 'docs') return topo + telaDocs();
+  if(PERM_MOD === 'docs' && !temDocsAcoes()) return topo + telaDocs();
   if(PERM_MOD === 'geral') return topo + telaGeral();
   var mod = PERM_MOD, ed = PODE.admin;
   var acoes = D.acoes.filter(function(a){ return a.modulo === mod; })
@@ -852,14 +906,16 @@ function telaPermissoes(){
         var tr = travado(p.codigo, mod);
         return '<tr' + (tr ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + '</b><small>' + rotPessoas(qtdPessoas(p.codigo)) + (tr ? ' · tudo' : '') + '</small></td>'
           + acoes.map(function(a){
-              return '<td><input type="checkbox" data-pa-perfil="' + esc(p.codigo) + '" data-pa-acao="' + esc(a.codigo) + '"'
-                   + (tr || temAcao(p.codigo, mod, a.codigo) ? ' checked' : '') + (tr || !ed ? ' disabled' : '')
+              var base = mod === 'docs' && daBaseDocs(p.codigo, a.codigo);
+              return '<td' + (base ? ' class="base" title="Vem da base (tipo no Docs). Para tirar, troque a base do perfil."' : '') + '><input type="checkbox" data-pa-perfil="' + esc(p.codigo) + '" data-pa-acao="' + esc(a.codigo) + '"'
+                   + (tr || base || temAcao(p.codigo, mod, a.codigo) ? ' checked' : '') + (tr || base || !ed ? ' disabled' : '')
                    + ' aria-label="' + esc(a.nome) + ' — ' + esc(p.nome) + '"></td>'; }).join('') + '</tr>';
       }).join('') + '</tbody></table></div>'
     : '<div class="lista"><div class="vazio">Nenhum perfil entra neste módulo. Ligue o módulo na aba Perfis.</div></div>';
   return topo
     + '<div class="dica" style="margin-top:14px">' + esc(NOTA_MOD[mod]) + '</div>'
     + corpo
+    + (mod === 'docs' ? '<h3 style="margin:22px 0 4px;font-size:15px;color:var(--azul)">As bases (tipo no Docs)</h3>' + telaDocs() : '')
     + (sem_.length ? '<div class="sub" style="margin-top:8px">Sem este módulo: ' + sem_.map(function(p){ return esc(p.nome); }).join(', ') + ' — ligue na aba Perfis.</div>' : '')
     + '<div class="legenda">' + acoes.map(function(a){
         return '<div><b>' + esc(a.nome) + '</b>' + (a.consulta ? ' <span class="chip cinza">só consulta</span>' : '') + '<br>' + esc(a.descricao) + '</div>'; }).join('') + '</div>';
@@ -901,6 +957,15 @@ $('conteudo').addEventListener('change', function(e){
     FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
     return grava('definir_modulo', { p_perfil: pm, p_modulo: t.getAttribute('data-mod'), p_ligado: t.checked },
                  'Módulos de ' + perfilNome(pm) + ' atualizados.');
+  }
+  if(t.hasAttribute('data-docs-perfil')){
+    var pd = perfilDe(t.getAttribute('data-docs-perfil')); if(!pd) return;
+    var nd = qtdPessoas(pd.codigo, true);
+    if(!t.checked && nd && !confirm('Tirar o Docs deste perfil tira do Docs as ' + rotPessoas(nd) + ' dele. Continuar?')){ t.checked = true; return; }
+    FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
+    /* entrar no Docs começa pela base mais baixa (Visualizador): o resto se marca em Permissões › Docs */
+    return grava('salvar_perfil', { p_codigo: pd.codigo, p_nome: pd.nome, p_descricao: pd.descricao || '', p_tipo_docs: t.checked ? 'visualizador' : null, p_ativo: pd.ativo },
+                 t.checked ? pd.nome + ' agora entra no Docs. Marque o que ele faz em Permissões › Docs.' : pd.nome + ' não entra mais no Docs.');
   }
   if(t.hasAttribute('data-tipo-docs')){
     var p = perfilDe(t.getAttribute('data-tipo-docs')); if(!p) return;
