@@ -186,11 +186,11 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
 <script>
 /* ===================================================================== */
-var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
-var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
+var SUPABASE_URL      = 'https://vpaylafvhprihfrhqrax.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_UNOQ5DSb3xiZ9eIvIub8Fg_ENxPsYW3';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.26.4';
-var AMBIENTE    = 'homologação';
+var APP_VERSION = '2026.09.28.2';
+var AMBIENTE    = '';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
 /* Domínio do e-mail de colaborador — é da construtora cliente, não do BeMer. */
@@ -529,7 +529,8 @@ function abrirPessoa(id){
       var mudouObras = novas && (novas.length !== marc.length || novas.some(function(x){ return marc.indexOf(x) < 0; }));
       var passo = Object.keys(dados).length ? core('pessoas').update(dados).eq('id', p.id).then(ok) : Promise.resolve();
       return passo.then(function(){ return mudouObras ? definirObras(p.id, marc, novas) : null; })
-        .then(function(){ if(!Object.keys(dados).length && !mudouObras) return 'Nada mudou.'; });
+        .then(function(){ return 'ativo' in dados ? loginDocs(p.id, dados.ativo) : null; })
+        .then(function(aviso){ if(aviso) return aviso; if(!Object.keys(dados).length && !mudouObras) return 'Nada mudou.'; });
     });
   segmento('p-ativo');
   segmento('p-obras-modo', function(v){ $('p-obras-lista').classList.toggle('oculto', v !== 'estas'); });
@@ -585,6 +586,25 @@ function novaPessoa(){
     }, 'Criar acesso');
 }
 
+/* 28/09/2026: ativar/desativar aqui mudava só o cadastro. O login continuava
+   como o Docs deixou: quem foi inativado pelo Docs tem o login BLOQUEADO no
+   Auth e, reativado aqui, seguia sem conseguir entrar. Quem bloqueia e
+   desbloqueia é a edge do Docs `inativar-usuario` (a mesma do botão do Docs),
+   então a gente chama ela. Se ela recusar, o cadastro já foi gravado: só avisa. */
+function loginDocs(id, ativar){
+  return sb.functions.invoke('inativar-usuario', { body: { userId: id, ativar: ativar, motivo: 'Pelo portal (Cadastros)' } })
+    .then(function(r){
+      if(!r.error && r.data && r.data.ok) return null;
+      var p = r.error && r.error.context && typeof r.error.context.json === 'function'
+        ? r.error.context.json().catch(function(){ return {}; }) : Promise.resolve(r.data || {});
+      return p.then(function(c){
+        return { ficar: 'Cadastro salvo, mas o login não foi ' + (ativar ? 'desbloqueado' : 'bloqueado') + ' ('
+          + ((c && c.error) || (r.error && r.error.message) || 'sem resposta') + '). Faça pelo Docs: Usuários → '
+          + (ativar ? 'Reativar' : 'Inativar') + '.' };
+      });
+    }, function(){ return { ficar: 'Cadastro salvo, mas não consegui falar com o Docs para ' + (ativar ? 'desbloquear' : 'bloquear') + ' o login. Faça pelo Docs.' }; });
+}
+
 function criarAcesso(corpo){
   return sb.functions.invoke(FUNCAO_CRIAR_PESSOA, { body: corpo }).then(function(r){
     /* quando a função recusa (400/403/409) a mensagem de verdade está no corpo */
@@ -628,6 +648,7 @@ function definirObras(pessoa, antes, depois){
 var MODULOS = [
   { m:'flow',          nome:'Flow',       dica:'Pendências' },
   { m:'patrimonio',    nome:'Patrimônio', dica:'Bens' },
+  { m:'financeiro',    nome:'Financeiro', dica:'Contratos, compras e medições' },
   { m:'configuracoes', nome:'Cadastros',  dica:'A engrenagem do portal' }
 ];
 /* o que cada tipo faz DENTRO do Docs (as regras são do Docs; aqui é só a legenda) */
@@ -667,7 +688,7 @@ function telaPerfis(){
     var dir = p.codigo === 'diretoria', ti = p.codigo === 'ti';
     return '<tr' + (dir ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + (p.ativo ? '' : ' <span class="chip cinza">Inativo</span>') + '</b>'
       + '<small>' + rotPessoas(qtdPessoas(p.codigo)) + (p.descricao ? ' · ' + esc(p.descricao) : '') + '</small></td>'
-      + MODULOS.map(function(mo){
+      + modulosAtivos().map(function(mo){
           if(dir) return '<td><span class="trava">tudo</span></td>';
           var trava = !ed || (mo.m === 'configuracoes' && ti);
           return '<td><input type="checkbox" data-mod-perfil="' + esc(p.codigo) + '" data-mod="' + mo.m + '"' + (temModulo(p.codigo, mo.m) ? ' checked' : '')
@@ -685,7 +706,7 @@ function telaPerfis(){
     + (ed ? '' : ' Seu perfil só consulta.') + '</div>'
     + (inativos ? '<label class="marcar" style="margin:-4px 0 6px"><input type="checkbox" data-ver-inativos' + (VER_INATIVOS ? ' checked' : '') + '> Mostrar perfis inativos (' + inativos + ')</label>' : '')
     + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
-    + MODULOS.map(function(mo){ return '<th title="' + esc(mo.dica) + '">' + esc(mo.nome) + '</th>'; }).join('')
+    + modulosAtivos().map(function(mo){ return '<th title="' + esc(mo.dica) + '">' + esc(mo.nome) + '</th>'; }).join('')
     + '<th>Tipo no Docs</th><th><span class="oculto">Abrir</span></th>' + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
 function abrirPerfil(codigo){
@@ -700,7 +721,7 @@ function abrirPerfil(codigo){
     + campo('Descrição (opcional)', '<input type="text" id="f-desc" maxlength="140" value="' + esc(p ? p.descricao : '') + '">', true)
     + campo('Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
         + '<div class="sub" id="f-tipo-dica" style="margin-top:6px"></div>', true)
-    + (novo ? campo('Módulos', MODULOS.map(function(mo){
+    + (novo ? campo('Módulos', modulosAtivos().map(function(mo){
           return '<label class="marcar"><input type="checkbox" data-novo-mod="' + mo.m + '"' + (mo.m === 'flow' ? ' checked' : '') + '> ' + esc(mo.nome) + '</label>'; }).join(''), true)
         : campo('Situação', '<div class="seg" id="f-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
             + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (sistema ? ' disabled' : '') + '>Ativo</button>'
@@ -771,6 +792,13 @@ function resumoPerfil(c){
       var pf = nomes('patrimonio', false);
       l.push(['Patrimônio', pv + (pode('patrimonio', 'relatorios') ? ' Vê relatórios.' : '') + (pf.length ? ' Pode: ' + pf.join(', ') + '.' : '')]);
     } else l.push(['Patrimônio', 'Não entra.']);
+    if(temFin()){
+      if(temModulo(c, 'financeiro')){
+        var nv = nomes('financeiro', true), nf = nomes('financeiro', false);
+        l.push(['Financeiro', (pode('financeiro', 'todas_obras') ? 'Todas as obras.' : 'Só as obras marcadas para a pessoa.')
+          + (nv.length ? ' Vê: ' + nv.filter(function(x){ return x !== 'ver todas as obras'; }).join(', ') + '.' : '') + (nf.length ? ' Pode: ' + nf.join(', ') + '.' : '')]);
+      } else l.push(['Financeiro', 'Não entra.']);
+    }
     if(temModulo(c, 'configuracoes')){
       var cv = nomes('configuracoes', true), cf = nomes('configuracoes', false);
       l.push(['Cadastros', (cv.length || cf.length ? [].concat(cv, cf).join(', ').replace(/^./, function(x){ return x.toUpperCase(); }) + '.' : 'Vê só os dados da construtora.')
@@ -788,16 +816,22 @@ function resumoPerfil(c){
    O banco obedece. Grava por core.definir_permissao (diretoria/TI).
    --------------------------------------------------------------------- */
 var PERM_MOD = 'geral';
-var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['configuracoes', 'Cadastros'], ['docs', 'Docs']];
+var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['financeiro', 'Financeiro'], ['configuracoes', 'Cadastros'], ['docs', 'Docs']];
+/* 28/09/2026: o Financeiro só aparece onde o banco já o tem (0033 rodada) —
+   em produção ele ainda não existe, e ligar o card daria "Módulo inválido". */
+function temFin(){ return (D.acoes || []).some(function(a){ return a.modulo === 'financeiro'; }); }
+function modulosAtivos(){ return MODULOS.filter(function(mo){ return mo.m !== 'financeiro' || temFin(); }); }
+function modPerm(){ return MOD_PERM.filter(function(x){ return x[0] !== 'financeiro' || temFin(); }); }
 var NOTA_MOD = {
   flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
   patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta.',
-  configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI tem tudo aqui.'
+  configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI tem tudo aqui.',
+  financeiro: 'Sem "Ver todas as obras", a pessoa vê só as obras marcadas para ela no Financeiro — nenhuma marcada, nenhuma obra. Decidir contratação e SAE, aprovar compra acima da alçada e excluir são só da diretoria.'
 };
 function travado(perfil, mod){ return perfil === 'diretoria' || (perfil === 'ti' && mod === 'configuracoes'); }
 function temAcao(perfil, mod, acao){ return D.perfilAcoes.some(function(x){ return x.perfil === perfil && x.modulo === mod && x.acao === acao; }); }
 function telaPermissoes(){
-  var seg = '<div class="seg" style="margin-top:14px;max-width:700px">' + MOD_PERM.map(function(x){
+  var seg = '<div class="seg" style="margin-top:14px;max-width:700px">' + modPerm().map(function(x){
     return '<button type="button" data-acao="perm-vista" data-id="' + x[0] + '" class="' + (PERM_MOD === x[0] ? 'ativo' : '') + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>';
   var topo = cabecalho('Permissões', 'O que cada perfil pode fazer dentro de cada módulo. Vale na hora, para todas as pessoas do perfil.' + (PODE.admin ? '' : ' Seu perfil só consulta.')) + seg;
   if(D.falta0030) return topo + '<div class="recado erro">Falta rodar a migração 0030 no banco.</div>';
