@@ -360,7 +360,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.09.28.2';
+var VERSAO   = '2026.09.28.3';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -379,8 +379,9 @@ var MODULOS = {
   docs:       {nome:'Docs',       desc:'Documentação de SESMT e FOPAG e acesso às obras.', url:null,                              icone:'docs'},
   flow:       {nome:'Flow',       desc:'Pendências e atividades por obra e por responsável.', url:'flow/',       icone:'flow'},
   patrimonio: {nome:'Patrimônio', desc:'Bens, movimentações e inventário.',               url:'patrimonio/', icone:'patrimonio'},
-  /* 28/09/2026: o card era `bemer`; o módulo no core agora é `financeiro` (0033). */
-  financeiro: {nome:'Financeiro', desc:'Contratos, pedidos e medições.',                  url:'financeiro/', icone:'financeiro'},
+  /* 28/09/2026: o card era `bemer`; o módulo no core agora é `financeiro` (0033).
+     Na tela se chama CUSTOS (decisão do Saurin, 28/09) — o código segue `financeiro`. */
+  financeiro: {nome:'Custos',     desc:'Orçamento, compras, contratos, medições e faturamento.',                  url:'financeiro/', icone:'financeiro'},
   manutencao: {nome:'Manutenção', desc:'Ordens de serviço.',                               url:null,                              icone:'manutencao'},
   /* Não é um sistema: é onde mora o que é da suíte inteira — chaves de IA,
      compactador, garimpador de arquivos mortos, matriz de permissões.
