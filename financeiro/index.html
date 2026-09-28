@@ -16039,7 +16039,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.09.28.1';
+var APP_VERSION = '2026.09.28.2';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -16347,6 +16347,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         webhook_url:(extra[r.id]&&extra[r.id].webhook_url)||'',ativo:r.ativo!==false}; })};
     })());
     reqs.push(sb.from('config').select('*').eq('id',1).maybeSingle());
+    reqs.push(sb.schema('core').from('construtora').select('*').maybeSingle());
     const res=await Promise.all(reqs);
     /* planilha: usa cache local se a contagem do servidor não mudou; senão baixa tudo paginado */
     try{
@@ -16378,6 +16379,16 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     snapUsu={};S.usuarios.forEach(u=>{snapUsu[u.id]=JSON.stringify([u.nome,u.perfil,u.obrasVinculadas,u.whatsapp,u.webhookUrl,u.ativo]);});
     const cfgRow=res[ORDER.length+1].data;
     if(cfgRow&&cfgRow.dados){S.config=Object.assign({},S.config||{},cfgRow.dados);}
+    { const c=res[ORDER.length+2]&&res[ORDER.length+2].data;
+      if(c&&c.razao_social){
+        const d=String(c.cnpj||'').replace(/\D/g,''), cep=String(c.cep||'').replace(/\D/g,'');
+        S.config.empresaRazao=c.razao_social; S.config.nomeEmpresa=c.nome_fantasia||c.razao_social;
+        if(d.length===14) S.config.empresaCnpj=d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+        if(c.inscricao_estadual) S.config.empresaIE=c.inscricao_estadual;
+        if(c.inscricao_municipal) S.config.empresaIM=c.inscricao_municipal;
+        const end=[c.endereco, [c.cidade,c.uf].filter(Boolean).join(' – '), cep.length===8?'CEP '+cep.slice(0,5)+'-'+cep.slice(5):'', c.telefone?'TEL: '+c.telefone:''].filter(Boolean).join(' · ');
+        if(end) S.config.empresaEndereco=end;
+      } }
     snapCfg=JSON.stringify(S.config);
     /* v2026.07.21.68 — NAO TROCAR OS OBJETOS, ATUALIZAR OS QUE JA EXISTEM.
        Antes esta linha era `S[KEYOF[t]]=objs`, com objetos recem-criados: todo mundo que
