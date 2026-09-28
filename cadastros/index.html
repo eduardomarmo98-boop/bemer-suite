@@ -190,7 +190,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.28.7';
+var APP_VERSION = '2026.09.28.8';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -725,21 +725,21 @@ function telaPerfis(){
         }).join('')
       + (docsPelaTabela()
         ? '<td>' + (dir ? '<span class="trava">tudo</span>' : '<input type="checkbox" data-docs-perfil="' + esc(p.codigo) + '"' + (p.tipo_docs ? ' checked' : '')
-            + (!ed || ti ? ' disabled' : '') + ' title="' + (p.tipo_docs ? 'Base: ' + esc(tipoDocsNome(p.tipo_docs)) : 'Não entra no Docs') + '" aria-label="Docs para ' + esc(p.nome) + '">') + '</td>'
+            + (!ed || ti ? ' disabled' : '') + ' aria-label="Docs para ' + esc(p.nome) + '">') + '</td>'
         : '<td class="docs">' + (ed && !dir && !ti
           ? '<select data-tipo-docs="' + esc(p.codigo) + '" aria-label="Tipo no Docs de ' + esc(p.nome) + '">' + opcoesTipoDocs(p.tipo_docs) + '</select>'
           : '<span class="' + (p.tipo_docs ? '' : 'trava') + '">' + esc(tipoDocsNome(p.tipo_docs)) + '</span>') + '</td>')
       + '<td><button type="button" class="botao sec mini" data-acao="perfil" data-id="' + esc(p.codigo) + '">' + (ed ? 'Editar' : 'Ver') + '</button></td>'
       + '</tr>';
   }).join('');
-  return cabecalho('Perfis', 'O cargo de cada pessoa: em que módulos ela entra e qual é o tipo dela no Docs. O que ela pode fazer dentro de cada módulo fica em <b>Permissões</b>.',
+  return cabecalho('Perfis', 'O cargo de cada pessoa: em que módulos ela entra' + (docsPelaTabela() ? '' : ' e qual é o tipo dela no Docs') + '. O que ela pode fazer dentro de cada módulo fica em <b>Permissões</b>.',
            ed ? '<button class="botao" data-acao="novo-perfil">+ Novo perfil</button>' : '')
-    + '<div class="dica" style="margin-top:14px">Travado de propósito: a Diretoria tem tudo; a TI sempre entra nos Cadastros e só a diretoria e a TI mexem em perfis e permissões. Tipo no Docs com acesso à folha interna: só a diretoria ou o DP. Fornecedor se cadastra no Docs e não entra no portal.'
+    + '<div class="dica" style="margin-top:14px">Travado de propósito: a Diretoria tem tudo; a TI sempre entra nos Cadastros e só a diretoria e a TI mexem em perfis e permissões. ' + (docsPelaTabela() ? 'Folha interna no Docs: só a diretoria ou o DP marcam.' : 'Tipo no Docs com acesso à folha interna: só a diretoria ou o DP.') + ' Fornecedor se cadastra no Docs e não entra no portal.'
     + (ed ? '' : ' Seu perfil só consulta.') + '</div>'
     + (inativos ? '<label class="marcar" style="margin:-4px 0 6px"><input type="checkbox" data-ver-inativos' + (VER_INATIVOS ? ' checked' : '') + '> Mostrar perfis inativos (' + inativos + ')</label>' : '')
     + '<div class="tabela-rolagem"><table class="perm"><thead><tr><th class="perfil">Perfil</th>'
     + modulosAtivos().map(function(mo){ return '<th title="' + esc(mo.dica) + '">' + esc(mo.nome) + '</th>'; }).join('')
-    + '<th' + (docsPelaTabela() ? ' title="Entra no Docs. O que faz lá: Permissões › Docs. A base fica em Editar."' : '') + '>' + (docsPelaTabela() ? 'Docs' : 'Tipo no Docs') + '</th><th><span class="oculto">Abrir</span></th>' + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+    + '<th' + (docsPelaTabela() ? ' title="Entra no Docs. O que faz lá: Permissões › Docs."' : '') + '>' + (docsPelaTabela() ? 'Docs' : 'Tipo no Docs') + '</th><th><span class="oculto">Abrir</span></th>' + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
 function abrirPerfil(codigo){
   var p = codigo ? perfilDe(codigo) : null;
@@ -751,20 +751,23 @@ function abrirPerfil(codigo){
     '<div class="grade">'
     + campo('Nome do perfil (o cargo)', '<input type="text" id="f-nome" maxlength="60" placeholder="ex.: Engenheiro de obra" value="' + esc(p ? p.nome : '') + '">', true)
     + campo('Descrição (opcional)', '<input type="text" id="f-desc" maxlength="140" value="' + esc(p ? p.descricao : '') + '">', true)
-    + campo(docsPelaTabela() ? 'Base no Docs (avançado)' : 'Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
-        + '<div class="sub" id="f-tipo-dica" style="margin-top:6px"></div>', true)
+    + (docsPelaTabela() ? '' : campo('Tipo no Docs', '<select id="f-tipo"' + (sistema ? ' disabled' : '') + '>' + opcoesTipoDocs(p ? p.tipo_docs : null) + '</select>'
+        + '<div class="sub" id="f-tipo-dica" style="margin-top:6px"></div>', true))
     + (novo ? campo('Módulos', modulosAtivos().map(function(mo){
-          return '<label class="marcar"><input type="checkbox" data-novo-mod="' + mo.m + '"' + (mo.m === 'flow' ? ' checked' : '') + '> ' + esc(mo.nome) + '</label>'; }).join(''), true)
+          return '<label class="marcar"><input type="checkbox" data-novo-mod="' + mo.m + '"' + (mo.m === 'flow' ? ' checked' : '') + '> ' + esc(mo.nome) + '</label>'; }).join('')
+          + (docsPelaTabela() ? '<label class="marcar"><input type="checkbox" id="f-novo-docs"> Docs</label>' : ''), true)
         : campo('Situação', '<div class="seg" id="f-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
             + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (sistema ? ' disabled' : '') + '>Ativo</button>'
             + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (sistema ? ' disabled' : '') + '>Inativo</button></div>'
             + '<div class="sub">' + rotPessoas(total) + ' com este perfil. Inativo não aparece para novos cadastros.</div>', true))
     + (novo ? '' : campo('O que este perfil vê e faz hoje', resumoPerfil(p.codigo)
-        + '<div class="sub" style="margin-top:6px">Para mudar: módulos e tipo no Docs na aba Perfis; o resto na aba Permissões.</div>', true))
+        + '<div class="sub" style="margin-top:6px">Para mudar: módulos na aba Perfis (ou "Ver o módulo" em Permissões); o resto na aba Permissões.</div>', true))
     + (!novo && !sistema && total === 0 ? '<div class="inteiro"><button type="button" class="botao perigo" id="f-excluir">Excluir perfil</button></div>' : '')
     + '</div>',
     so ? null : function(){
-      var nome = $('f-nome').value.trim(), desc = $('f-desc').value.trim(), tipo = $('f-tipo').value || null;
+      var nome = $('f-nome').value.trim(), desc = $('f-desc').value.trim();
+      /* 0040: pela tabela, o tipo no Docs sai das caixas; aqui só entra/não entra */
+      var tipo = $('f-tipo') ? ($('f-tipo').value || null) : novo ? ($('f-novo-docs') && $('f-novo-docs').checked ? 'engenheiro' : null) : (p.tipo_docs || null);
       if(nome.length < 2) throw new Error('Informe o nome do perfil.');
       if(novo){
         var mods = Array.prototype.filter.call(document.querySelectorAll('[data-novo-mod]'), function(i){ return i.checked; })
@@ -788,7 +791,7 @@ function abrirPerfil(codigo){
   if(so) document.querySelectorAll('#modal input, #modal select, #modal .seg button').forEach(function(x){ x.disabled = true; });
   function dica(){ var t = TIPOS_DOCS.find(function(x){ return x[0] === $('f-tipo').value; });
     $('f-tipo-dica').textContent = t ? 'No Docs: ' + t[2] : 'Não entra no Docs.'; }
-  $('f-tipo').addEventListener('change', dica); dica();
+  if($('f-tipo')){ $('f-tipo').addEventListener('change', dica); dica(); }
   var ex = $('f-excluir');
   if(ex) ex.addEventListener('click', function(){
     if(!confirm('Excluir o perfil "' + p.nome + '"?')) return;
@@ -839,7 +842,10 @@ function resumoPerfil(c){
   }
   var td = TIPOS_DOCS.find(function(x){ return x[0] === p.tipo_docs; });
   var extrasDocs = td ? D.acoes.filter(function(a){ return a.modulo === 'docs' && temAcao(c, 'docs', a.codigo) && !daBaseDocs(c, a.codigo); }).map(function(a){ return a.nome.toLowerCase(); }) : [];
-  l.push(['Docs', td ? td[1] + ': ' + td[2] + (extrasDocs.length ? ' Também: ' + extrasDocs.join(', ') + '.' : '') : 'Não entra.']);
+  if(p.docs_por_acoes){
+    var nd = dir ? ['tudo, inclusive a folha interna'] : D.acoes.filter(function(a){ return a.modulo === 'docs' && temAcao(c, 'docs', a.codigo); }).map(function(a){ return a.nome.toLowerCase(); });
+    l.push(['Docs', !p.tipo_docs ? 'Não entra.' : (nd.length ? 'Pode: ' + nd.join(', ') + '.' : 'Só as obras marcadas para a pessoa, só leitura.')]);
+  } else l.push(['Docs', td ? td[1] + ': ' + td[2] + (extrasDocs.length ? ' Também: ' + extrasDocs.join(', ') + '.' : '') : 'Não entra.']);
   l.push(['Obras', 'Quais obras cada pessoa enxerga se define no cadastro dela (aba Pessoas): todas ou só algumas.']);
   return '<div class="resumo">' + l.map(function(x){ return '<div><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('') + '</div>';
 }
@@ -859,7 +865,7 @@ var NOTA_MOD = {
   flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
   patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta.',
   configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI tem tudo aqui.',
-  docs: 'Marque o que cada perfil vê e faz no Docs; vale na hora (a pessoa sai e entra de novo). Desmarcar tira da tela do Docs. A trava do banco segue a BASE do perfil (Perfis › Editar › Base no Docs) — para travar também no banco, baixe a base. Folha interna e o que o fornecedor vê: fixos, pela base.',
+  docs: 'Marque o que cada perfil vê e faz no Docs; vale na hora (a pessoa sai e entra de novo) — na tela e no banco. Sem "Ver todas as obras", a pessoa vê só as obras marcadas para ela (aba Pessoas). Folha interna: só a diretoria ou o DP marcam. O que o fornecedor vê se cuida no Docs.',
   financeiro: 'Sem "Ver todas as obras", a pessoa vê só as obras marcadas para ela em Custos — nenhuma marcada, nenhuma obra. Decidir contratação e SAE, aprovar compra acima da alçada e excluir são só da diretoria.'
 };
 /* 28/09/2026 (0037): no Docs o "tipo" do perfil é a BASE. O que ela dá aparece
@@ -896,26 +902,36 @@ function telaPermissoes(){
                      .sort(function(a, b){ return (b.consulta ? 1 : 0) - (a.consulta ? 1 : 0) || a.ordem - b.ordem; });
   var nC = acoes.filter(function(a){ return a.consulta; }).length, nF = acoes.length - nC;
   var ativos = internosAtivos().sort(ordemPerfis);
-  var com = ativos.filter(function(p){ return temModulo(p.codigo, mod); });
-  var sem_ = ativos.filter(function(p){ return !temModulo(p.codigo, mod); });
+  /* 28/09/2026: "Ver o módulo" é a primeira coluna — o mesmo que a caixa do módulo em Perfis */
+  function entra(p){ return mod === 'docs' ? !!p.tipo_docs : temModulo(p.codigo, mod); }
+  var comVer = docsPelaTabela();
+  var com = comVer ? ativos : ativos.filter(function(p){ return temModulo(p.codigo, mod); });
+  var sem_ = comVer ? [] : ativos.filter(function(p){ return !temModulo(p.codigo, mod); });
   var corpo = com.length ? '<div class="tabela-rolagem"><table class="perm acoes-tab"><thead>'
-    + '<tr><th class="perfil" rowspan="2">Perfil</th>'
+    + '<tr><th class="perfil" rowspan="2">Perfil</th>' + (comVer ? '<th class="acao" rowspan="2" title="Entra no módulo (vê o card no portal)">Ver o módulo</th>' : '')
     + (nC ? '<th class="grupo" colspan="' + nC + '">Só consulta</th>' : '') + (nF ? '<th class="grupo fazer" colspan="' + nF + '">Fazer</th>' : '') + '</tr>'
     + '<tr>' + acoes.map(function(a){ return '<th class="acao" title="' + esc(a.descricao) + '">' + esc(a.nome) + '</th>'; }).join('') + '</tr></thead><tbody>'
     + com.map(function(p){
         var tr = travado(p.codigo, mod);
+        var dentro = entra(p) || tr;
+        var travaVer = tr || !ed || (p.codigo === 'ti' && (mod === 'configuracoes' || mod === 'docs'));
         return '<tr' + (tr ? ' class="travado"' : '') + '><td class="perfil"><b>' + esc(p.nome) + '</b><small>' + rotPessoas(qtdPessoas(p.codigo)) + (tr ? ' · tudo' : '') + '</small></td>'
+          + (comVer ? '<td><input type="checkbox" ' + (mod === 'docs' ? 'data-docs-perfil="' + esc(p.codigo) + '"' : 'data-mod-perfil="' + esc(p.codigo) + '" data-mod="' + mod + '"')
+              + (dentro ? ' checked' : '') + (travaVer ? ' disabled' : '') + ' aria-label="Ver o módulo — ' + esc(p.nome) + '"></td>' : '')
           + acoes.map(function(a){
               var base = mod === 'docs' && daBaseDocs(p.codigo, a.codigo);
+              var folha = mod === 'docs' && /^folha_/.test(a.codigo) && !PODE.folha;
+              var fora = comVer && !dentro;
               return '<td' + (base ? ' class="base" title="Vem da base (tipo no Docs). Para tirar, troque a base do perfil."' : '') + '><input type="checkbox" data-pa-perfil="' + esc(p.codigo) + '" data-pa-acao="' + esc(a.codigo) + '"'
-                   + (tr || base || temAcao(p.codigo, mod, a.codigo) ? ' checked' : '') + (tr || base || !ed ? ' disabled' : '')
+                   + (tr || base || temAcao(p.codigo, mod, a.codigo) ? ' checked' : '') + (tr || base || !ed || folha || fora ? ' disabled' : '')
+                   + (folha && ed && !tr ? ' title="Folha interna: só a diretoria ou o DP marcam"' : fora && ed && !tr ? ' title="Marque Ver o módulo antes"' : '')
                    + ' aria-label="' + esc(a.nome) + ' — ' + esc(p.nome) + '"></td>'; }).join('') + '</tr>';
       }).join('') + '</tbody></table></div>'
     : '<div class="lista"><div class="vazio">Nenhum perfil entra neste módulo. Ligue o módulo na aba Perfis.</div></div>';
   return topo
     + '<div class="dica" style="margin-top:14px">' + esc(NOTA_MOD[mod]) + '</div>'
     + corpo
-    + (mod === 'docs' ? '<h3 style="margin:22px 0 4px;font-size:15px;color:var(--azul)">As bases (tipo no Docs)</h3>' + telaDocs() : '')
+    + (mod === 'docs' && !docsPelaTabela() ? '<h3 style="margin:22px 0 4px;font-size:15px;color:var(--azul)">As bases (tipo no Docs)</h3>' + telaDocs() : '')
     + (sem_.length ? '<div class="sub" style="margin-top:8px">Sem este módulo: ' + sem_.map(function(p){ return esc(p.nome); }).join(', ') + ' — ligue na aba Perfis.</div>' : '')
     + '<div class="legenda">' + acoes.map(function(a){
         return '<div><b>' + esc(a.nome) + '</b>' + (a.consulta ? ' <span class="chip cinza">só consulta</span>' : '') + '<br>' + esc(a.descricao) + '</div>'; }).join('') + '</div>';
@@ -923,7 +939,7 @@ function telaPermissoes(){
 /* Visão geral: cada perfil, em frases, em todos os módulos — um lugar só para consultar */
 function telaGeral(){
   var l = internosAtivos().sort(ordemPerfis);
-  return '<div class="dica" style="margin-top:14px">O que cada perfil vê e faz em todos os módulos, em frases. Para mudar: módulos e tipo no Docs na aba Perfis; o resto nas abas de cada módulo aqui ao lado. O Financeiro entra aqui quando vier para a suíte.</div>'
+  return '<div class="dica" style="margin-top:14px">O que cada perfil vê e faz em todos os módulos, em frases. Para mudar: nas abas de cada módulo aqui ao lado (a primeira coluna, "Ver o módulo", é a entrada no módulo).</div>'
     + l.map(function(p){
         return '<div class="cartao" style="margin-top:10px;padding:14px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:8px">'
           + '<b style="color:var(--azul);font-size:15px">' + esc(p.nome) + '</b><span class="sub">' + rotPessoas(qtdPessoas(p.codigo)) + '</span></div>'
@@ -963,8 +979,8 @@ $('conteudo').addEventListener('change', function(e){
     var nd = qtdPessoas(pd.codigo, true);
     if(!t.checked && nd && !confirm('Tirar o Docs deste perfil tira do Docs as ' + rotPessoas(nd) + ' dele. Continuar?')){ t.checked = true; return; }
     FOCO_PENDENTE = seletorDoFoco(); t.disabled = true;
-    /* entrar no Docs começa pela base mais baixa (Visualizador): o resto se marca em Permissões › Docs */
-    return grava('salvar_perfil', { p_codigo: pd.codigo, p_nome: pd.nome, p_descricao: pd.descricao || '', p_tipo_docs: t.checked ? 'visualizador' : null, p_ativo: pd.ativo },
+    /* 0040: entrar no Docs é só ligar; o que ele faz lá são as caixas de Permissões › Docs */
+    return grava('salvar_perfil', { p_codigo: pd.codigo, p_nome: pd.nome, p_descricao: pd.descricao || '', p_tipo_docs: t.checked ? 'engenheiro' : null, p_ativo: pd.ativo },
                  t.checked ? pd.nome + ' agora entra no Docs. Marque o que ele faz em Permissões › Docs.' : pd.nome + ' não entra mais no Docs.');
   }
   if(t.hasAttribute('data-tipo-docs')){
