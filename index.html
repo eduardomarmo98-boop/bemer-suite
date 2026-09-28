@@ -355,13 +355,13 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
      Project URL  -> SUPABASE_URL
      anon public  -> SUPABASE_ANON_KEY   (é pública por natureza, pode ir no arquivo)
    ===================================================================== */
-var SUPABASE_URL      = 'https://vpaylafvhprihfrhqrax.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_UNOQ5DSb3xiZ9eIvIub8Fg_ENxPsYW3';
+var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
 var VERSAO   = '2026.09.28.2';
-var AMBIENTE = '';   // '' em produção
+var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
    Tudo o que identifica o cliente mora AQUI, e só aqui — é o que permite
@@ -376,11 +376,11 @@ var CLIENTE = {
 /* Os módulos da suíte. `url` nulo = ainda não conectado (card fica apagado).
    Quando o Flow for publicado em homologação, é só preencher a url dele.   */
 var MODULOS = {
-  docs:       {nome:'Docs',       desc:'Documentação de SESMT e FOPAG e acesso às obras.', url:'https://docs.brandaoemarmo.com.br/',                              icone:'docs'},
+  docs:       {nome:'Docs',       desc:'Documentação de SESMT e FOPAG e acesso às obras.', url:null,                              icone:'docs'},
   flow:       {nome:'Flow',       desc:'Pendências e atividades por obra e por responsável.', url:'flow/',       icone:'flow'},
   patrimonio: {nome:'Patrimônio', desc:'Bens, movimentações e inventário.',               url:'patrimonio/', icone:'patrimonio'},
   /* 28/09/2026: o card era `bemer`; o módulo no core agora é `financeiro` (0033). */
-  financeiro: {nome:'Financeiro', desc:'Contratos, pedidos e medições.',                  url:null, icone:'financeiro'},
+  financeiro: {nome:'Financeiro', desc:'Contratos, pedidos e medições.',                  url:'financeiro/', icone:'financeiro'},
   manutencao: {nome:'Manutenção', desc:'Ordens de serviço.',                               url:null,                              icone:'manutencao'},
   /* Não é um sistema: é onde mora o que é da suíte inteira — chaves de IA,
      compactador, garimpador de arquivos mortos, matriz de permissões.
