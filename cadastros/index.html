@@ -90,7 +90,12 @@ select{padding-right:28px}
 
 
 /* ---- permissões ---- */
-.tabela-rolagem{background:#fff;border:1px solid var(--borda);border-radius:12px;overflow-x:auto}
+.tabela-rolagem{background:#fff;border:1px solid var(--borda);border-radius:12px;overflow:auto;max-height:calc(100vh - 230px);min-height:260px}
+/* 28/09/2026: tabela grande — rola nos dois sentidos; Perfil (1ª coluna) e o cabeçalho ficam parados */
+table.perm{border-collapse:separate;border-spacing:0}
+table.perm thead th{position:sticky;top:0;z-index:2;box-shadow:0 1px 0 var(--borda)}
+table.perm thead tr:nth-child(2) th{top:var(--h1,34px)}
+table.perm thead th.perfil{z-index:3}
 table.perm{border-collapse:collapse;width:100%;min-width:640px}
 table.perm th,table.perm td{padding:10px 12px;border-top:1px solid var(--borda);text-align:center;vertical-align:middle}
 table.perm thead th{border-top:0;font-size:12px;color:var(--texto2);font-weight:600;background:#FAFBFD}
@@ -190,7 +195,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.28.8';
+var APP_VERSION = '2026.09.28.9';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -358,7 +363,14 @@ function desenhar(){
   }).join('');
   var fn = { pessoas:telaPessoas, perfis:telaPerfis, permissoes:telaPermissoes, construtora:telaConstrutora }[ABA];
   var foco = seletorDoFoco();
+  /* a tabela rola dentro da caixa: marcar uma caixa redesenha — volta ao mesmo ponto */
+  var rolos = Array.prototype.map.call(document.querySelectorAll('#conteudo .tabela-rolagem'), function(d){ return [d.scrollLeft, d.scrollTop]; });
   $('conteudo').innerHTML = fn();
+  document.querySelectorAll('#conteudo .tabela-rolagem').forEach(function(d, i){
+    var t = d.querySelector('table.perm'), r1 = t && t.tHead && t.tHead.rows[0];
+    if(r1) t.style.setProperty('--h1', r1.getBoundingClientRect().height + 'px');
+    if(rolos[i]){ d.scrollLeft = rolos[i][0]; d.scrollTop = rolos[i][1]; }
+  });
   if(!foco && FOCO_PENDENTE && (!document.activeElement || document.activeElement === document.body)) foco = FOCO_PENDENTE;
   FOCO_PENDENTE = null;
   if(foco){ try { var el = $('conteudo').querySelector(foco); if(el) el.focus({ preventScroll: true }); } catch(e){} }
