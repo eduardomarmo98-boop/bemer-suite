@@ -198,7 +198,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.29.1';
+var APP_VERSION = '2026.09.29.2';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -249,7 +249,7 @@ var EU = null;
 var PODE = { admin:false, pessoas:false, verPessoas:false, verPermissoes:false, obrasPessoa:false, construtora:false, folha:false, gere:null };
 var D = { pessoas:[], perfis:[], obras:[], empresas:[], pessoaObras:[], construtora:null, perfilModulos:[], acoes:[], perfilAcoes:[] };
 var ABA = 'pessoas';
-var F = { pessoas:{ busca:'', sit:'ativos', tipo:'colaborador' } };   // 29/09: abre em Só colaboradores
+var F = { pessoas:{ busca:'', sit:'ativos', tipo:'colaborador', perfil:'', obra:'' } };   // 29/09: abre em Só colaboradores
 
 function perfilNome(c){ var p = D.perfis.find(function(x){ return x.codigo === c; }); return p ? p.nome : (c || '—'); }
 function perfilDe(c){ return D.perfis.find(function(x){ return x.codigo === c; }) || null; }
@@ -437,7 +437,27 @@ function telaPessoas(){
     + '<div class="barra"><input class="busca" type="search" placeholder="Buscar por nome, e-mail ou perfil" data-filtro="pessoas.busca" value="' + esc(F.pessoas.busca) + '">'
     + selSit('pessoas.sit', F.pessoas.sit, [['ativos','Ativos'],['inativos','Inativos'],['','Todos']])
     + selSit('pessoas.tipo', F.pessoas.tipo, [['','Colaboradores e externos'],['colaborador','Só colaboradores'],['externo','Só externos']])
+    + selSit('pessoas.perfil', F.pessoas.perfil, [['','Todos os cargos']].concat(D.perfis.filter(function(p){ return p.ativo || D.pessoas.some(function(x){ return x.perfil === p.codigo; }); })
+        .sort(ordemPerfis).map(function(p){ return [p.codigo, p.nome]; })))
+    + selSit('pessoas.obra', F.pessoas.obra, [['','Todas as obras']].concat(obrasFiltro().map(function(n){ return [n, n]; })))
     + '</div><div class="lista" id="lista-pessoas">' + listaPessoas() + '</div>';
+}
+/* 29/09/2026: filtro por obra — cada módulo tem a sua lista; vale o NOME da obra
+   e entra quem está marcado nela no Flow, no Docs ou no Custos */
+function nomeObra(n){ return String(n || '').trim().toUpperCase(); }
+function obrasFiltro(){
+  var s = {};
+  (D.obras || []).forEach(function(o){ if(o.ativa) s[nomeObra(o.nome)] = 1; });
+  ((D.docsObras && D.docsObras.obras) || []).forEach(function(o){ if(o.ativa) s[nomeObra(o.nome)] = 1; });
+  ((D.fin && D.fin.obras) || []).forEach(function(o){ s[nomeObra(o.nome)] = 1; });
+  return Object.keys(s).filter(Boolean).sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
+}
+function pessoaNaObra(p, nome){
+  if(obrasDaPessoa(p.id).some(function(id){ var o = (D.obras || []).find(function(x){ return x.id === id; }); return o && nomeObra(o.nome) === nome; })) return true;
+  if(D.docsObras){ var md = (D.docsObras.marcadas || []).find(function(x){ return x.pessoa_id === p.id; });
+    if(md && (md.obra_ids || []).some(function(id){ var o = (D.docsObras.obras || []).find(function(x){ return Number(x.id) === Number(id); }); return o && nomeObra(o.nome) === nome; })) return true; }
+  if(D.fin && (D.fin.marcadas || []).some(function(x){ if(x.pessoa_id !== p.id) return false; var o = (D.fin.obras || []).find(function(y){ return y.id === x.obra_id; }); return o && nomeObra(o.nome) === nome; })) return true;
+  return false;
 }
 function listaPessoas(){
   var b = sem(F.pessoas.busca);
@@ -445,6 +465,8 @@ function listaPessoas(){
     if(F.pessoas.sit === 'ativos' && !p.ativo) return false;
     if(F.pessoas.sit === 'inativos' && p.ativo) return false;
     if(F.pessoas.tipo && p.tipo !== F.pessoas.tipo) return false;
+    if(F.pessoas.perfil && p.perfil !== F.pessoas.perfil) return false;
+    if(F.pessoas.obra && !pessoaNaObra(p, F.pessoas.obra)) return false;
     return !b || sem([p.nome, p.email, perfilNome(p.perfil)].join(' ')).indexOf(b) >= 0;
   });
   if(!l.length) return '<div class="vazio">Ninguém encontrado.</div>';
