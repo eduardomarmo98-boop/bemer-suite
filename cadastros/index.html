@@ -137,6 +137,9 @@ table.perm.acoes-tab{min-width:0}
 @media (max-width:600px){ .grade{grid-template-columns:minmax(0,1fr)} }
 label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margin-bottom:4px}
 .leitura{padding:9px 0;min-height:40px}
+.sec-obras{margin-top:10px;padding-top:14px;border-top:1px solid var(--borda)}
+.sec-obras b{display:block;color:var(--azul);font-size:14px}
+.sec-obras span{display:block;color:var(--texto2);font-size:12.5px;margin-top:2px}
 .marcar{display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer}
 .marcar input{width:18px;height:18px;accent-color:var(--azul)}
 .recado{border-radius:9px;padding:10px 12px;font-size:13px;margin-top:12px}
@@ -195,7 +198,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.28.9';
+var APP_VERSION = '2026.09.29.1';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -246,7 +249,7 @@ var EU = null;
 var PODE = { admin:false, pessoas:false, verPessoas:false, verPermissoes:false, obrasPessoa:false, construtora:false, folha:false, gere:null };
 var D = { pessoas:[], perfis:[], obras:[], empresas:[], pessoaObras:[], construtora:null, perfilModulos:[], acoes:[], perfilAcoes:[] };
 var ABA = 'pessoas';
-var F = { pessoas:{ busca:'', sit:'ativos', tipo:'' } };
+var F = { pessoas:{ busca:'', sit:'ativos', tipo:'colaborador' } };   // 29/09: abre em Só colaboradores
 
 function perfilNome(c){ var p = D.perfis.find(function(x){ return x.codigo === c; }); return p ? p.nome : (c || '—'); }
 function perfilDe(c){ return D.perfis.find(function(x){ return x.codigo === c; }) || null; }
@@ -507,6 +510,8 @@ function abrirPessoa(id){
   var marcDocs = D.docsObras ? ((D.docsObras.marcadas || []).find(function(x){ return x.pessoa_id === p.id; }) || {obra_ids: []}).obra_ids.map(Number) : [];
   var tipoDocsP = (D.perfis.find(function(x){ return x.codigo === p.perfil; }) || {}).tipo_docs || null;
   var DOCS_TODAS = ['diretoria','ti','sesmt','coord_sesmt','dp','visualizador','visualizador_dp','visualizador_total'];
+  var pfP = perfilDe(p.perfil) || {};
+  var docsTodas = pfP.docs_por_acoes ? (p.perfil === 'diretoria' || temAcao(p.perfil, 'docs', 'todas_obras')) : DOCS_TODAS.indexOf(tipoDocsP) >= 0;
   var marcFin = D.fin ? (D.fin.marcadas || []).filter(function(x){ return x.pessoa_id === p.id; }).map(function(x){ return x.obra_id; }) : [];
   var dis = consulta ? ' disabled' : '';
   modal('Pessoa',
@@ -524,17 +529,19 @@ function abrirPessoa(id){
         + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (travaSit ? ' disabled' : '') + '>Ativo</button>'
         + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>'
         + (!PODE.admin && !sou && !consulta ? '<div class="sub">Ativar ou desativar: só a diretoria ou a TI.</div>' : ''), true)
-    + campo('Obras que vê',
+    + '<div class="inteiro sec-obras"><b>Obras que a pessoa vê</b><span>Cada módulo tem a sua lista de obras.'
+        + (temModulo(p.perfil, 'patrimonio') || p.perfil === 'diretoria' ? ' O Patrimônio não separa por obra: vê os bens pelas áreas (Obra, TI) do perfil, em Permissões.' : '') + '</span></div>'
+    + campo('Flow',
         '<div class="seg" id="p-obras-modo" data-v="' + (marc.length ? 'estas' : 'todas') + '" style="max-width:360px;margin-bottom:8px">'
         + '<button type="button" data-v="todas" class="' + (marc.length ? '' : 'ativo') + '"' + (PODE.obrasPessoa ? '' : ' disabled') + '>Todas as obras</button>'
         + '<button type="button" data-v="estas" class="' + (marc.length ? 'ativo' : '') + '"' + (PODE.obrasPessoa ? '' : ' disabled') + '>Só estas</button></div>'
         + '<div id="p-obras-lista"' + (marc.length ? '' : ' class="oculto"') + '>' + caixaMarcar('p-obras', obras, marc, PODE.obrasPessoa) + '</div>'
-        + '<div class="sub">Vale no Flow (pendências das obras).' + (PODE.obrasPessoa ? '' : ' Seu perfil não altera.') + '</div>', true)
-    + (D.docsObras && tipoDocsP && p.tipo === 'colaborador' ? campo('Obras no Docs', (DOCS_TODAS.indexOf(tipoDocsP) >= 0
-        ? '<div class="leitura">No Docs, o tipo do perfil (' + esc(tipoDocsNome(tipoDocsP)) + ') já vê todas as obras.</div>'
+        + '<div class="sub">Pendências das obras.' + (PODE.obrasPessoa ? '' : ' Seu perfil não altera.') + '</div>', true)
+    + (D.docsObras && tipoDocsP && p.tipo === 'colaborador' ? campo('Docs', (docsTodas
+        ? '<div class="leitura">O perfil ' + esc(perfilNome(p.perfil)) + ' já vê todas as obras do Docs.</div>'
         : caixaMarcar('p-obras-docs', (D.docsObras.obras || []).filter(function(o){ return o.ativa || marcDocs.indexOf(Number(o.id)) >= 0; }).map(function(o){ return { id: Number(o.id), nome: o.nome + (o.ativa ? '' : ' (encerrada)') }; }), marcDocs, !!D.docsObras.pode)
-          + '<div class="sub">As obras do Docs (documentação, portaria). Nenhuma marcada, nenhuma obra.' + (D.docsObras.pode ? '' : ' Seu perfil não altera.') + '</div>'), true) : '')
-    + (D.fin ? campo('Obras no Custos', caixaMarcar('p-obras-fin', D.fin.obras || [], marcFin, !!D.fin.pode)
+          + '<div class="sub">Documentação e portaria. Sem "Ver todas as obras" no perfil, vê só as marcadas — nenhuma marcada, nenhuma obra.' + (D.docsObras.pode ? '' : ' Seu perfil não altera.') + '</div>'), true) : '')
+    + (D.fin ? campo('Custos', caixaMarcar('p-obras-fin', D.fin.obras || [], marcFin, !!D.fin.pode)
         + '<div class="sub">' + ((p.perfil === 'diretoria' || temAcao(p.perfil, 'financeiro', 'todas_obras')) ? 'O perfil ' + esc(perfilNome(p.perfil)) + ' já vê todas as obras do Custos.' : 'Sem "Ver todas as obras" no perfil, vê só as marcadas — nenhuma marcada, nenhuma obra.')
         + (D.fin.pode ? '' : ' Seu perfil não altera.') + '</div>', true) : '')
     + (PODE.verPermissoes && D.acoes.length ? campo('O que vê e faz (pelo perfil ' + perfilNome(p.perfil) + ')', resumoPerfil(p.perfil), true) : '')
