@@ -16017,7 +16017,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.09.28.6';
+var APP_VERSION = '2026.09.29.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -16488,11 +16488,16 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     }
     el.dataset.st=st;
     const env=ENVN==='staging'?' · <span style="color:#ee7d23">STAGING</span>':'';
-    if(st==='ok'){el.innerHTML='☁️ BeMer Cloud · salvo'+env;el.style.borderColor='#bbf7d0';}
-    else if(st==='sync'){el.innerHTML='☁️ sincronizando…'+env;el.style.borderColor='#fde68a';}
-    else if(st==='erro'){el.innerHTML='⚠ erro ao salvar — clique p/ tentar de novo'+env;el.style.borderColor='#fecaca';}
+    el.style.display=st==='ok'?'none':'';
+    if(st==='ok'){el.innerHTML='Salvo';el.style.borderColor='#bbf7d0';}
+    else if(st==='sync'){el.innerHTML='Salvando…'+env;el.style.borderColor='#fde68a';}
+    else if(st==='erro'){el.innerHTML='⚠ Não salvou — clique para tentar de novo'+(msg?'<br><span style="font-weight:400">'+String(msg).replace(/[<>&]/g,'').slice(0,140)+'</span>':'')+env;el.style.borderColor='#fecaca';el.style.color='#b91c1c';}
     else if(st==='local'){el.innerHTML='⛔ modo local (sem nuvem)'+(msg?' — '+msg:'');el.style.borderColor='#fecaca';}
   }
+  window.addEventListener('beforeunload',function(e){
+    var c=document.getElementById('v25-chip');
+    if(CLOUD&&(pendente||syncing||(c&&c.dataset.st==='erro'))){ e.preventDefault(); e.returnValue=''; }
+  });
   function agendarPush(){
     if(!CLOUD)return;
     pendente=true;setStatus('sync');
