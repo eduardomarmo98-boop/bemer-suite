@@ -14532,12 +14532,14 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
 <p>Atenciosamente,<br>${esc(empB)}</p>`;
         const assunto=`Autorizacao de emissao de NF - PC ${p.numero||""}`;
         let ok=false,tentou=false;
+        /* 30/09/2026: link para o fornecedor anexar a NF */
+        const _nf=await bmNfLinkPreparar(f);
         if(fornEmail){
           tentou=true;
           try{
             /* v2026.07.21.48 — segue como .html; o servidor converte para PDF antes de enviar */
             const att=b64Aut?[{name:`Autorizacao_${p.numero||"PC"}.html`,contentBytes:b64Aut,content:b64Aut,mimeType:"text/html",contentType:"text/html"}]:[];
-            const r=await bmEnviaObj(Object.assign(bmEnvio("financeiro"),{to:fornEmail,subject:assunto,body:bmAssina(corpo,"financeiro"),attachments:att}));
+            const r=await bmEnviaObj(Object.assign(bmEnvio("financeiro"),{to:fornEmail,subject:assunto,body:bmAssina(corpo+_nf.html,"financeiro"),attachments:att}));
             ok=r.ok;
           }catch(e){console.warn("webhook PC fornecedor falhou",e);}
         }
@@ -14572,10 +14574,12 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
 <p>Atenciosamente,<br>${esc(empB)}</p>`;
         const assunto=`Autorização de emissão de NF — ${m?.numero||""} — ${ct?.numero||""}`;
         let ok=false,tentou=false,motivoEnvio="";
+        /* 30/09/2026: link para o fornecedor anexar a NF + a Autorização de Faturamento anexada */
+        const _nf=await bmNfLinkPreparar(f);
         if(fornEmail){
           tentou=true;
           try{
-            const r=await bmEnviaObj(Object.assign(bmEnvio("financeiro"),{to:fornEmail,subject:assunto,body:bmAssina(corpo,"financeiro"),attachments:[]}));
+            const r=await bmEnviaObj(Object.assign(bmEnvio("financeiro"),{to:fornEmail,subject:assunto,body:bmAssina(corpo+_nf.html,"financeiro"),attachments:bmAfAnexo(f)}));
             ok=r.ok; motivoEnvio=(r&&r.reason)||"";
           }catch(e){ motivoEnvio=(e&&e.message)||String(e); console.warn("envio ao fornecedor falhou",e); }
         }
@@ -16017,7 +16021,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.09.29.1';
+var APP_VERSION = '2026.09.30.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -16717,6 +16721,10 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
          Financeiro no perfil, volta para lá. (Os 7 dias sem uso e o 2FA
          também são do portal.) */
       if(!session){ location.replace('../'); return; }
+      /* 30/09/2026: 2FA pendente no portal (core.dois_fatores_pendente) → volta
+         para lá, como sem sessão. Se a função ainda não existir, segue. */
+      try{ const _2f=await sb.schema('core').rpc('dois_fatores_pendente');
+        if(!_2f.error&&_2f.data===true){ location.replace('../'); return; } }catch(_e){}
       { const _nm=await sb.rpc('no_modulo');
         if(_nm.error||_nm.data!==true){ location.replace('../'); return; } }
       S.usuarioAtual=session.user.id; await pullAll(); window._authReadyFor=session.user.id; setStatus('ok');
@@ -17802,7 +17810,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         var r=await window.iaConverterInsumo({item:{descricao:'Cimento CP-II saco 50kg',unidade:'sc',qty:1},
                                               insumo:{descricao:'Cimento',unidadeBase:'kg'},model:mod.trim()});
         if(r&&r.fator!=null) diz('Funcionando — respondeu 1 sc = '+r.fator+' kg'+(r.modelo?(' (modelo '+r.modelo+')'):'')+'.','#15803d');
-        else if(r&&/GEMINI_API_KEY/i.test(String(r.error||''))) diz('A chave da IA não está no servidor. Peça à TI para criar o secret GEMINI_API_KEY no Supabase.','#b91c1c');
+        else if(r&&/GEMINI_API_KEY|ia_sem_chave|ia_desligada/i.test(String(r.error||''))) diz(/ia_desligada/.test(String(r.error))?'A IA está desligada no Portal › Configurações › Inteligência artificial.':'A IA está sem chave. As chaves da IA ficam no Portal › Configurações › Inteligência artificial.','#b91c1c');
         else diz('Não funcionou: '+((r&&(r.detail||r.error))||'sem resposta'),'#b91c1c');
       }catch(err){ diz('Erro: '+((err&&err.message)||err),'#b91c1c'); }
       b.disabled=false;
@@ -18194,7 +18202,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       var sIA=
         ajuda('A IA sugere a conversão de unidade quando o insumo do orçamento está numa medida e o pedido em outra (saco x kg, por exemplo).')+
         '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px">'+
-          '<p style="font-size:12px;color:#64748b;margin:0">A <b>chave de acesso</b> da IA não fica aqui, por segurança — se ficasse, qualquer pessoa que abrisse o sistema conseguiria copiar e gastar em nome da empresa. Ela é guardada no servidor pela TI (secret <b>GEMINI_API_KEY</b>).</p>'+
+          '<p style="font-size:12px;color:#64748b;margin:0">A <b>chave de acesso</b> da IA não fica aqui, por segurança — se ficasse, qualquer pessoa que abrisse o sistema conseguiria copiar e gastar em nome da empresa. As chaves da IA ficam no Portal › Configurações › Inteligência artificial.</p>'+
         '</div>'+
         campo('cf-ia-modelo','Modelo — deixe vazio: o sistema tenta varios e troca sozinho se um sair do ar',c.iaModelo||'','gemini-2.0-flash')+
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
@@ -18892,6 +18900,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     };
   })();
   window._bemerCloudTest={T,KEYOF,ORDER,envName:ENVN,isCloud:()=>CLOUD};
+  window.finSb=function(){ return CLOUD?sb:null; };
 })();
 
 </script>
@@ -18912,6 +18921,392 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
   }
   if(document.readyState!=="loading")boot();else document.addEventListener("DOMContentLoaded",boot);
 })();
+</script>
+<script>
+/* =====================================================================
+   Custos · 30/09/2026 — o montar.js cola este arquivo no fim da página.
+   1) "Ler equalização (IA)" no registro da contratação;
+   2) Autorização de Faturamento visível desde a 1ª etapa do financeiro
+      (e anexada ao e-mail da autorização — as trocas estão no montar.js);
+   3) link para o fornecedor anexar a NF (financeiro/nf.html + edge
+      fin-nf-fornecedor) e o resultado da conferência no lançamento.
+   Banco: migração 0042 (financeiro.nf_links / nf_envios + funções).
+   ===================================================================== */
+(function custosNfEqualizacao(){
+  if(window._custosNfEq) return; window._custosNfEq=true;
+  var AZUL="#00296B", LARANJA="#FE9400";
+  function sbc(){ try{ return window.finSb&&window.finSb(); }catch(e){ return null; } }
+  function dig(s){ return String(s==null?"":s).replace(/\D/g,""); }
+  function normNome(s){
+    return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
+      .replace(/\b(LTDA|ME|EPP|EIRELI|S\/?A|SA|LTDA\.?-?ME)\b/g," ").replace(/[^A-Z0-9]+/g," ").trim();
+  }
+  function fmtCnpj(s){ var d=dig(s); return d.length===14?d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,"$1.$2.$3/$4-$5"):(s||""); }
+  function comPrazo(p,ms){ return Promise.race([p,new Promise(function(r){ setTimeout(function(){ r({error:{message:"sem resposta"}}); },ms); })]); }
+  function modal(html,largura){
+    var fundo=document.createElement("div");
+    fundo.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px";
+    fundo.innerHTML='<div style="background:#fff;border-radius:14px;max-width:'+(largura||880)+'px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3);font-size:14px">'+html+'</div>';
+    document.body.appendChild(fundo);
+    return fundo;
+  }
+  function lerArquivoDataUrl(f){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){res(r.result);}; r.onerror=function(){rej(new Error("não consegui ler o arquivo"));}; r.readAsDataURL(f); }); }
+  function carregarXLSX(){
+    if(window.XLSX) return Promise.resolve();
+    return new Promise(function(res,rej){
+      var s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      s.onload=res; s.onerror=function(){ rej(new Error("falha ao carregar o leitor de planilha")); };
+      document.head.appendChild(s); setTimeout(function(){ rej(new Error("tempo esgotado ao carregar o leitor de planilha")); },15000);
+    });
+  }
+
+  /* =================================================================
+     1) EQUALIZAÇÃO (IA) no formulário da contratação
+     ================================================================= */
+  var _rf=window.renderForm;
+  window.renderForm=function(idEd){
+    var html=_rf.apply(this,arguments);
+    var faixa='<section class="rounded-xl border p-5" style="background:#F3F6FB;border-color:#C9D5EA">'+
+      '<div class="flex items-center justify-between gap-3 flex-wrap">'+
+        '<div style="min-width:240px;flex:1"><div class="font-semibold" style="color:'+AZUL+'">📊 Tem a equalização?</div>'+
+        '<p class="text-sm text-slate-600">Anexe o quadro comparativo (planilha, PDF ou foto). A IA preenche fornecedor, cotações, itens e condições — você revisa antes de salvar. O arquivo fica anexado à contratação.</p></div>'+
+        '<button type="button" id="btn-ler-equal" class="text-white font-semibold px-4 py-2 rounded-lg text-sm" style="background:'+LARANJA+'">Ler equalização (IA)</button>'+
+        '<input type="file" id="f-equal-file" class="hidden" accept=".xlsx,.xls,.xlsm,.ods,.csv,.pdf,.png,.jpg,.jpeg,.webp"/>'+
+      '</div><div id="equal-status" class="text-sm mt-2" style="display:none"></div></section>';
+    return html.replace(/(<form id="form-sc" class="space-y-5">\s*<input type="hidden" id="sc-id"[^>]*>)/,"$1\n"+faixa);
+  };
+  var _bf=window.bindForm;
+  window.bindForm=function(){
+    _bf.apply(this,arguments);
+    var b=document.getElementById("btn-ler-equal"), fi=document.getElementById("f-equal-file");
+    if(!b||!fi) return;
+    b.onclick=function(){ fi.click(); };
+    fi.onchange=function(e){ var f=e.target.files&&e.target.files[0]; fi.value=""; if(f) lerEqualizacao(f); };
+  };
+  function statusEq(txt,cor){ var el=document.getElementById("equal-status"); if(!el)return; el.style.display=txt?"":"none"; el.style.color=cor||"#475569"; el.textContent=txt||""; }
+
+  async function lerEqualizacao(f){
+    var sb=sbc(); if(!sb) return alert("Sem conexão com o banco. Recarregue a página.");
+    if(f.size>10*1024*1024) return alert('"'+f.name+'" tem mais de 10 MB. Reduza (ou exporte só a aba do quadro) e tente de novo.');
+    var b=document.getElementById("btn-ler-equal"); if(b){ b.disabled=true; b.textContent="⏳ Lendo…"; }
+    statusEq("Lendo a equalização com a IA… (pode levar até 1 minuto)");
+    try{
+      var dataUrl=await lerArquivoDataUrl(f), corpo;
+      var ehPlanilha=/\.(xlsx|xls|xlsm|ods)$/i.test(f.name), ehCsv=/\.csv$/i.test(f.name);
+      if(ehPlanilha){
+        await carregarXLSX();
+        var wb=XLSX.read(await f.arrayBuffer(),{type:"array"});
+        var txt=wb.SheetNames.map(function(n){ return "### Aba: "+n+"\n"+XLSX.utils.sheet_to_csv(wb.Sheets[n],{FS:";",blankrows:false}); }).join("\n\n");
+        corpo={texto:txt.slice(0,300000),nome:f.name};
+      } else if(ehCsv){
+        corpo={texto:(await f.text()).slice(0,300000),nome:f.name};
+      } else {
+        var tipo=f.type||(/\.pdf$/i.test(f.name)?"application/pdf":"image/jpeg");
+        corpo={arquivo:{nome:f.name,tipo:tipo,base64:dataUrl}};
+      }
+      try{ if(S&&S.config&&S.config.iaModelo) corpo.model=S.config.iaModelo; }catch(_e){}
+      var r=await comPrazo(sb.functions.invoke("fin-ler-equalizacao",{body:corpo}),120000);
+      var d=(r&&r.data)||{};
+      if(r&&r.error&&!d.erro){ var m=r.error.message||String(r.error); try{ var j=await r.error.context.json(); if(j&&(j.erro||j.error)) m=j.erro||j.error; }catch(_e){} throw new Error(m); }
+      if(!d.ok) throw new Error(d.erro||"a IA não respondeu");
+      statusEq("");
+      revisarEqualizacao(d.resultado||{},{arquivo:f,dataUrl:dataUrl,modelo:d.modelo||""});
+    }catch(e){
+      statusEq("Não consegui ler: "+((e&&e.message)||e),"#b91c1c");
+    }finally{ if(b){ b.disabled=false; b.textContent="Ler equalização (IA)"; } }
+  }
+
+  function achaForn(f){
+    var c=dig(f&&f.cnpj), lista=(S.fornecedores||[]);
+    if(c.length===14){ var x=lista.find(function(z){ return dig(z.cnpj)===c; }); if(x) return x; }
+    var n=normNome(f&&f.nome); if(n.length<4) return null;
+    return lista.find(function(z){ var a=normNome(z.razaoSocial), b2=normNome(z.nome); return a===n||b2===n; })
+        || lista.find(function(z){ var a=normNome(z.razaoSocial); return a.length>=6&&n.length>=6&&(a.indexOf(n)>=0||n.indexOf(a)>=0); })||null;
+  }
+  function idxVencedor(res){
+    var fs=res.fornecedores||[], v=res.vencedor||{}, c=dig(v.cnpj), n=normNome(v.nome), i=-1;
+    if(c) i=fs.findIndex(function(f){ return dig(f.cnpj)===c; });
+    if(i<0&&n) i=fs.findIndex(function(f){ var a=normNome(f.nome); return a===n||(a&&(a.indexOf(n)>=0||n.indexOf(a)>=0)); });
+    if(i<0&&fs.length){ var menor=0; fs.forEach(function(f,k){ if((+f.valor_total||Infinity)<(+fs[menor].valor_total||Infinity)) menor=k; }); i=menor; }
+    return i;
+  }
+
+  function revisarEqualizacao(res,ctx){
+    var fs=res.fornecedores||[], itens=res.itens||[], iv=idxVencedor(res);
+    var totItens=itens.reduce(function(a,it){ return a+(+it.preco_total||((+it.quantidade||0)*(+it.preco_unitario||0))); },0);
+    var corConf={alta:"#15803d",media:"#b45309",baixa:"#b91c1c"}[res.confianca]||"#b45309";
+    var linhas=fs.map(function(f,i){
+      var cad=achaForn(f);
+      return '<tr style="border-top:1px solid #e2e8f0"><td style="padding:6px"><input type="radio" name="eq-venc" value="'+i+'" '+(i===iv?"checked":"")+'/></td>'+
+        '<td style="padding:6px"><b>'+esc(f.nome||"—")+'</b>'+(f.cnpj?'<div style="font-size:12px;color:#64748b">'+esc(fmtCnpj(f.cnpj))+'</div>':"")+
+        '<div style="font-size:11px;color:'+(cad?"#15803d":"#b45309")+'">'+(cad?"✓ cadastrado":"não cadastrado")+'</div></td>'+
+        '<td style="padding:6px;text-align:right;white-space:nowrap">'+(f.valor_total?fmtBRL(f.valor_total):"—")+'</td>'+
+        '<td style="padding:6px;font-size:12px">'+esc(f.prazo||"")+'</td><td style="padding:6px;font-size:12px">'+esc(f.condicao_pagamento||"")+'</td>'+
+        '<td style="padding:6px;font-size:12px;color:#64748b">'+esc(f.observacoes||"")+'</td></tr>';
+    }).join("")||'<tr><td colspan="6" style="padding:8px;color:#94a3b8">A IA não achou fornecedores no quadro.</td></tr>';
+    var linItens=itens.slice(0,60).map(function(it,i){
+      return '<tr style="border-top:1px solid #f1f5f9"><td style="padding:4px 6px;color:#94a3b8">'+(i+1)+'</td><td style="padding:4px 6px">'+esc(it.descricao)+'</td>'+
+        '<td style="padding:4px 6px">'+esc(it.unidade||"")+'</td><td style="padding:4px 6px;text-align:right">'+(it.quantidade||"")+'</td>'+
+        '<td style="padding:4px 6px;text-align:right;white-space:nowrap">'+(it.preco_unitario?fmtBRL(it.preco_unitario):"")+'</td>'+
+        '<td style="padding:4px 6px;text-align:right;white-space:nowrap">'+(it.preco_total?fmtBRL(it.preco_total):"")+'</td></tr>';
+    }).join("");
+    var ck=function(id,txt,on){ return '<label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;cursor:pointer"><input type="checkbox" id="'+id+'" '+(on?"checked":"")+' style="margin-top:3px"/><span>'+txt+'</span></label>'; };
+    var objAtual=(document.getElementById("f-objeto")||{}).value||"";
+    var m=modal(
+      '<div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:12px;background:'+AZUL+';color:#fff;border-radius:14px 14px 0 0">'+
+        '<div><div style="font-weight:700;font-size:16px">Equalização lida pela IA — revise antes de aplicar</div>'+
+        '<div style="font-size:12px;opacity:.85">'+esc(ctx.arquivo.name)+(ctx.modelo?" · "+esc(ctx.modelo):"")+'</div></div>'+
+        '<span style="background:#fff;color:'+corConf+';font-weight:700;font-size:12px;border-radius:999px;padding:3px 10px;white-space:nowrap">confiança '+esc(res.confianca||"média")+'</span></div>'+
+      '<div style="padding:16px 20px">'+
+        (res.objeto?'<p style="margin:0 0 10px"><b>Objeto:</b> '+esc(res.objeto)+'</p>':"")+
+        '<p style="margin:0 0 6px;font-weight:600;color:'+AZUL+'">Fornecedores comparados — marque o escolhido</p>'+
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;font-size:11px;text-transform:uppercase;color:#64748b">'+
+          '<th></th><th style="padding:6px">Fornecedor</th><th style="padding:6px;text-align:right">Total</th><th style="padding:6px">Prazo</th><th style="padding:6px">Pagamento</th><th style="padding:6px">Obs.</th></tr></thead><tbody>'+linhas+'</tbody></table></div>'+
+        (res.vencedor&&res.vencedor.motivo?'<p style="margin:8px 0 0;font-size:13px"><b>Por que o escolhido:</b> '+esc(res.vencedor.motivo)+'</p>':"")+
+        '<p style="margin:14px 0 6px;font-weight:600;color:'+AZUL+'">Itens do escolhido ('+itens.length+(totItens?" · "+fmtBRL(totItens):"")+')</p>'+
+        (itens.length?'<div style="max-height:220px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px">'+linItens+'</table></div>'+(itens.length>60?'<p style="font-size:12px;color:#64748b">… e mais '+(itens.length-60)+' item(ns).</p>':""):'<p style="font-size:13px;color:#94a3b8">A IA não separou itens.</p>')+
+        '<p id="eq-aviso-itens" style="display:none;font-size:12px;color:#b45309;margin:6px 0 0">Os itens lidos são do fornecedor que a IA indicou. Com outro escolhido, os itens não são preenchidos.</p>'+
+        (res.observacoes?'<p style="margin:12px 0 0;font-size:13px"><b>Observações do quadro:</b> '+esc(res.observacoes)+'</p>':"")+
+        '<div style="margin-top:14px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px"><div style="font-weight:600;margin-bottom:4px">Preencher no formulário</div>'+
+          ck("eq-c-forn","Fornecedor escolhido",true)+ck("eq-c-cots","Comparativo de cotações (substitui as linhas atuais)",fs.length>0)+
+          ck("eq-c-itens","Itens / serviços com quantidade, unidade e preço (substitui os atuais)",itens.length>0)+
+          ck("eq-c-cond","Condição de pagamento e prazo do escolhido",true)+ck("eq-c-just","Justificativa da escolha",true)+
+          (!objAtual.trim()&&res.objeto?ck("eq-c-obj","Objeto da solicitação",true):"")+
+          '<div style="font-size:12px;color:#64748b;margin-top:4px">O arquivo da equalização entra nos anexos da contratação. Nada é salvo até você clicar em Salvar / Enviar.</div></div>'+
+      '</div>'+
+      '<div style="padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">'+
+        '<button type="button" id="eq-cancelar" style="padding:8px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;font-weight:600;cursor:pointer">Cancelar</button>'+
+        '<button type="button" id="eq-aplicar" style="padding:8px 16px;border-radius:8px;border:0;background:'+LARANJA+';color:#fff;font-weight:700;cursor:pointer">Aplicar ao formulário</button></div>');
+    var q=function(id){ return m.querySelector("#"+id); };
+    m.querySelectorAll('input[name="eq-venc"]').forEach(function(r){ r.onchange=function(){
+      var outro=+r.value!==iv; q("eq-aviso-itens").style.display=outro&&itens.length?"":"none"; if(q("eq-c-itens")) q("eq-c-itens").checked=!outro&&itens.length>0; }; });
+    q("eq-cancelar").onclick=function(){ m.remove(); };
+    q("eq-aplicar").onclick=async function(){
+      var sel=m.querySelector('input[name="eq-venc"]:checked'), iw=sel?+sel.value:-1, win=fs[iw]||null;
+      var op={forn:q("eq-c-forn").checked,cots:q("eq-c-cots").checked,itens:q("eq-c-itens").checked&&iw===iv,cond:q("eq-c-cond").checked,just:q("eq-c-just").checked,obj:!!(q("eq-c-obj")&&q("eq-c-obj").checked)};
+      m.remove();
+      await aplicarEqualizacao(res,win,op,ctx);
+    };
+  }
+
+  async function aplicarEqualizacao(res,win,op,ctx){
+    var avisos=[], fs=res.fornecedores||[];
+    var $=function(id){ return document.getElementById(id); };
+    if(op.obj&&res.objeto&&$("f-objeto")) $("f-objeto").value=res.objeto;
+    // itens primeiro: o total deles vira o valor do contrato (recalcItens)
+    if(op.itens&&(res.itens||[]).length&&$("itens-body")){
+      $("itens-body").innerHTML=res.itens.map(function(it,i){
+        return renderItemRow({descricao:it.descricao,unidade:it.unidade,qty:it.quantidade||"",
+          valorUnit:it.preco_unitario?fmtBRLInput(Math.round(it.preco_unitario*100).toString()):"",orcamentoItemId:""},i);
+      }).join("");
+      bindItemEvents(); refreshOrcSelect(); recalcItens();
+      avisos.push("Escolha o item do orçamento Sienge de cada linha.");
+    }
+    var cad=win?achaForn(win):null;
+    if(op.forn&&win){
+      var s=$("f-forn-id");
+      if(cad&&s){ s.style.display=""; s.value=cad.id; if(typeof updateFornPreview==="function") updateFornPreview(); }
+      else if(!cad){
+        avisos.push('O escolhido ("'+(win.nome||"")+'") não está cadastrado: complete o cadastro que abriu ao lado de Fornecedor e salve.');
+        try{ abrirFornInline(); setTimeout(function(){ if($("ff-nome")&&!$("ff-nome").value) $("ff-nome").value=win.nome||""; if($("ff-cnpj")&&!$("ff-cnpj").value) $("ff-cnpj").value=fmtCnpj(win.cnpj||""); },50); }catch(e){}
+      }
+    }
+    if(op.cots&&fs.length&&$("cots-list")){
+      var ordem=win?[win].concat(fs.filter(function(f){ return f!==win; })):fs.slice();
+      $("cots-list").innerHTML=ordem.map(function(f,i){
+        var c=achaForn(f);
+        var obs=[f.prazo?("Prazo: "+f.prazo):"",f.condicao_pagamento?("Pgto: "+f.condicao_pagamento):"",f.observacoes||""].filter(Boolean).join(" · ");
+        return renderCotRow({fornecedorId:c?c.id:"",fornecedor:c?"":(f.nome||""),valor:(+f.valor_total||""),observacao:obs.slice(0,200)},i);
+      }).join("");
+      bindCotEvents();
+    }
+    if(op.cond&&win){
+      if(win.condicao_pagamento&&$("f-pagto")) $("f-pagto").value=win.condicao_pagamento;
+      if(win.prazo&&$("f-prazo")) $("f-prazo").value=win.prazo;
+    }
+    if(op.just&&win&&$("f-just")){
+      var j="Conforme equalização ("+ctx.arquivo.name+"): "+(win.nome||"")+(win.valor_total?" — "+fmtBRL(win.valor_total):"")+
+        (res.vencedor&&res.vencedor.motivo?". "+res.vencedor.motivo:"")+(res.observacoes?"\nObs. do quadro: "+res.observacoes:"");
+      $("f-just").value=($("f-just").value.trim()?$("f-just").value.trim()+"\n":"")+j.slice(0,1500);
+    }
+    // o arquivo da equalização vai para os anexos da contratação (sobe para o Storage pelo idbPut)
+    try{
+      var u=uid(); await idbPut(u,ctx.dataUrl);
+      window._anx=window._anx||[];
+      window._anx.push({uid:u,nome:ctx.arquivo.name,tamanho:ctx.arquivo.size,tipo:ctx.arquivo.type||"",categoria:"equalizacao",
+        equalizacao:{lidoEm:Date.now(),confianca:res.confianca||"",vencedor:win?{nome:win.nome||"",cnpj:win.cnpj||"",valor:+win.valor_total||0}:null,
+          fornecedores:fs.map(function(f){ return {nome:f.nome||"",cnpj:f.cnpj||"",valor:+f.valor_total||0}; }).slice(0,30)}});
+      renderAnxList();
+    }catch(e){ avisos.push("Não consegui anexar o arquivo da equalização: "+((e&&e.message)||e)); }
+    var tot=parseBRL(($("f-valor")||{}).value||"0");
+    if(win&&win.valor_total&&tot&&Math.abs(tot-win.valor_total)>0.05) avisos.push("A soma dos itens ("+fmtBRL(tot)+") difere do total do escolhido na equalização ("+fmtBRL(win.valor_total)+"): confira.");
+    avisos.push("Revise os campos e o Faturamento antes de salvar.");
+    statusEq("✓ Equalização aplicada. "+avisos.join(" "),"#15803d");
+    showToast("✅ Equalização aplicada — revise antes de salvar","green");
+  }
+
+  /* =================================================================
+     2) AUTORIZAÇÃO DE FATURAMENTO desde a 1ª etapa  +  3) NF do fornecedor
+     ================================================================= */
+  function afResumo(f){
+    var ct=getContrato(f.contratoId), m=getMed(f.medicaoId), p=f.pedidoCompraId?getPC(f.pedidoCompraId):null, obra=getObra(f.obraId);
+    var c=S.config||{};
+    var tom=f.tipoFat==="cliente"
+      ? {empresa:(obra&&obra.clienteRazao)||"",cnpj:(obra&&obra.clienteCnpj)||"",endereco:(obra&&obra.clienteEndereco)||"",ie:(obra&&obra.clienteIE)||"",im:(obra&&obra.clienteIM)||""}
+      : {empresa:c.empresaRazao||c.nomeEmpresa||"",cnpj:c.empresaCnpj||"",endereco:c.empresaEndereco||"",ie:c.empresaIE||"",im:c.empresaIM||""};
+    var toms=[tom];
+    var junta=function(t){ if(!t||!(t.cnpj||t.empresa)) return; var d=dig(t.cnpj); if(d&&toms.some(function(x){ return dig(x.cnpj)===d; })) return; toms.push({empresa:t.empresa||"",cnpj:t.cnpj||"",endereco:"",ie:"",im:""}); };
+    if(m&&m.cnpjFatura) junta({empresa:m.empresaFatura,cnpj:m.cnpjFatura});
+    if(!p&&ct) (f.tipoFat==="cliente"?(ct.faturaCliente||[]):(ct.faturaConstrutora||[])).forEach(junta);
+    var fc=p?(getForn(p.fornecedorEscolhidoId)||p.fornecedor||{}):((ct&&ct.fornecedor)||{});
+    var fcad=!p&&ct&&ct.fornecedorId?getForn(ct.fornecedorId):null;
+    var empB=c.empresaRazao||c.nomeEmpresa||"BRANDÃO & MARMO";
+    return {
+      empresa:c.nomeEmpresa||"Brandão & Marmo",
+      obra:{nome:(obra&&obra.nome)||"",fantasia:(obra&&obra.nomeFantasia)||"",cno:(obra&&obra.cno)||"",endereco:(obra&&obra.endereco)||""},
+      contrato:(ct&&ct.numero)||"",medicao:(m&&m.numero)||"",pedido:(p&&p.numero)||"",
+      valor:+f.valor||0,tipoFat:f.tipoFat||"",
+      tipoNF:(ct&&ct.tipoNF)||"",prazoPgto:(ct&&(ct.prazoPgtoStr||ct.condicaoPagamento))||(p&&p.condicaoPagamento)||"",formaPgto:(ct&&ct.formaPgto)||"BOLETO OU DEPÓSITO",
+      fornecedor:{nome:fc.razaoSocial||fc.nome||(fcad&&fcad.razaoSocial)||"",cnpj:fc.cnpj||(fcad&&fcad.cnpj)||""},
+      tomadores:toms.filter(function(t){ return t.empresa||t.cnpj; }),
+      textoObrigatorio:(obra&&obra.clienteRazao)?("CONTRATO ENTRE "+empB.toUpperCase()+" E "+String(obra.clienteRazao).toUpperCase()):"",
+      autorizadoEm:new Date().toISOString(),
+      appUrl:(window.bmUrlDe?bmUrlDe("finDet",f.id):""),
+      emailNF:c.emailFinanceiro||""
+    };
+  }
+  function urlDoLink(token){ return new URL("nf.html",location.href.split("#")[0]).href+"#t="+token; }
+  async function criarLink(f){
+    var sb=sbc(); if(!sb) throw new Error("sem conexão com o banco");
+    var r=await comPrazo(sb.rpc("nf_link_criar",{p_financeiro:f.id,p_resumo:afResumo(f)}),10000);
+    if(r.error||!r.data) throw new Error((r.error&&r.error.message)||"não gerou o link");
+    return urlDoLink(r.data);
+  }
+  /* chamado no clique "Autorizar e enviar dados ao fornecedor" (trocas do montar.js) */
+  window.bmNfLinkPreparar=async function(f){
+    try{
+      var url=await criarLink(f);
+      var html='<div style="margin:18px 0;padding:14px 16px;border:1px solid '+LARANJA+';border-radius:10px;background:#FFF7EB;font-family:Arial,sans-serif">'+
+        '<p style="margin:0 0 8px"><b>Envie a nota fiscal por este link</b> (PDF e/ou XML). A conferência com esta autorização sai na hora.</p>'+
+        '<p style="margin:0 0 10px"><a href="'+url+'" style="display:inline-block;background:'+AZUL+';color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Enviar a NF</a></p>'+
+        '<p style="margin:0;font-size:12px;color:#555">O link vale 15 dias, até a NF ser aceita. Se o botão não abrir, copie: '+url+'</p></div>';
+      return {url:url,html:html};
+    }catch(e){ console.warn("link da NF:",e); return {url:"",html:""}; }
+  };
+  /* a Autorização de Faturamento, como anexo do e-mail (o servidor converte .html em PDF) */
+  window.bmAfAnexo=function(f){
+    try{
+      var h=gerarAutorizacaoFaturamento(f); if(!h) return [];
+      var ct=getContrato(f.contratoId), m=getMed(f.medicaoId), p=f.pedidoCompraId?getPC(f.pedidoCompraId):null;
+      var nome=("Autorizacao_Faturamento_"+[(ct&&ct.numero)||(p&&p.numero)||"",(m&&m.numero)||""].filter(Boolean).join("_")).replace(/[^A-Za-z0-9_-]+/g,"_")+".html";
+      var b64=btoa(unescape(encodeURIComponent(h)));
+      return [{name:nome,contentBytes:b64,content:b64,mimeType:"text/html",contentType:"text/html"}];
+    }catch(e){ console.warn("AF anexo:",e); return []; }
+  };
+
+  var _rfd=window.renderFinanceiroDet;
+  window.renderFinanceiroDet=function(id){
+    var html=_rfd.apply(this,arguments);
+    var f=getFin(id); if(!f) return html;
+    var extra="";
+    if(f.status==="aguardando_autorizacao"){
+      extra+='<div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">'+
+        '<div class="font-semibold text-amber-800 mb-1">📄 Autorização de Faturamento</div>'+
+        '<p class="text-sm text-slate-600 mb-3">Já pronta para conferir. É ela que vai anexada ao e-mail no ato da autorização (a data de liberação sai a do dia em que autorizar).</p>'+
+        '<div class="flex gap-2 flex-wrap"><button id="btn-aut-ver0" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">📄 Ver Autorização de Faturamento</button>'+
+        '<button id="btn-aut-imp0" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg text-sm">🖨 Imprimir / PDF</button></div></div>';
+    }
+    if(["autorizado_emissao","nf_recebida","enviada_cliente","em_pgto_interno","paga"].indexOf(f.status)>=0){
+      extra+='<div id="nf-forn-card" class="bg-white rounded-xl border p-5 mb-5"><h3 class="font-semibold text-indigo-700 mb-2">📥 NF enviada pelo fornecedor (link)</h3><p class="text-sm text-slate-400">Carregando…</p></div>';
+    }
+    if(!extra) return html;
+    var re=/<div class="bg-white rounded-xl border p-5">\s*<h3[^>]*>🕓 Histórico/;
+    return re.test(html)?html.replace(re,function(x){ return extra+x; }):html+extra;
+  };
+  var _bfd=window.bindFinanceiroDet;
+  window.bindFinanceiroDet=function(){
+    _bfd.apply(this,arguments);
+    var id=R.params&&R.params.id, f=getFin(id); if(!f) return;
+    var abrir=function(imprimir){ var w=window.open("","_blank"); if(!w) return alert("O navegador bloqueou a nova aba."); w.document.write(gerarAutorizacaoFaturamento(f)); w.document.close(); if(imprimir) w.onload=function(){ w.print(); }; };
+    var b0=document.getElementById("btn-aut-ver0"); if(b0) b0.onclick=function(){ abrir(false); };
+    var b1=document.getElementById("btn-aut-imp0"); if(b1) b1.onclick=function(){ abrir(true); };
+    if(document.getElementById("nf-forn-card")) carregarNfForn(f);
+  };
+
+  var SELO={coerente:["Coerente","#dcfce7","#166534"],divergente:["Com divergência","#fee2e2","#991b1b"],ilegivel:["Não lida","#f1f5f9","#475569"]};
+  async function carregarNfForn(f){
+    var card=document.getElementById("nf-forn-card"), sb=sbc(); if(!card) return;
+    if(!sb){ card.querySelector("p").textContent="Sem conexão com o banco."; return; }
+    var r=await comPrazo(sb.rpc("nf_envios_de",{p_financeiro:f.id}),15000);
+    card=document.getElementById("nf-forn-card"); if(!card) return;
+    if(r.error){ card.querySelector("p").textContent=/nf_envios_de|function|schema cache/i.test(r.error.message||"")?"Ainda não disponível (falta a migração 0042 no banco).":"Não consegui carregar: "+r.error.message; return; }
+    var d=r.data||{}, link=d.link, envios=d.envios||[];
+    var podeRec=podeReceberNF(f.tipoFat), aberto=f.status==="autorizado_emissao";
+    var lk=!link?'<span class="text-slate-500">Nenhum link gerado para este lançamento.</span>'
+      : link.encerrado_em?'<span class="text-slate-500">Link encerrado em '+fmtDate(Date.parse(link.encerrado_em))+' ('+({nf_aceita:"NF aceita",substituido:"trocado por um novo"}[link.encerrado_motivo]||esc(link.encerrado_motivo||""))+').</span>'
+      : Date.parse(link.expira_em)<Date.now()?'<span class="text-red-700">Link venceu em '+fmtDate(Date.parse(link.expira_em))+'.</span>'
+      : '<span class="text-green-700">Link ativo até '+fmtDate(Date.parse(link.expira_em))+'</span>'+(link.criado_por?' · gerado por '+esc(link.criado_por):"");
+    var h='<h3 class="font-semibold text-indigo-700 mb-2">📥 NF enviada pelo fornecedor (link)</h3>'+
+      '<div class="text-sm mb-3 flex items-center gap-3 flex-wrap">'+lk+
+      (aberto&&podeAutorizarNF(f.tipoFat)?'<button id="btn-nf-link-novo" class="text-xs bg-slate-200 hover:bg-slate-300 font-semibold px-3 py-1 rounded">🔗 Gerar novo link</button>':"")+'</div>'+
+      '<div id="nf-link-novo-area"></div>';
+    if(!envios.length) h+='<p class="text-sm text-slate-400">O fornecedor ainda não enviou a NF pelo link.</p>';
+    envios.forEach(function(e,i){
+      var s=SELO[e.resultado]||SELO.ilegivel, dd=e.dados||{};
+      var ret=Object.keys(dd.retencoes||{}).map(function(k){ return k.toUpperCase()+" "+fmtBRL(dd.retencoes[k]); }).join(" · ");
+      h+='<div class="border rounded-lg p-3 mb-2'+(i?' opacity-80':'')+'">'+
+        '<div class="flex items-center gap-2 flex-wrap mb-1"><span style="background:'+s[1]+';color:'+s[2]+';font-weight:700;font-size:12px;border-radius:999px;padding:2px 10px">'+s[0]+'</span>'+
+        '<span class="text-xs text-slate-500">'+fmtDate(Date.parse(e.criado_em))+' · '+(e.origem==="xml"?"lido do XML (exato)":e.origem==="ia"?"lido por IA (confira)":"—")+'</span>'+
+        (e.aceito_em?'<span class="text-xs font-semibold text-green-700">✓ aceita'+(e.aceito_por?" por "+esc(e.aceito_por):"")+'</span>':"")+'</div>'+
+        (dd.numero||dd.valor_total?'<div class="text-sm"><b>'+esc(dd.tipo||"NF")+' nº '+esc(dd.numero||"—")+'</b>'+(dd.data?' · '+esc(fmtDateOnly(dd.data)):"")+' · <b>'+fmtBRL(dd.valor_total||0)+'</b>'+(ret?' <span class="text-xs text-slate-500">(retenções: '+esc(ret)+')</span>':"")+'</div>'+
+          '<div class="text-xs text-slate-600">Emitente: '+esc(dd.nome_emitente||"")+' '+esc(fmtCnpj(dd.cnpj_emitente||""))+' · Tomador: '+esc(dd.nome_tomador||"")+' '+esc(fmtCnpj(dd.cnpj_tomador||""))+'</div>':"")+
+        ((e.divergencias||[]).length?'<ul class="text-sm text-red-700 mt-1" style="list-style:disc;padding-left:18px">'+e.divergencias.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("")+'</ul>':"")+
+        ((e.avisos||[]).length?'<ul class="text-xs text-amber-700 mt-1" style="list-style:disc;padding-left:18px">'+e.avisos.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("")+'</ul>':"")+
+        '<div class="flex gap-2 flex-wrap mt-2">'+(e.arquivos||[]).map(function(a,k){ return '<button data-nf-arq="'+i+'-'+k+'" class="text-xs border rounded px-2 py-1 hover:bg-slate-50">📎 '+esc(a.nome)+'</button>'; }).join("")+
+        (aberto&&podeRec&&!e.aceito_em&&dd.numero?'<button data-nf-usar="'+i+'" class="text-xs bg-sky-600 hover:bg-sky-700 text-white font-semibold px-3 py-1 rounded">✓ Usar esta NF no lançamento</button>':"")+'</div></div>';
+    });
+    card.innerHTML=h;
+    card.querySelectorAll("[data-nf-arq]").forEach(function(b){ b.onclick=async function(){
+      var ix=b.dataset.nfArq.split("-"), a=envios[+ix[0]].arquivos[+ix[1]];
+      var w=window.open("","_blank");
+      var dl=await sb.storage.from("financeiro-anexos").download(a.path);
+      if(dl.error||!dl.data){ if(w) w.close(); return alert("Não consegui baixar: "+((dl.error&&dl.error.message)||"")); }
+      var u=URL.createObjectURL(new Blob([dl.data],{type:a.tipo||dl.data.type}));
+      if(w) w.location.href=u; else location.href=u;
+    }; });
+    card.querySelectorAll("[data-nf-usar]").forEach(function(b){ b.onclick=async function(){
+      var e=envios[+b.dataset.nfUsar], dd=e.dados||{};
+      if(e.resultado!=="coerente"&&!confirm("Esta NF tem divergência com a autorização:\n\n- "+(e.divergencias||[]).join("\n- ")+"\n\nUsar mesmo assim?")) return;
+      if((+dd.valor_total||0)>(+f.valor||0)+0.005) return alert("O valor da NF ("+fmtBRL(dd.valor_total)+") passa do teto da medição ("+fmtBRL(f.valor)+"). Não dá para usar.");
+      b.disabled=true;
+      var r2=await sb.rpc("nf_envio_aceitar",{p_envio:e.id});
+      if(r2.error){ b.disabled=false; return alert("Não consegui aceitar: "+r2.error.message); }
+      var fa=getFin(f.id)||f;
+      var arq=(e.arquivos||[]).find(function(a){ return /pdf/.test(a.tipo); })||(e.arquivos||[])[0];
+      fa.nfNumero=String(dd.numero||""); fa.nfData=String(dd.data||""); fa.nfValor=+dd.valor_total||0;
+      if(arq) fa.nfAnexo={uid:arq.path,name:arq.nome,type:arq.tipo,size:arq.tamanho};
+      fa.historico=fa.historico||[];
+      fa.historico.push({acao:"NF nº "+(dd.numero||"")+" enviada pelo fornecedor (link) aceita — conferência: "+(SELO[e.resultado]||SELO.ilegivel)[0].toLowerCase(),por:(usuarioLogado()&&usuarioLogado().nome)||"—",em:Date.now()});
+      save(); showToast("✅ NF preenchida no lançamento — confira e clique em Confirmar NF recebida","green"); render();
+    }; });
+    var bn=document.getElementById("btn-nf-link-novo");
+    if(bn) bn.onclick=async function(){
+      if(link&&!link.encerrado_em&&!confirm("O link atual deixa de valer. Gerar um novo?")) return;
+      bn.disabled=true;
+      try{
+        var url=await criarLink(getFin(f.id)||f);
+        document.getElementById("nf-link-novo-area").innerHTML='<div class="bg-slate-50 border rounded-lg p-3 mb-3 text-sm">'+
+          '<div class="font-semibold mb-1">Link novo (só aparece agora — copie e mande ao fornecedor):</div>'+
+          '<div class="flex gap-2"><input id="nf-link-url" readonly class="flex-1 border rounded px-2 py-1 text-xs" value="'+esc(url)+'"/>'+
+          '<button id="nf-link-copiar" class="text-xs bg-indigo-600 text-white font-semibold px-3 py-1 rounded">Copiar</button></div></div>';
+        /* sem save() aqui: um redesenho da tela apagaria o link antes de copiar (quem gerou fica no próprio link) */
+        document.getElementById("nf-link-copiar").onclick=function(){ var i=document.getElementById("nf-link-url"); i.select(); try{ navigator.clipboard.writeText(i.value); }catch(e){ document.execCommand("copy"); } showToast("Link copiado","green"); };
+      }catch(e){ alert("Não consegui gerar o link: "+((e&&e.message)||e)); }
+      bn.disabled=false;
+    };
+  }
+})();
+
 </script>
 </body>
 </html>

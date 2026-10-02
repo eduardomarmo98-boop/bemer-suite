@@ -198,7 +198,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.09.29.2';
+var APP_VERSION = '2026.09.30.1';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -267,7 +267,13 @@ sb.auth.getSession().then(function(s){
       ok(r);
       if(!r.data || !r.data.ativo || r.data.tipo !== 'colaborador') return location.replace('../');
       EU = r.data;
-      return core('perfil_modulos').select('modulo').eq('perfil', EU.perfil).eq('modulo', 'configuracoes')
+      /* 30/09/2026 (0041): falta a segunda etapa (código por e-mail)? Volta ao
+         portal, que pede o código. Erro na consulta = segue (nunca trava). */
+      return sb.schema('core').rpc('dois_fatores_pendente')
+        .then(function(x){ return !x.error && x.data === true; }, function(){ return false; })
+        .then(function(pend){
+          if(pend){ location.replace('../'); return null; }
+          return core('perfil_modulos').select('modulo').eq('perfil', EU.perfil).eq('modulo', 'configuracoes')
         .then(function(pm){
           if(pm && !pm.error && Array.isArray(pm.data) && pm.data.length === 0){
             $('conteudo').innerHTML = '<div class="cartao" style="margin-top:20px"><h1>Sem acesso aos Cadastros</h1>'
@@ -277,6 +283,7 @@ sb.auth.getSession().then(function(s){
           }
           return capacidades();
         }, capacidades);
+        });
     })
     .then(function(v){
       if(!v) return;

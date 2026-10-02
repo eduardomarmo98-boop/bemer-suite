@@ -154,8 +154,89 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
 .faixa-atualizar button{background:var(--azul);color:#fff;border:0;border-radius:9px;padding:8px 14px;
                         font:inherit;font-size:14px;font-weight:600;cursor:pointer;min-height:40px}
 
+/* ================ 2FA (30/09/2026) ================ */
+input.codigo{font-size:26px;font-weight:600;letter-spacing:10px;text-align:center}
+.marcar{display:flex;align-items:center;gap:10px;margin:-4px 0 18px;font-size:13px;cursor:pointer}
+.marcar input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--azul)}
+.link:disabled{opacity:.55;cursor:default;text-decoration:none}
+
+/* ================ RODAPÉ LEGAL ================ */
+.copy{font-size:11px;line-height:1.4;color:var(--azul-texto-fraco);text-align:center}
+.copy-curto{display:none}
+.rodape .copy{color:var(--texto2);flex:1}
+
+/* ================ CONFIGURAÇÕES (30/09/2026) ================ */
+.cfg{max-width:1100px;margin:0 auto;padding:28px 20px 0}
+.cfg-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cfg-cab h1{font-size:26px;font-weight:600;color:var(--azul);letter-spacing:-.4px}
+.cfg-cab p{font-size:14px;color:var(--texto2);margin-top:2px}
+.voltar{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--azul);text-decoration:none;
+        padding:8px 12px;border-radius:10px;border:1px solid var(--borda-forte);background:#fff}
+.cfg-abas{display:flex;gap:4px;margin:20px 0 18px;border-bottom:1px solid var(--borda);overflow-x:auto;scrollbar-width:none}
+.cfg-abas::-webkit-scrollbar{display:none}
+.cfg-abas a{padding:12px 14px 10px;font-size:14px;font-weight:600;color:var(--texto2);text-decoration:none;white-space:nowrap;
+            border-bottom:3px solid transparent;min-height:44px;display:flex;align-items:center;gap:6px}
+.cfg-abas a.ativa{color:var(--azul);border-bottom-color:var(--laranja)}
+.bloco{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 6px 18px rgba(0,27,77,.05)}
+.bloco h2{font-size:17px;font-weight:600;color:var(--azul);margin-bottom:4px}
+.bloco .dica{font-size:13px;line-height:1.55;color:var(--texto2)}
+.bloco .linha{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.chave-lig{position:relative;width:52px;height:30px;flex:none;cursor:pointer}
+.chave-lig input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.chave-lig span{position:absolute;inset:0;border-radius:15px;background:var(--borda-forte);transition:background .15s}
+.chave-lig span:after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:12px;background:#fff;
+                      box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.chave-lig input:checked + span{background:var(--azul)}
+.chave-lig input:checked + span:after{left:25px}
+.chave-lig input:disabled + span{opacity:.5}
+.chave-lig input:focus-visible + span{outline:3px solid var(--laranja);outline-offset:2px}
+.btn{height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--borda-forte);background:#fff;color:var(--azul);
+     font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.forte{background:var(--laranja);border-color:var(--laranja);color:var(--azul)}
+.btn.perigo{border-color:#E7B4AF;color:var(--erro)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.campo-cfg{height:40px;margin:0;font-size:14px;border-radius:10px}
+select.campo-cfg{width:100%;border:1px solid var(--borda-forte);padding:0 10px;font:inherit;font-size:14px;background:var(--campo);color:var(--texto)}
+.chaves{display:grid;gap:10px;margin-top:14px}
+.chave-ia{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;
+          border:1px solid var(--borda);border-radius:12px;background:var(--campo)}
+.chave-ia .n{width:28px;height:28px;border-radius:14px;background:var(--azul);color:#fff;font-size:12px;font-weight:600;
+             display:flex;align-items:center;justify-content:center}
+.chave-ia code{font-size:13px;color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chave-ia .res{grid-column:2/-1;font-size:12px}
+.ok-txt{color:var(--ok)} .erro-txt{color:var(--erro)} .fraco{color:var(--texto2)}
+.estado{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--fundo);color:var(--texto2)}
+.estado.lig{background:var(--ok-fundo);color:var(--ok)}
+table.uso{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+table.uso th{text-align:left;font-weight:600;color:var(--texto2);font-size:12px;padding:8px;border-bottom:1px solid var(--borda)}
+table.uso td{padding:9px 8px;border-bottom:1px solid var(--borda);vertical-align:middle}
+table.uso td.num,table.uso th.num{text-align:right;white-space:nowrap}
+table.uso tr.sub td{font-size:12px;color:var(--texto2);background:var(--campo)}
+table.uso tr.sub td:first-child{padding-left:22px}
+.barra-uso{height:8px;border-radius:4px;background:var(--fundo);min-width:60px;overflow:hidden}
+.barra-uso i{display:block;height:100%;background:var(--azul);border-radius:4px}
+.tabela-rola{overflow-x:auto}
+.lista-acv{max-height:280px;overflow:auto;margin-top:10px;border:1px solid var(--borda);border-radius:10px}
+.lista-acv table.uso{margin:0}
+.registro{margin-top:10px;max-height:300px;overflow:auto;font-size:12px;font-family:ui-monospace,Consolas,monospace;line-height:1.7;
+          background:var(--campo);border:1px solid var(--borda);border-radius:10px;padding:8px 12px}
+.prog{font-size:12px;color:var(--texto2)}
+.aviso-cfg{font-size:13px;line-height:1.5;padding:12px 14px;border-radius:10px;background:var(--laranja-claro);color:var(--texto);margin-top:12px}
+
 /* ========================== CELULAR ========================== */
 @media (max-width: 760px){
+  .copy-longo{display:none} .copy-curto{display:inline}
+  .copy{font-size:10px;color:#DCE5F5}
+  .rodape .copy{color:var(--texto2)}
+  .cfg{padding:18px 16px 0}
+  .cfg-cab h1{font-size:22px}
+  .bloco{padding:16px}
+  .chave-ia{grid-template-columns:28px minmax(0,1fr)}
+  .chave-ia .acoes{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+  .cartao .marcar input{width:18px;height:18px;margin:0}
+  .cartao .marcar{color:#DCE5F5;margin:-2px 0 12px}
+  .cartao input.codigo{font-size:22px}
   /* A tela de entrar tem que caber SEM ROLAR (pedido de 23/09/2026), até
      num iPhone SE com as barras do Safari à mostra (~548 px úteis). Conta:
      marca ~115 + formulário ~395 = ~510. `svh` é a altura com as barras
@@ -292,9 +373,25 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
       <button class="botao" id="btn-nova" type="submit">Salvar e entrar</button>
     </form>
 
+    <!-- segunda etapa: código por e-mail (30/09/2026, migração 0041) -->
+    <form class="cartao oculto" id="form-2fa" novalidate>
+      <h2>Confirme que é você</h2>
+      <p class="sub" id="sub-2fa">Enviando um código de 6 dígitos para o seu e-mail…</p>
+      <div id="recado-2fa" class="recado oculto" role="alert"></div>
+      <label for="codigo2fa">Código</label>
+      <input id="codigo2fa" class="codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" required>
+      <label class="marcar"><input type="checkbox" id="confiar2fa"> Confiar neste aparelho por 30 dias</label>
+      <button class="botao" id="btn-2fa" type="submit">Confirmar</button>
+      <div class="linha-link" style="justify-content:space-between;margin:12px 0 0">
+        <button type="button" class="link" id="btn-reenviar" disabled>Reenviar código</button>
+        <button type="button" class="link" onclick="sair()">Sair</button>
+      </div>
+    </form>
+
     <div class="pe-form">
       <img id="cliente-logo-login" alt="">
       <span class="versao" id="versao-login"></span>
+      <span class="copy"><span class="copy-longo">© 2026 Brandão &amp; Marmo Engenharia e Construções · Todos os direitos reservados</span><span class="copy-curto">© 2026 Brandão &amp; Marmo · Todos os direitos reservados</span></span>
     </div>
   </section>
 </div>
@@ -316,19 +413,31 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
     </button>
   </header>
 
-  <section class="faixa">
-    <img class="marca-agua" src="marca/bemer-simbolo-branco.png" alt="">
-    <div class="faixa-conteudo">
-      <img class="cliente-branco" id="cliente-logo-faixa" alt="">
-      <span class="chip" id="chip-perfil">—</span>
-      <h1 id="saudacao">Olá.</h1>
-      <p id="hoje"></p>
+  <div id="vista-inicio">
+    <section class="faixa">
+      <img class="marca-agua" src="marca/bemer-simbolo-branco.png" alt="">
+      <div class="faixa-conteudo">
+        <img class="cliente-branco" id="cliente-logo-faixa" alt="">
+        <span class="chip" id="chip-perfil">—</span>
+        <h1 id="saudacao">Olá.</h1>
+        <p id="hoje"></p>
+      </div>
+    </section>
+
+    <main class="cards" id="cards"></main>
+  </div>
+
+  <!-- Configurações da suíte (30/09/2026): só diretoria e TI (core.eh_admin) -->
+  <main id="vista-config" class="cfg oculto">
+    <div class="cfg-cab">
+      <div><h1>Configurações</h1><p>O que vale para a suíte inteira. Só diretoria e TI.</p></div>
+      <a class="voltar" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>Início</a>
     </div>
-  </section>
+    <nav class="cfg-abas" id="cfg-abas" aria-label="Seções das configurações"></nav>
+    <div id="cfg-conteudo"></div>
+  </main>
 
-  <main class="cards" id="cards"></main>
-
-  <footer class="rodape"><b>Sua obra em ordem.</b><span id="versao-portal"></span></footer>
+  <footer class="rodape"><b>Sua obra em ordem.</b><span class="copy">© 2026 Brandão &amp; Marmo Engenharia e Construções · Todos os direitos reservados</span><span id="versao-portal"></span></footer>
 </div>
 
 <!-- ============ FORNECEDOR ============ -->
@@ -345,6 +454,7 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
     <p>Os documentos da sua empresa ficam no <b>BeMer Docs</b>, com o mesmo e-mail e senha.</p>
     <p style="margin-top:14px"><a href="https://docs.brandaoemarmo.com.br/">Abrir o BeMer Docs</a></p>
   </div></div>
+  <footer class="rodape"><span class="copy">© 2026 Brandão &amp; Marmo Engenharia e Construções · Todos os direitos reservados</span></footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
@@ -360,7 +470,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.09.29.1';
+var VERSAO   = '2026.09.30.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -449,7 +559,7 @@ function avisoDoEndereco(){
 
 /* ---------- as três caixas da tela de login ---------- */
 function caixa(qual){
-  ['form-login','form-esqueci','form-nova'].forEach(function(f){ $(f).classList.toggle('oculto', f !== qual); });
+  ['form-login','form-esqueci','form-nova','form-2fa'].forEach(function(f){ $(f).classList.toggle('oculto', f !== qual); });
   mostrar('tela-login');
 }
 function telaLogin(msg){
@@ -522,7 +632,132 @@ $('form-nova').addEventListener('submit', function(e){
   }).then(function(){ $('btn-nova').disabled = false; });
 });
 
-function sair(){ sb.auth.signOut().then(function(){ telaLogin(''); }); }
+function sair(){
+  pararContagem2fa(); EU = null; ADMIN = false;
+  if(/^#config/.test(location.hash)) limparEndereco();
+  sb.auth.signOut().then(function(){ telaLogin(''); });
+}
+
+/* =====================================================================
+   SEGUNDA ETAPA POR E-MAIL (30/09/2026 · migração 0041 · edge core-2fa)
+   Contrato para os outros módulos: docs/2FA-INTEGRACAO.md
+   ===================================================================== */
+var CHAVE_APARELHO = 'bemer_2fa_aparelho';   // {"<id do usuário>": "<token>"} — o banco guarda só o hash
+var UID_2FA = null, CONTAGEM_2FA = null;
+
+function aparelhoLer(uid){
+  try { var m = JSON.parse(localStorage.getItem(CHAVE_APARELHO) || '{}'); return (m && m[uid]) || null; } catch(e){ return null; }
+}
+function aparelhoGravar(uid, token){
+  try {
+    var m = JSON.parse(localStorage.getItem(CHAVE_APARELHO) || '{}') || {};
+    if(token) m[uid] = token; else delete m[uid];
+    localStorage.setItem(CHAVE_APARELHO, JSON.stringify(m));
+  } catch(e){}
+}
+/* erro ou função ausente = false: nunca trava ninguém por falha */
+function pendente2fa(){
+  return sb.schema('core').rpc('dois_fatores_pendente')
+    .then(function(r){ return !r.error && r.data === true; }, function(){ return false; });
+}
+/* resposta da edge sempre como {ok, motivo, ...} */
+function chamar2fa(corpo){
+  return sb.functions.invoke('core-2fa', { body: corpo }).then(function(r){
+    if(r.data && typeof r.data === 'object') return r.data;
+    var ctx = r.error && r.error.context;
+    if(ctx && typeof ctx.json === 'function')
+      return ctx.json().then(function(j){ return j && typeof j === 'object' ? j : { ok:false, motivo:'erro' }; },
+                             function(){ return { ok:false, motivo:'erro' }; });
+    return { ok:false, motivo:'rede' };
+  }, function(){ return { ok:false, motivo:'rede' }; });
+}
+/* Aparelho confiável passa direto; senão, mostra a tela do código. */
+function passar2fa(uid){
+  UID_2FA = uid;
+  var token = aparelhoLer(uid);
+  var tentativa = token ? chamar2fa({ acao:'dispositivo', token: token }) : Promise.resolve(null);
+  return tentativa.then(function(r){
+    if(r && r.ok) return true;
+    if(r && r.motivo === 'token_invalido') aparelhoGravar(uid, null);
+    tela2fa();
+    return false;
+  });
+}
+function tela2fa(){
+  caixa('form-2fa');
+  recado('recado-2fa', '');
+  $('codigo2fa').value = ''; $('confiar2fa').checked = false; $('btn-2fa').disabled = false;
+  enviar2fa();
+  setTimeout(function(){ $('codigo2fa').focus(); }, 50);
+}
+function pararContagem2fa(){ if(CONTAGEM_2FA){ clearInterval(CONTAGEM_2FA); CONTAGEM_2FA = null; } }
+function contagem2fa(seg){
+  pararContagem2fa();
+  var b = $('btn-reenviar'), fim = Date.now() + seg * 1000;
+  function passo(){
+    var falta = Math.ceil((fim - Date.now()) / 1000);
+    if(falta <= 0){ pararContagem2fa(); b.disabled = false; b.textContent = 'Reenviar código'; return; }
+    b.disabled = true; b.textContent = 'Reenviar em ' + falta + ' s';
+  }
+  passo(); CONTAGEM_2FA = setInterval(passo, 1000);
+}
+var MSG_2FA = {
+  falha_email:    'Não consegui mandar o e-mail agora. Tente reenviar em instantes.',
+  muitos_pedidos: 'Muitos códigos pedidos na última hora. Espere um pouco ou fale com a TI.',
+  sem_email:      'Seu cadastro está sem e-mail. Fale com a TI.',
+  nao_interno:    'Esta verificação é só para colaboradores.',
+  sem_sessao:     'Sua sessão terminou. Entre de novo.',
+  rede:           'Sem conexão com o servidor. Confira a internet e tente de novo.',
+  erro:           'Não foi possível continuar agora. Tente de novo em instantes.'
+};
+function enviar2fa(){
+  $('btn-reenviar').disabled = true;
+  return chamar2fa({ acao:'enviar' }).then(function(r){
+    if(r.ok){
+      $('sub-2fa').innerHTML = 'Enviamos um código de 6 dígitos para <b>' + esc(r.email || 'o seu e-mail') + '</b>. Vale por ' + (r.validade_min || 10) + ' minutos.';
+      recado('recado-2fa', '');
+      return contagem2fa(r.espera_s || 60);
+    }
+    if(r.motivo === 'espere'){
+      $('sub-2fa').innerHTML = 'Já mandamos um código para <b>' + esc(r.email || 'o seu e-mail') + '</b> há pouco. Confira a caixa de entrada e o spam.';
+      return contagem2fa(r.segundos || 60);
+    }
+    if(r.motivo === 'sem_sessao') return sb.auth.signOut().then(function(){ telaLogin(MSG_2FA.sem_sessao); });
+    $('sub-2fa').textContent = 'Precisamos confirmar que é você com um código enviado ao seu e-mail.';
+    recado('recado-2fa', MSG_2FA[r.motivo] || MSG_2FA.erro);
+    contagem2fa(r.motivo === 'falha_email' || r.motivo === 'rede' || r.motivo === 'erro' ? 5 : 60);
+  });
+}
+$('btn-reenviar').addEventListener('click', function(){ $('codigo2fa').value = ''; enviar2fa(); $('codigo2fa').focus(); });
+$('codigo2fa').addEventListener('input', function(){
+  var v = this.value.replace(/\D/g, '').slice(0, 6);
+  if(v !== this.value) this.value = v;
+  if(v.length === 6 && !$('btn-2fa').disabled) $('form-2fa').requestSubmit ? $('form-2fa').requestSubmit() : $('btn-2fa').click();
+});
+$('form-2fa').addEventListener('submit', function(e){
+  e.preventDefault();
+  var codigo = $('codigo2fa').value.replace(/\D/g, '');
+  if(codigo.length !== 6) return recado('recado-2fa', 'Digite os 6 números do código.');
+  var confiar = $('confiar2fa').checked;
+  $('btn-2fa').disabled = true;
+  chamar2fa({ acao:'verificar', codigo: codigo, confiar: confiar }).then(function(r){
+    if(r.ok){
+      if(r.token && UID_2FA) aparelhoGravar(UID_2FA, r.token);
+      pararContagem2fa();
+      return abrir();
+    }
+    $('btn-2fa').disabled = false;
+    var m = {
+      codigo_errado:   'Código não confere.' + (r.restantes != null ? ' Restam ' + r.restantes + ' tentativa' + (r.restantes === 1 ? '' : 's') + '.' : ''),
+      bloqueado:       'Tentativas esgotadas. Peça um código novo em “Reenviar código”.',
+      expirado:        'O código venceu. Peça outro em “Reenviar código”.',
+      sem_codigo:      'Peça um código em “Reenviar código”.',
+      codigo_invalido: 'Digite os 6 números do código.'
+    }[r.motivo] || MSG_2FA[r.motivo] || MSG_2FA.erro;
+    recado('recado-2fa', m);
+    $('codigo2fa').select();
+  });
+});
 
 /* ---------- decidir para onde a pessoa vai ---------- */
 function abrir(){
@@ -551,7 +786,13 @@ function abrir(){
         /* Quem é de fora nunca vê o portal. */
         if(r.data.tipo === 'externo'){ mostrar('tela-externo'); return; }
 
-        return montarPortal(r.data);
+        /* 30/09/2026: segunda etapa por e-mail (0041). Só pergunta ao banco;
+           o banco diz "não" quando está desligado, em erro ou se já passou. */
+        var pessoa = r.data;
+        return pendente2fa().then(function(pend){
+          if(!pend) return montarPortal(pessoa);
+          return passar2fa(sessao.user.id).then(function(passou){ if(passou) return montarPortal(pessoa); });
+        });
       });
   }).catch(function(e){
     telaLogin('Não foi possível carregar seu acesso.<br><small>'+esc(e.message||e)+'</small>');
@@ -571,12 +812,15 @@ function hoje(){
 }
 
 /* ---------- portal ---------- */
+var EU = null, ADMIN = false;
 function montarPortal(pessoa){
   return Promise.all([
     sb.schema('core').from('perfil_modulos').select('modulo').eq('perfil', pessoa.perfil),
-    sb.schema('core').from('perfis').select('nome').eq('codigo', pessoa.perfil).maybeSingle()
+    sb.schema('core').from('perfis').select('nome').eq('codigo', pessoa.perfil).maybeSingle(),
+    sb.schema('core').rpc('eh_admin').then(function(x){ return !x.error && x.data === true; }, function(){ return false; })
   ]).then(function(rs){
     if(rs[0].error) throw rs[0].error;
+    EU = pessoa; ADMIN = rs[2];
     var meus = (rs[0].data||[]).map(function(x){ return x.modulo; })
                                .filter(function(m){ return MODULOS[m]; });
     var perfilNome = (rs[1].data && rs[1].data.nome) || pessoa.perfil;
@@ -589,11 +833,14 @@ function montarPortal(pessoa){
     $('hoje').textContent      = hoje();
 
     /* Configurações é a engrenagem, não um card. */
-    var cfg = MODULOS.configuracoes, temCfg = meus.indexOf('configuracoes') >= 0;
+    /* 30/09/2026: diretoria e TI caem nas Configurações da suíte (2FA, IA,
+       Storage — e dali os Cadastros); os demais continuam indo direto aos Cadastros. */
+    var cfg = MODULOS.configuracoes, temCfg = meus.indexOf('configuracoes') >= 0 || ADMIN;
     var g = $('btn-config');
     g.classList.toggle('oculto', !temCfg);
-    if(cfg.url){ g.href = cfg.url; g.removeAttribute('aria-disabled'); g.title = 'Cadastros'; g.setAttribute('aria-label','Cadastros'); }
-    else       { g.removeAttribute('href'); g.setAttribute('aria-disabled','true'); g.title = 'Configurações (em breve)'; }
+    if(ADMIN)        { g.href = '#config'; g.removeAttribute('aria-disabled'); g.title = 'Configurações'; g.setAttribute('aria-label','Configurações'); }
+    else if(cfg.url){ g.href = cfg.url; g.removeAttribute('aria-disabled'); g.title = 'Cadastros'; g.setAttribute('aria-label','Cadastros'); }
+    else             { g.removeAttribute('href'); g.setAttribute('aria-disabled','true'); g.title = 'Configurações (em breve)'; }
 
     var cards = meus.filter(function(m){ return !MODULOS[m].engrenagem; });
 
@@ -607,7 +854,7 @@ function montarPortal(pessoa){
 
     if(!cards.length){
       $('cards').innerHTML = '<div class="vazio">Nenhum sistema liberado para o seu perfil ainda. Fale com a diretoria.</div>';
-      mostrar('tela-portal');
+      mostrarPortal();
       return;
     }
 
@@ -624,8 +871,576 @@ function montarPortal(pessoa){
            +   '</div>'
            + fim;
     }).join('');
-    mostrar('tela-portal');
+    mostrarPortal();
   });
+}
+
+/* =====================================================================
+   CONFIGURAÇÕES DA SUÍTE (30/09/2026 · migração 0041)
+   #config/seguranca · #config/ia · #config/acervo — só diretoria e TI.
+   O banco confere de novo (core.eh_admin nas regras e nas funções).
+   ===================================================================== */
+function mostrarPortal(){ mostrar('tela-portal'); rota(); }
+function rota(){
+  if($('tela-portal').classList.contains('oculto')) return;
+  var m = /^#config(?:\/(\w+))?/.exec(location.hash);
+  var naCfg = !!m && ADMIN;
+  $('vista-inicio').classList.toggle('oculto', naCfg);
+  $('vista-config').classList.toggle('oculto', !naCfg);
+  if(naCfg) abrirConfig(m[1] || 'seguranca');
+}
+window.addEventListener('hashchange', function(){ rota(); window.scrollTo(0, 0); });
+
+function fmtTam(n){
+  n = Number(n) || 0;
+  if(n >= 1073741824) return (n / 1073741824).toFixed(2).replace('.', ',') + ' GB';
+  if(n >= 1048576)    return (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+  if(n >= 1024)       return Math.round(n / 1024) + ' KB';
+  return n + ' B';
+}
+function fmtNum(n){ return Number(n || 0).toLocaleString('pt-BR'); }
+function dataHora(iso){ try { return new Date(iso).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' }); } catch(e){ return ''; } }
+function blocoMsg(txt, erro){ return '<section class="bloco"><p class="dica' + (erro ? ' erro-txt' : '') + '">' + txt + '</p></section>'; }
+function msgBanco(e){
+  var m = (e && (e.message || e.error_description)) || String(e || 'erro');
+  if(/does not exist|schema cache|Could not find/i.test(m)) return 'Falta rodar a migração 0041 neste banco.';
+  if(/row-level security|permission denied|42501/i.test(m)) return 'Seu perfil não pode fazer isso (só diretoria e TI).';
+  if(/Failed to fetch|NetworkError/i.test(m)) return 'Sem conexão. Confira a internet e tente de novo.';
+  return m;
+}
+
+var CFG_ABAS = [['seguranca', 'Segurança'], ['ia', 'Inteligência artificial'], ['acervo', 'Acervo e Storage']];
+var CFG = { aba: null };
+function abrirConfig(aba){
+  if(!CFG_ABAS.some(function(a){ return a[0] === aba; })) aba = 'seguranca';
+  CFG.aba = aba;
+  $('cfg-abas').innerHTML = CFG_ABAS.map(function(a){
+    return '<a href="#config/' + a[0] + '" class="' + (a[0] === aba ? 'ativa' : '') + '"' + (a[0] === aba ? ' aria-current="page"' : '') + '>' + esc(a[1]) + '</a>';
+  }).join('') + (MODULOS.configuracoes.url ? '<a href="' + esc(MODULOS.configuracoes.url) + '">Cadastros ↗</a>' : '');
+  ({ seguranca: telaSeguranca, ia: telaIA, acervo: telaAcervo })[aba]();
+}
+
+/* ---------------------------- Segurança ---------------------------- */
+var SEG = { dados: null, testeOk: false, testeMsg: '' };
+function telaSeguranca(){
+  $('cfg-conteudo').innerHTML = blocoMsg('Carregando…');
+  sb.schema('core').from('config_seguranca').select('dois_fatores,atualizado_em').maybeSingle().then(function(r){
+    if(CFG.aba !== 'seguranca') return;
+    if(r.error) return ($('cfg-conteudo').innerHTML = blocoMsg(esc(msgBanco(r.error)), true));
+    SEG.dados = r.data || { dois_fatores: false };
+    desenharSeguranca();
+  });
+}
+function desenharSeguranca(){
+  var d = SEG.dados, lig = !!d.dois_fatores, podeLigar = lig || SEG.testeOk;
+  $('cfg-conteudo').innerHTML =
+      '<section class="bloco"><div class="linha"><div style="flex:1;min-width:240px">'
+    +   '<h2>Verificação em duas etapas por e-mail</h2>'
+    +   '<p class="dica">Depois da senha, o colaborador recebe um código de 6 dígitos no e-mail do cadastro (vale 10 minutos) '
+    +   'e pode marcar “Confiar neste aparelho por 30 dias”. Fornecedor não passa por isso. Quem já confirma com o '
+    +   'aplicativo autenticador do Docs também não.</p></div>'
+    +   '<div style="display:flex;align-items:center;gap:12px"><span class="estado' + (lig ? ' lig' : '') + '">' + (lig ? 'Ligada' : 'Desligada') + '</span>'
+    +   '<label class="chave-lig"><input type="checkbox" id="sw-2fa"' + (lig ? ' checked' : '') + (podeLigar ? '' : ' disabled')
+    +   ' aria-label="Verificação em duas etapas"><span></span></label></div></div>'
+    +   (d.atualizado_em ? '<p class="dica" style="margin-top:10px">Última mudança: ' + esc(dataHora(d.atualizado_em)) + '</p>' : '')
+    +   (!podeLigar ? '<div class="aviso-cfg">Para ligar, faça antes o teste abaixo com o seu usuário: ele confere que o e-mail sai e que o código volta. '
+    +                 'Assim ninguém fica trancado do lado de fora.</div>' : '')
+    + '</section>'
+    + '<section class="bloco"><h2>Testar com o meu usuário</h2>'
+    +   '<p class="dica">Manda um código para o seu e-mail e confere aqui. Não muda nada para os outros.</p>'
+    +   '<div class="btns"><button class="btn" id="t2fa-enviar" type="button">Enviar código de teste</button>'
+    +   '<input id="t2fa-cod" class="campo-cfg" style="width:140px;letter-spacing:4px;text-align:center" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" aria-label="Código de teste">'
+    +   '<button class="btn forte" id="t2fa-conferir" type="button">Conferir</button></div>'
+    +   '<p class="dica" id="t2fa-res" style="margin-top:10px">' + SEG.testeMsg + '</p></section>'
+    + '<section class="bloco"><h2>Se algo der errado</h2><p class="dica">Desligue aqui. Sem acesso ao portal, a TI desliga direto no banco: '
+    +   '<code>update core.config_seguranca set dois_fatores = false;</code> Quem já estava dentro continua dentro.</p></section>';
+
+  $('sw-2fa').addEventListener('change', function(){
+    var sw = this, quer = sw.checked;
+    if(!confirm(quer ? 'Ligar a verificação por e-mail para todos os colaboradores?\n\nNa próxima entrada, cada um recebe um código no e-mail.'
+                     : 'Desligar a verificação em duas etapas?')){ sw.checked = !quer; return; }
+    sw.disabled = true;
+    sb.schema('core').from('config_seguranca').update({ dois_fatores: quer }).eq('id', true).select('dois_fatores,atualizado_em')
+      .then(function(r){
+        if(r.error || !r.data || !r.data.length){ alert(r.error ? msgBanco(r.error) : 'Não gravou (sem permissão?).'); return telaSeguranca(); }
+        SEG.dados = r.data[0]; desenharSeguranca();
+      });
+  });
+  function res(txt, ok){ SEG.testeMsg = '<span class="' + (ok ? 'ok-txt' : 'erro-txt') + '">' + txt + '</span>'; $('t2fa-res').innerHTML = SEG.testeMsg; }
+  $('t2fa-enviar').addEventListener('click', function(){
+    var b = this; b.disabled = true; $('t2fa-res').textContent = 'Enviando…';
+    chamar2fa({ acao: 'enviar' }).then(function(r){
+      b.disabled = false;
+      if(r.ok) return res('Código enviado para ' + esc(r.email || 'o seu e-mail') + '. Digite ao lado e clique em Conferir.', true);
+      if(r.motivo === 'espere') return res('Já saiu um código há pouco para ' + esc(r.email || 'o seu e-mail') + ' — use esse (novo em ' + r.segundos + ' s).', true);
+      res(MSG_2FA[r.motivo] || ('Falhou: ' + esc(r.motivo || 'erro') + '. A edge core-2fa já foi publicada?'));
+    });
+  });
+  $('t2fa-conferir').addEventListener('click', function(){
+    var cod = $('t2fa-cod').value.replace(/\D/g, '');
+    if(cod.length !== 6) return res('Digite os 6 números.');
+    var b = this; b.disabled = true;
+    chamar2fa({ acao: 'verificar', codigo: cod, confiar: false }).then(function(r){
+      b.disabled = false;
+      if(r.ok){ SEG.testeOk = true; SEG.testeMsg = '<span class="ok-txt">Funcionou: o e-mail saiu e o código conferiu. Já pode ligar.</span>'; return desenharSeguranca(); }
+      res({ codigo_errado: 'Código não confere.', bloqueado: 'Tentativas esgotadas — envie outro.', expirado: 'Venceu — envie outro.',
+            sem_codigo: 'Envie um código primeiro.' }[r.motivo] || MSG_2FA[r.motivo] || 'Falhou: ' + esc(r.motivo || 'erro'));
+    });
+  });
+}
+
+/* ---------------------- Inteligência artificial ---------------------- */
+var IA_MODELOS = [['gemini-3.1-flash-lite', 'gemini-3.1-flash-lite — rápido e econômico (recomendado)'],
+                  ['gemini-3.5-flash', 'gemini-3.5-flash — mais preciso']];
+var IA = { linha: null, novas: [], remover: [], trocar: [], res: [] };
+function telaIA(){
+  $('cfg-conteudo').innerHTML = blocoMsg('Carregando…');
+  sb.schema('core').from('config_ia').select('habilitada,modelo,chaves,atualizado_em').maybeSingle().then(function(r){
+    if(CFG.aba !== 'ia') return;
+    if(r.error) return ($('cfg-conteudo').innerHTML = blocoMsg(esc(msgBanco(r.error)), true));
+    IA.linha = r.data || { habilitada: true, modelo: 'gemini-3.1-flash-lite', chaves: [] };
+    IA.novas = ['', '', '', '', '']; IA.remover = []; IA.trocar = []; IA.res = [];
+    desenharIA();
+  });
+}
+function mascara(k){ k = String(k || ''); return k.length <= 10 ? '••••••' : k.slice(0, 4) + '••••••••' + k.slice(-4); }
+function desenharIA(){
+  var L = IA.linha, ch = L.chaves || [];
+  var opcoes = IA_MODELOS.slice();
+  if(L.modelo && !opcoes.some(function(o){ return o[0] === L.modelo; })) opcoes.push([L.modelo, L.modelo + ' (atual)']);
+  var linhas = [0, 1, 2, 3, 4].map(function(i){
+    var atual = ch[i] || '', editando = !atual || IA.trocar[i], tira = IA.remover[i];
+    var meio, acoes;
+    if(tira){
+      meio = '<span class="fraco">Chave ' + (i + 1) + ' será removida ao salvar.</span>';
+      acoes = '<button class="btn" type="button" data-ia="desfazer" data-i="' + i + '">Desfazer</button>';
+    } else if(editando){
+      meio = '<input class="campo-cfg" type="password" autocomplete="off" spellcheck="false" data-ia-campo="' + i + '" value="' + esc(IA.novas[i] || '')
+           + '" placeholder="' + (i === 0 ? 'Cole a chave principal (AIza…)' : 'Reserva ' + (i + 1) + ' — opcional, de outro projeto Google') + '" aria-label="Chave ' + (i + 1) + '">';
+      acoes = '<button class="btn" type="button" data-ia="testar" data-i="' + i + '">Testar</button>'
+            + (atual ? '<button class="btn" type="button" data-ia="cancelar" data-i="' + i + '">Cancelar</button>' : '');
+    } else {
+      meio = '<code>' + esc(mascara(atual)) + '</code>';
+      acoes = '<button class="btn" type="button" data-ia="testar" data-i="' + i + '">Testar</button>'
+            + '<button class="btn" type="button" data-ia="trocar" data-i="' + i + '">Trocar</button>'
+            + '<button class="btn perigo" type="button" data-ia="remover" data-i="' + i + '">Remover</button>';
+    }
+    return '<div class="chave-ia"><span class="n">' + (i + 1) + '</span>' + meio + '<div class="acoes" style="display:flex;gap:6px">' + acoes + '</div>'
+         + '<div class="res" id="ia-res-' + i + '">' + (IA.res[i] || '') + '</div></div>';
+  }).join('');
+  $('cfg-conteudo').innerHTML =
+      '<section class="bloco"><div class="linha"><div style="flex:1;min-width:240px"><h2>Análise por IA (Google Gemini)</h2>'
+    +   '<p class="dica">Vale para a suíte inteira: o Docs (análise de documentos) e o Custos (conversão de unidade de insumo) '
+    +   'usam estas chaves. O Docs lê daqui sozinho — a tela antiga dele continua gravando no mesmo lugar.</p></div>'
+    +   '<div style="display:flex;align-items:center;gap:12px"><span class="estado' + (L.habilitada ? ' lig' : '') + '" id="ia-estado">' + (L.habilitada ? 'Ligada' : 'Desligada') + '</span>'
+    +   '<label class="chave-lig"><input type="checkbox" id="ia-lig"' + (L.habilitada ? ' checked' : '') + ' aria-label="Análise por IA ligada"><span></span></label></div></div>'
+    +   '<div style="margin-top:16px;max-width:520px"><label for="ia-modelo">Modelo</label><select id="ia-modelo" class="campo-cfg">'
+    +   opcoes.map(function(o){ return '<option value="' + esc(o[0]) + '"' + (o[0] === L.modelo ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('')
+    +   '</select></div></section>'
+    + '<section class="bloco"><h2>Chaves</h2>'
+    +   '<p class="dica">Até 5. Chaves de projetos Google diferentes somam as cotas gratuitas: quando uma esgota, o sistema passa para a próxima. '
+    +   'A chave aparece mascarada; “Testar” pergunta ao Google se ela responde.</p>'
+    +   '<div class="chaves">' + linhas + '</div>'
+    +   '<div class="btns"><button class="btn forte" type="button" id="ia-salvar">Salvar</button>'
+    +   '<span class="prog" id="ia-salvo">' + (L.atualizado_em ? 'Última mudança: ' + esc(dataHora(L.atualizado_em)) : '') + '</span></div></section>';
+
+  $('ia-lig').addEventListener('change', function(){
+    IA.linha.habilitada = this.checked;
+    $('ia-estado').textContent = this.checked ? 'Ligada' : 'Desligada';
+    $('ia-estado').classList.toggle('lig', this.checked);
+  });
+  $('ia-modelo').addEventListener('change', function(){ IA.linha.modelo = this.value; });
+  document.querySelectorAll('[data-ia-campo]').forEach(function(el){
+    el.addEventListener('input', function(){ IA.novas[+el.getAttribute('data-ia-campo')] = el.value; });
+  });
+  $('ia-salvar').addEventListener('click', salvarIA);
+}
+$('cfg-conteudo').addEventListener('click', function(e){
+  var b = e.target.closest('[data-ia]'); if(!b || CFG.aba !== 'ia') return;
+  var i = +b.getAttribute('data-i'), a = b.getAttribute('data-ia');
+  if(a === 'trocar'){ IA.trocar[i] = true; IA.res[i] = ''; desenharIA(); var c = document.querySelector('[data-ia-campo="' + i + '"]'); if(c) c.focus(); }
+  if(a === 'cancelar'){ IA.trocar[i] = false; IA.novas[i] = ''; IA.res[i] = ''; desenharIA(); }
+  if(a === 'remover'){ IA.remover[i] = true; desenharIA(); }
+  if(a === 'desfazer'){ IA.remover[i] = false; desenharIA(); }
+  if(a === 'testar'){
+    var chave = (IA.trocar[i] || !(IA.linha.chaves || [])[i]) ? String(IA.novas[i] || '').trim() : IA.linha.chaves[i];
+    testarChave(i, chave, b);
+  }
+});
+function testarChave(i, chave, botao){
+  var el = $('ia-res-' + i);
+  function mostra(txt){ IA.res[i] = txt; if(el) el.innerHTML = txt; }
+  if(!chave) return mostra('<span class="erro-txt">Cole a chave primeiro.</span>');
+  var modelo = IA.linha.modelo || 'gemini-3.1-flash-lite';
+  botao.disabled = true; mostra('<span class="fraco">Testando com ' + esc(modelo) + '…</span>');
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modelo) + ':generateContent?key=' + encodeURIComponent(chave), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: 'Responda apenas "OK".' }] }] })
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(d){
+      if(r.ok) return mostra('<span class="ok-txt">Respondeu: “' + esc(String(((((d.candidates || [])[0] || {}).content || {}).parts || [{}])[0].text || 'OK').trim().slice(0, 40)) + '”.</span>');
+      var m = (d.error && d.error.message) || '';
+      mostra('<span class="erro-txt">' + (r.status === 429 ? 'Cota esgotada agora (429) — a chave vale, mas está no limite.'
+           : r.status === 400 || r.status === 403 ? 'Chave recusada pelo Google (' + r.status + ').'
+           : r.status === 404 ? 'Este modelo não está disponível para esta chave (404).'
+           : 'Erro ' + r.status + '.') + (m ? ' <span class="fraco">' + esc(m.slice(0, 120)) + '</span>' : '') + '</span>');
+    });
+  }).catch(function(e){ mostra('<span class="erro-txt">Sem resposta do Google: ' + esc(e.message || e) + '</span>'); })
+    .then(function(){ botao.disabled = false; });
+}
+function salvarIA(){
+  var atuais = IA.linha.chaves || [], novas = [];
+  for(var i = 0; i < 5; i++){
+    if(IA.remover[i]) continue;
+    var digitada = String(IA.novas[i] || '').trim();
+    var k = (IA.trocar[i] || !atuais[i]) ? digitada : atuais[i];
+    if(k) novas.push(k);
+  }
+  if(novas.some(function(k){ return !/^[A-Za-z0-9_\-]{20,}$/.test(k); }) &&
+     !confirm('Alguma chave não tem cara de chave do Google (esperado: AIza…, sem espaço). Salvar mesmo assim?')) return;
+  if(!novas.length && IA.linha.habilitada && !confirm('Salvar SEM nenhuma chave? A análise por IA para de funcionar.')) return;
+  var b = $('ia-salvar'); b.disabled = true; $('ia-salvo').textContent = 'Salvando…';
+  sb.schema('core').from('config_ia')
+    .update({ habilitada: !!IA.linha.habilitada, modelo: IA.linha.modelo || 'gemini-3.1-flash-lite', chaves: novas })
+    .eq('id', true).select('habilitada,modelo,chaves,atualizado_em')
+    .then(function(r){
+      if(r.error || !r.data || !r.data.length){ b.disabled = false; $('ia-salvo').innerHTML = '<span class="erro-txt">' + esc(r.error ? msgBanco(r.error) : 'Não gravou (sem permissão?).') + '</span>'; return; }
+      IA.linha = r.data[0]; IA.novas = ['', '', '', '', '']; IA.remover = []; IA.trocar = []; IA.res = [];
+      desenharIA(); $('ia-salvo').innerHTML = '<span class="ok-txt">Salvo. O Docs e o Custos já usam.</span>';
+    });
+}
+
+/* ------------------------- Acervo e Storage -------------------------
+   Veio da seção "ACERVO E STORAGE" do Docs (v.99, 01/09/2026). Mudou:
+    · o tamanho vem do banco (core.storage_uso), não de uma listagem por pasta;
+    · órfão é calculado NO BANCO (core.acervo_orfaos), olhando as quatro
+      tabelas do Docs E as listas `arquivos` (documento com vários anexos) —
+      a versão do Docs não olhava essas listas;
+    · antes de apagar, cada lote é reconferido no banco;
+    · na compactação, o arquivo velho só sai se core.acervo_referencias = 0.
+   🚨 A ORDEM NÃO MUDA: sobe o NOVO → aponta a LINHA → só então apaga o VELHO.
+   ⚠️ Não mexe na aprovação: o papel é o mesmo, só mais leve. */
+var BUCKET_MODULO = { 'documentos': 'Docs', 'backups': 'Docs (cópias de segurança)', 'financeiro-anexos': 'Custos',
+                      'flow-anexos': 'Flow', 'anexos': 'Flow (antigo)', 'patrimonio': 'Patrimônio' };
+var PASTA_NOME = { empresa: 'Empresas', funcionario: 'Colaboradores', maquina: 'Máquinas', folha: 'Folha interna',
+                   fopag: 'FOPAG', obra: 'Documentos de obra', whats: 'WhatsApp', pendencias: 'Pendências' };
+var ESQUEMA_NOME = { 'public': 'Docs', core: 'Portal (core)', flow: 'Flow', patrimonio: 'Patrimônio (fotos ficam aqui)',
+                     financeiro: 'Custos', auth: 'Logins', storage: 'Índice do Storage' };
+var ACV = { uso: null, banco: null, erro: '', medindo: false, abertos: {}, candidatos: null, orfaos: null,
+            semDocs: '', rodando: false, parar: false, log: [] };
+var PDF_COMP_MIN = 3 * 1024 * 1024, PDF_COMP_DPI = 150, PDF_COMP_Q = 0.72, PDF_COMP_MAXPAG = 200,
+    PDF_COMP_MAXPX = 2200, PDF_COMP_GANHO = 0.30, ACV_ORFAO_IDADE_H = 24;
+
+function telaAcervo(){ desenharAcervo(); if(!ACV.uso && !ACV.medindo) medirUso(); }
+function medirUso(){
+  ACV.medindo = true; ACV.erro = '';
+  Promise.all([sb.schema('core').rpc('storage_uso'), sb.schema('core').rpc('banco_uso')]).then(function(rs){
+    if(rs[0].error) throw rs[0].error;
+    ACV.uso = rs[0].data || []; ACV.banco = rs[1].error ? null : (rs[1].data || []);
+  }).catch(function(e){ ACV.erro = msgBanco(e); })
+    .then(function(){ ACV.medindo = false; if(CFG.aba === 'acervo') desenharAcervo(); });
+}
+function acvLog(txt, tipo){
+  ACV.log.unshift({ t: new Date().toLocaleTimeString('pt-BR'), txt: txt, tipo: tipo || '' });
+  if(ACV.log.length > 400) ACV.log.length = 400;
+  var el = $('acv-log'); if(el) el.innerHTML = acvLogHtml();
+}
+function acvLogHtml(){
+  if(!ACV.log.length) return '<span class="fraco">Nada ainda.</span>';
+  return ACV.log.map(function(l){
+    return '<div class="' + (l.tipo === 'err' ? 'erro-txt' : l.tipo === 'ok' ? 'ok-txt' : 'fraco') + '">' + l.t + ' · ' + esc(l.txt) + '</div>';
+  }).join('');
+}
+function acvProg(txt){ var el = $('acv-prog'); if(el) el.textContent = txt || ''; }
+
+function desenharAcervo(){
+  var html = '';
+  /* 1. Storage por bucket */
+  if(ACV.erro) html += blocoMsg(esc(ACV.erro), true);
+  else if(!ACV.uso) html += blocoMsg('Medindo o Storage…');
+  else {
+    var porBucket = {}, total = 0, totalN = 0;
+    ACV.uso.forEach(function(r){
+      var b = porBucket[r.bucket] = porBucket[r.bucket] || { bytes: 0, n: 0, pastas: [], recente: null };
+      b.bytes += Number(r.bytes) || 0; b.n += Number(r.arquivos) || 0;
+      if(r.arquivos > 0) b.pastas.push(r);
+      if(r.mais_recente && (!b.recente || r.mais_recente > b.recente)) b.recente = r.mais_recente;
+      total += Number(r.bytes) || 0; totalN += Number(r.arquivos) || 0;
+    });
+    var nomes = Object.keys(porBucket).sort(function(a, b){ return porBucket[b].bytes - porBucket[a].bytes; });
+    var maior = nomes.length ? porBucket[nomes[0]].bytes || 1 : 1;
+    html += '<section class="bloco"><div class="linha"><div><h2>Uso do Storage</h2>'
+         + '<p class="dica">Arquivos guardados por módulo. Total: <b>' + fmtTam(total) + '</b> em ' + fmtNum(totalN) + ' arquivos.</p></div>'
+         + '<button class="btn" type="button" data-acv="medir"' + (ACV.medindo ? ' disabled' : '') + '>Medir de novo</button></div>'
+         + '<div class="tabela-rola"><table class="uso"><thead><tr><th>Módulo</th><th>Bucket</th><th class="num">Arquivos</th><th class="num">Tamanho</th><th style="width:22%"></th></tr></thead><tbody>'
+         + nomes.map(function(nm){
+             var b = porBucket[nm], aberto = !!ACV.abertos[nm], temSub = b.pastas.length > 1;
+             var linha = '<tr' + (temSub ? ' style="cursor:pointer" data-acv="abrir" data-b="' + esc(nm) + '"' : '') + '><td><b>' + esc(BUCKET_MODULO[nm] || nm) + '</b>'
+               + (temSub ? ' <span class="fraco">' + (aberto ? '▾' : '▸') + '</span>' : '') + '</td><td class="fraco">' + esc(nm) + '</td>'
+               + '<td class="num">' + fmtNum(b.n) + '</td><td class="num"><b>' + fmtTam(b.bytes) + '</b></td>'
+               + '<td><div class="barra-uso"><i style="width:' + Math.max(1, Math.round(b.bytes / maior * 100)) + '%"></i></div></td></tr>';
+             if(aberto) linha += b.pastas.map(function(p){
+               return '<tr class="sub"><td>' + esc(PASTA_NOME[p.pasta] || p.pasta) + '</td><td>' + esc(p.pasta) + '</td><td class="num">' + fmtNum(p.arquivos)
+                    + '</td><td class="num">' + fmtTam(p.bytes) + '</td><td>' + (p.mais_recente ? 'último em ' + esc(dataHora(p.mais_recente)) : '') + '</td></tr>';
+             }).join('');
+             return linha;
+           }).join('')
+         + '</tbody></table></div></section>';
+    if(ACV.banco && ACV.banco.length){
+      var totB = ACV.banco.reduce(function(a, r){ return a + (Number(r.bytes) || 0); }, 0);
+      html += '<section class="bloco"><h2>Banco de dados</h2><p class="dica">Tabelas e índices por módulo. Total: <b>' + fmtTam(totB) + '</b>.</p>'
+           + '<div class="tabela-rola"><table class="uso"><tbody>' + ACV.banco.map(function(r){
+               return '<tr><td>' + esc(ESQUEMA_NOME[r.esquema] || r.esquema) + '</td><td class="fraco">' + esc(r.esquema) + '</td><td class="num"><b>' + fmtTam(r.bytes) + '</b></td></tr>';
+             }).join('') + '</tbody></table></div></section>';
+    }
+  }
+
+  /* 2. Ferramentas do acervo do Docs */
+  var cand = ACV.candidatos, orf = ACV.orfaos, dis = ACV.rodando ? ' disabled' : '';
+  var totCand = (cand || []).reduce(function(a, c){ return a + (Number(c.bytes) || 0); }, 0);
+  var totOrf = (orf || []).reduce(function(a, c){ return a + (Number(c.bytes) || 0); }, 0);
+  html += '<section class="bloco"><h2>Acervo do Docs — compactar e limpar</h2>'
+       + '<p class="dica">Compacta PDF escaneado que já está guardado e recupera espaço de arquivo sem dono. PDF com <b>assinatura digital</b> '
+       + 'e PDF com <b>texto de verdade</b> são pulados sozinhos. A ordem é sempre: sobe o novo, aponta o documento, só então apaga o velho. '
+       + 'A aprovação do documento não muda.</p>'
+       + (ACV.semDocs ? '<div class="aviso-cfg">' + esc(ACV.semDocs) + '</div>' : '')
+       + '<div class="btns">'
+       +   '<button class="btn forte" type="button" data-acv="mapear"' + dis + '>Mapear PDFs acima de ' + fmtTam(PDF_COMP_MIN) + '</button>'
+       +   (cand && cand.length ? '<button class="btn" type="button" data-acv="simular"' + dis + '>Simular os 3 maiores</button>'
+                              + '<button class="btn" type="button" data-acv="compactar"' + dis + '>Compactar os ' + cand.length + '</button>' : '')
+       +   '<button class="btn" type="button" data-acv="orfaos"' + dis + '>Procurar órfãos</button>'
+       +   (orf && orf.length ? '<button class="btn perigo" type="button" data-acv="apagar"' + dis + '>Apagar ' + orf.length + ' órfão(s)</button>' : '')
+       +   (ACV.rodando ? '<button class="btn perigo" type="button" data-acv="parar">Parar</button>' : '')
+       +   '<span class="prog" id="acv-prog"></span></div>'
+       + (cand ? '<p class="dica" style="margin-top:14px"><b>' + cand.length + ' candidato(s) · ' + fmtTam(totCand) + '</b></p>'
+              + (cand.length ? '<div class="lista-acv"><table class="uso"><thead><tr><th class="num">Tamanho</th><th>De quem</th><th>Documento</th></tr></thead><tbody>'
+              + cand.slice(0, 200).map(function(c){ return '<tr><td class="num"><b>' + fmtTam(c.bytes) + '</b></td><td>' + esc(c.quem) + '</td><td>' + esc(c.documento) + '</td></tr>'; }).join('')
+              + '</tbody></table>' + (cand.length > 200 ? '<p class="dica" style="padding:8px">…e mais ' + (cand.length - 200) + '</p>' : '') + '</div>' : '') : '')
+       + (orf ? '<p class="dica" style="margin-top:14px"><b>' + orf.length + ' órfão(s) · ' + fmtTam(totOrf) + '</b> — arquivo que nenhuma tabela do Docs aponta '
+              + '(nem SESMT, folha, FOPAG, documentos de obra, nem as listas de anexos) e com mais de ' + ACV_ORFAO_IDADE_H + ' h.</p>'
+              + (orf.length ? '<div class="lista-acv"><table class="uso"><tbody>' + orf.slice(0, 150).map(function(o){
+                  return '<tr><td class="num">' + fmtTam(o.bytes) + '</td><td style="font-family:ui-monospace,Consolas,monospace;font-size:12px;word-break:break-all">' + esc(o.caminho) + '</td></tr>';
+                }).join('') + '</tbody></table>' + (orf.length > 150 ? '<p class="dica" style="padding:8px">…e mais ' + (orf.length - 150) + '</p>' : '') + '</div>' : '') : '')
+       + '<p class="dica" style="margin-top:14px"><b>Registro</b></p><div class="registro" id="acv-log">' + acvLogHtml() + '</div>'
+       + '</section>';
+  $('cfg-conteudo').innerHTML = html;
+}
+$('cfg-conteudo').addEventListener('click', function(e){
+  var b = e.target.closest('[data-acv]'); if(!b || CFG.aba !== 'acervo') return;
+  var a = b.getAttribute('data-acv');
+  if(a === 'medir'){ ACV.uso = null; desenharAcervo(); medirUso(); }
+  if(a === 'abrir'){ var nm = b.getAttribute('data-b'); ACV.abertos[nm] = !ACV.abertos[nm]; desenharAcervo(); }
+  if(a === 'mapear') acvMapear();
+  if(a === 'simular') acvRodar(true);
+  if(a === 'compactar') acvRodar(false);
+  if(a === 'orfaos') acvOrfaos();
+  if(a === 'apagar') acvApagarOrfaos();
+  if(a === 'parar'){ ACV.parar = true; acvProg('Parando depois do arquivo atual…'); }
+});
+
+async function acvMapear(){
+  if(ACV.rodando) return;
+  ACV.rodando = true; ACV.parar = false; ACV.semDocs = ''; desenharAcervo();
+  try {
+    acvLog('Mapeando PDFs acima de ' + fmtTam(PDF_COMP_MIN) + '…');
+    var r = await sb.schema('core').rpc('acervo_candidatos', { p_min: PDF_COMP_MIN });
+    if(r.error) throw r.error;
+    ACV.candidatos = r.data || [];
+    acvLog(ACV.candidatos.length + ' arquivo(s) — ' + fmtTam(ACV.candidatos.reduce(function(a, c){ return a + Number(c.bytes || 0); }, 0)) + ' no total', 'ok');
+  } catch(e){
+    var m = msgBanco(e); if(/Docs não está/i.test(m)) ACV.semDocs = m;
+    acvLog('✗ ' + m, 'err');
+  } finally { ACV.rodando = false; if(CFG.aba === 'acervo') desenharAcervo(); }
+}
+
+/* ---- compactar PDF escaneado (o mesmo `_pdfComprimir` do Docs, v.98) ---- */
+var LIBS_ACV = { pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+                 jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js' };
+var libsAcv = {};
+function carregarLib(nome, jaTem){
+  if(jaTem()) return Promise.resolve(true);
+  if(!libsAcv[nome]){
+    libsAcv[nome] = new Promise(function(ok, falha){
+      var s = document.createElement('script'); s.src = LIBS_ACV[nome]; s.async = true;
+      s.onload = function(){ ok(true); };
+      s.onerror = function(){ libsAcv[nome] = null; falha(new Error('não carregou ' + nome)); };
+      document.head.appendChild(s);
+    });
+  }
+  return libsAcv[nome];
+}
+/* assinatura digital: falso positivo é inofensivo (só deixa de comprimir) */
+function pdfTemAssinatura(buf){
+  try {
+    var txt = new TextDecoder('latin1').decode(new Uint8Array(buf));
+    return /\/ByteRange|\/Adbe\.pkcs7|\/ETSI\.CAdES|\/DocMDP|\/Type\s*\/Sig\b/.test(txt);
+  } catch(e){ return true; }
+}
+async function pdfTemTexto(pdf){
+  var ate = Math.min(3, pdf.numPages), chars = 0;
+  for(var i = 1; i <= ate; i++){
+    var c = await (await pdf.getPage(i)).getTextContent();
+    chars += (c.items || []).reduce(function(a, it){ return a + String(it.str || '').trim().length; }, 0);
+    if(chars > 200) return true;
+  }
+  return false;
+}
+var pdfCompMotivo = '', pdfCompProgresso = null;
+async function pdfComprimir(file){
+  pdfCompMotivo = '';
+  try {
+    if(!file || (file.size || 0) < PDF_COMP_MIN){ pdfCompMotivo = 'pequeno'; return null; }
+    var buf = await file.arrayBuffer();
+    if(pdfTemAssinatura(buf)){ pdfCompMotivo = 'assinatura digital'; return null; }
+    await carregarLib('pdfjs', function(){ return typeof pdfjsLib !== 'undefined'; });
+    if(typeof pdfjsLib === 'undefined'){ pdfCompMotivo = 'pdf.js não carregou'; return null; }
+    try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch(e){}
+    var pdf = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;   // cópia: o pdf.js esvazia o buffer
+    if(pdf.numPages > PDF_COMP_MAXPAG){ pdfCompMotivo = pdf.numPages + ' páginas'; return null; }
+    if(await pdfTemTexto(pdf)){ pdfCompMotivo = 'tem texto (PDF nativo)'; return null; }
+    await carregarLib('jspdf', function(){ return !!(window.jspdf && window.jspdf.jsPDF); });
+    if(!(window.jspdf && window.jspdf.jsPDF)){ pdfCompMotivo = 'jsPDF não carregou'; return null; }
+    var doc = null;
+    for(var i = 1; i <= pdf.numPages; i++){
+      if(pdfCompProgresso){ try { pdfCompProgresso(i, pdf.numPages); } catch(e){} }
+      var page = await pdf.getPage(i);
+      var base = page.getViewport({ scale: 1 });                 // 1 = 72 dpi
+      var escala = PDF_COMP_DPI / 72;
+      var maiorLado = Math.max(base.width, base.height) * escala;
+      if(maiorLado > PDF_COMP_MAXPX) escala = escala * (PDF_COMP_MAXPX / maiorLado);
+      var vp = page.getViewport({ scale: escala });
+      var cv = document.createElement('canvas');
+      cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+      var ctx = cv.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);   // transparência viraria preto no JPEG
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      var jpg = cv.toDataURL('image/jpeg', PDF_COMP_Q);
+      var larg = base.width, alt = base.height;                  // o papel não muda, só a resolução
+      if(!doc) doc = new window.jspdf.jsPDF({ unit: 'pt', format: [larg, alt], orientation: larg > alt ? 'landscape' : 'portrait' });
+      else doc.addPage([larg, alt], larg > alt ? 'landscape' : 'portrait');
+      doc.addImage(jpg, 'JPEG', 0, 0, larg, alt);
+      cv.width = cv.height = 0;
+    }
+    if(!doc){ pdfCompMotivo = 'sem páginas'; return null; }
+    var blob = doc.output('blob');
+    if(!blob || blob.size > file.size * (1 - PDF_COMP_GANHO)){ pdfCompMotivo = 'ganho menor que ' + Math.round(PDF_COMP_GANHO * 100) + '%'; return null; }
+    return { blob: blob, antes: file.size, depois: blob.size };
+  } catch(e){
+    console.warn('[pdf] não consegui comprimir:', e);
+    pdfCompMotivo = 'erro: ' + (e && e.message || e);
+    return null;
+  }
+}
+function acvDir(c){ var i = String(c || '').lastIndexOf('/'); return i < 0 ? '' : c.slice(0, i); }
+
+/* Um arquivo, do começo ao fim. `simular` = faz tudo menos gravar. */
+async function acvUm(item, simular){
+  var rot = item.quem + ' · ' + item.documento;
+  var dl = await sb.storage.from('documentos').download(item.caminho);
+  if(dl.error || !dl.data){ acvLog('✗ ' + rot + ' — não consegui baixar', 'err'); return null; }
+  var nomeArq = item.caminho.slice(item.caminho.lastIndexOf('/') + 1), file;
+  try { file = new File([dl.data], nomeArq, { type: 'application/pdf' }); } catch(e){ file = dl.data; }
+  var el = $('acv-prog'), base = el ? el.textContent : '';
+  pdfCompProgresso = function(i, n){ var e2 = $('acv-prog'); if(e2) e2.textContent = base + ' · página ' + i + '/' + n; };
+  var r = null;
+  try { r = await pdfComprimir(file); } finally { pdfCompProgresso = null; acvProg(base); }
+  if(!r){ acvLog('– ' + rot + ' — mantido (' + pdfCompMotivo + ')'); return null; }
+  var pct = Math.round((1 - r.depois / r.antes) * 100);
+  if(simular){ acvLog('≈ ' + rot + ' — ' + fmtTam(r.antes) + ' → ' + fmtTam(r.depois) + ' (' + pct + '%)', 'ok'); return { antes: r.antes, depois: r.depois }; }
+
+  /* 1) sobe o novo, em caminho novo */
+  var novo = acvDir(item.caminho) + '/' + Date.now() + '_c_' + nomeArq;
+  var up = await sb.storage.from('documentos').upload(novo, r.blob, { contentType: 'application/pdf', upsert: false });
+  if(up.error){ acvLog('✗ ' + rot + ' — falhou ao subir: ' + up.error.message, 'err'); return null; }
+  /* 2) aponta a linha — só se ela ainda aponta para o velho; a lista de
+        anexos (`arquivos`) acompanha, senão o anexo ficaria apontando para o nada */
+  var mud = { arquivo_path: novo }, arqs = Array.isArray(item.arquivos) ? item.arquivos : [];
+  if(arqs.some(function(a){ return a === item.caminho || (a && a.path === item.caminho); }))
+    mud.arquivos = arqs.map(function(a){ return a === item.caminho ? novo : (a && a.path === item.caminho ? Object.assign({}, a, { path: novo }) : a); });
+  var upd = await sb.from('documentos').update(mud).eq('id', item.id).eq('arquivo_path', item.caminho).select('id');
+  if(upd.error || !upd.data || !upd.data.length){
+    sb.storage.from('documentos').remove([novo]).then(function(){}, function(){});   // sem a linha, o novo é lixo
+    acvLog('✗ ' + rot + ' — ' + (upd.error ? 'banco recusou: ' + upd.error.message : 'o documento mudou enquanto isso') + ' (nada mudou)', 'err');
+    return null;
+  }
+  /* 3) só agora o velho — e só se mais ninguém aponta para ele */
+  var ref = await sb.schema('core').rpc('acervo_referencias', { p_caminho: item.caminho });
+  if(!ref.error && ref.data === 0){
+    var rm = await sb.storage.from('documentos').remove([item.caminho]);
+    if(rm.error) acvLog('  (o arquivo velho ficou: ' + rm.error.message + ' — vira órfão e sai na limpeza)');
+  } else {
+    acvLog('  (o arquivo velho ficou: ' + (ref.error ? 'não consegui conferir quem aponta' : ref.data + ' outra(s) linha(s) ainda apontam') + ')');
+  }
+  acvLog('✓ ' + rot + ' — ' + fmtTam(r.antes) + ' → ' + fmtTam(r.depois) + ' (' + pct + '%)', 'ok');
+  return { antes: r.antes, depois: r.depois };
+}
+async function acvRodar(simular){
+  if(ACV.rodando) return;
+  var fila = simular ? (ACV.candidatos || []).slice(0, 3) : (ACV.candidatos || []).slice();
+  if(!fila.length) return alert('Nada na lista — clique em Mapear primeiro.');
+  if(!simular && !confirm('Compactar ' + fila.length + ' arquivo(s)?\n\nCada um: sobe a versão nova, aponta o documento para ela e só então apaga a antiga. '
+      + 'PDF com assinatura digital e PDF com texto de verdade são pulados sozinhos.\n\nDá para parar no meio — o que já foi feito fica feito.')) return;
+  ACV.rodando = true; ACV.parar = false; desenharAcervo();
+  var feitos = 0, pulados = 0, antes = 0, depois = 0;
+  try {
+    for(var i = 0; i < fila.length; i++){
+      if(ACV.parar){ acvLog('⏸ parado a pedido — ' + feitos + ' já compactado(s)'); break; }
+      acvProg((simular ? 'Simulando ' : 'Compactando ') + (i + 1) + '/' + fila.length + ': ' + fila[i].quem);
+      var r = await acvUm(fila[i], simular);
+      if(r){ feitos++; antes += r.antes; depois += r.depois; } else pulados++;
+    }
+  } finally {
+    ACV.rodando = false; acvProg('');
+    acvLog((simular ? 'Simulação: ' : 'Pronto: ') + feitos + ' compactado(s), ' + pulados + ' mantido(s) · ' + fmtTam(antes) + ' → ' + fmtTam(depois)
+           + (antes ? ' · economia de ' + fmtTam(antes - depois) : ''), 'ok');
+    if(!simular){ ACV.candidatos = null; ACV.uso = null; medirUso(); }
+    if(CFG.aba === 'acervo') desenharAcervo();
+  }
+}
+/* ---- órfãos: calculados no banco ---- */
+async function acvOrfaos(){
+  if(ACV.rodando) return;
+  ACV.rodando = true; ACV.parar = false; desenharAcervo();
+  try {
+    acvLog('Procurando órfãos…');
+    var r = await sb.schema('core').rpc('acervo_orfaos', { p_horas: ACV_ORFAO_IDADE_H });
+    if(r.error) throw r.error;
+    ACV.orfaos = r.data || [];
+    acvLog(ACV.orfaos.length + ' órfão(s) · ' + fmtTam(ACV.orfaos.reduce(function(a, c){ return a + Number(c.bytes || 0); }, 0))
+           + ' — arquivo com menos de ' + ACV_ORFAO_IDADE_H + ' h é poupado (pode ser envio em andamento)', 'ok');
+  } catch(e){ ACV.orfaos = null; acvLog('✗ ' + msgBanco(e), 'err'); }
+  finally { ACV.rodando = false; if(CFG.aba === 'acervo') desenharAcervo(); }
+}
+async function acvApagarOrfaos(){
+  var lista = ACV.orfaos || [];
+  if(!lista.length) return alert('Procure os órfãos primeiro.');
+  var tot = lista.reduce(function(a, c){ return a + Number(c.bytes || 0); }, 0);
+  if(!confirm('Apagar ' + lista.length + ' arquivo(s) órfão(s), liberando ' + fmtTam(tot) + '?\n\n'
+      + 'São arquivos que NENHUM documento aponta — nem do SESMT, nem da folha, nem do FOPAG, nem de obra, nem das listas de anexos.\n\n'
+      + 'Cada lote é conferido de novo no banco antes de apagar. Isto não tem volta.')) return;
+  ACV.rodando = true; ACV.parar = false; desenharAcervo();
+  var apagados = 0, poupados = 0;
+  try {
+    for(var i = 0; i < lista.length; i += 50){
+      if(ACV.parar){ acvLog('⏸ parado a pedido'); break; }
+      var lote = lista.slice(i, i + 50).map(function(o){ return o.caminho; });
+      acvProg('Lote ' + (i / 50 + 1) + ' de ' + Math.ceil(lista.length / 50));
+      var conf = await sb.schema('core').rpc('acervo_orfaos', { p_horas: ACV_ORFAO_IDADE_H, p_caminhos: lote });
+      if(conf.error){ acvLog('✗ não consegui reconferir o lote ' + (i / 50 + 1) + ': ' + msgBanco(conf.error) + ' — parei', 'err'); break; }
+      var ok = (conf.data || []).map(function(o){ return o.caminho; });
+      poupados += lote.length - ok.length;
+      if(!ok.length) continue;
+      var rm = await sb.storage.from('documentos').remove(ok);
+      if(rm.error) acvLog('✗ lote ' + (i / 50 + 1) + ': ' + rm.error.message, 'err');
+      else { apagados += (rm.data || ok).length; acvLog('✓ ' + apagados + '/' + lista.length + ' apagado(s)'); }
+    }
+  } finally {
+    ACV.rodando = false; acvProg('');
+    if(poupados) acvLog(poupados + ' arquivo(s) deixaram de ser órfãos entre a busca e a limpeza — ficaram');
+    acvLog('Limpeza: ' + apagados + ' apagado(s)', 'ok');
+    ACV.orfaos = null; ACV.uso = null; medirUso();
+    if(CFG.aba === 'acervo') desenharAcervo();
+  }
 }
 
 /* ---------- aviso de nova versão ----------

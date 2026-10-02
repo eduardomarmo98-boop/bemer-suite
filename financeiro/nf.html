@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<meta name="referrer" content="no-referrer"/>
+<meta name="theme-color" content="#00296B"/>
+<title>Envio de NF · Brandão &amp; Marmo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- Custos · página pública do fornecedor (30/09/2026). Sem login: vale o token do link
+     que foi no e-mail de autorização de emissão da NF. Fala só com a edge fin-nf-fornecedor. -->
+<style>
+:root{--azul:#00296B;--laranja:#FE9400;--fundo:#F3F6FB;--texto:#1E293B;--suave:#64748B;--borda:#DCE3EE;--ok:#15803D;--okf:#DCFCE7;--erro:#B91C1C;--errof:#FEE2E2;--aviso:#B45309;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Poppins,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+header{background:var(--azul);color:#fff;padding:14px 16px 16px}
+header .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
+header img{height:30px;width:auto;display:block}
+header .marca-txt{font-weight:700;letter-spacing:.5px}
+header .marca-txt b{color:var(--laranja)}
+header .tit{font-size:13px;opacity:.9;text-align:right}
+.faixa{height:4px;background:var(--laranja)}
+main{max-width:640px;margin:0 auto;padding:16px 16px 40px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:16px;margin-bottom:14px}
+h1{font-size:20px;margin:0 0 4px;color:var(--azul)}
+h2{font-size:15px;margin:0 0 10px;color:var(--azul)}
+.sub{color:var(--suave);font-size:13px;margin:0}
+.valor{font-size:28px;font-weight:700;color:var(--azul);margin:4px 0 2px}
+.valor small{display:block;font-size:12px;font-weight:500;color:var(--suave)}
+dl{margin:0;display:grid;grid-template-columns:1fr;gap:8px}
+dl div{border-top:1px solid #EEF2F7;padding-top:8px}
+dt{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--suave);font-weight:600}
+dd{margin:0;font-weight:500;word-break:break-word}
+.obrig{background:#FFF7EB;border:1px solid #FFD699;border-radius:10px;padding:10px 12px;margin-top:12px}
+.obrig dt{color:#9A5B00}
+.tom{border:1px solid var(--borda);border-radius:10px;padding:10px 12px;margin-top:8px}
+.tom b{display:block}
+.drop{display:block;border:2px dashed #B8C6DD;border-radius:12px;padding:18px 12px;text-align:center;cursor:pointer;background:#FAFBFE}
+.drop.ativo{border-color:var(--laranja);background:#FFF7EB}
+.drop strong{display:block;color:var(--azul);font-size:15px}
+.drop span{font-size:12px;color:var(--suave)}
+.arqs{list-style:none;margin:10px 0 0;padding:0}
+.arqs li{display:flex;align-items:center;gap:8px;border:1px solid var(--borda);border-radius:10px;padding:8px 10px;margin-top:6px;font-size:13px}
+.arqs li .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arqs li .t{font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;background:#E8EEF8;color:var(--azul)}
+.arqs li button{border:0;background:none;color:var(--suave);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;background:var(--laranja);color:#fff;margin-top:12px}
+.btn:disabled{opacity:.6;cursor:wait}
+.selo{display:inline-block;font-weight:700;font-size:13px;border-radius:999px;padding:3px 12px}
+.selo.ok{background:var(--okf);color:var(--ok)} .selo.div{background:var(--errof);color:var(--erro)} .selo.il{background:#F1F5F9;color:#475569}
+.res ul{margin:8px 0 0;padding-left:18px} .res li{margin:4px 0}
+.res .div li{color:var(--erro)} .res .av li{color:var(--aviso);font-size:13px}
+.msg{padding:28px 16px;text-align:center}
+.msg .ico{font-size:40px}
+.hist{font-size:13px}
+.hist div{border-top:1px solid #EEF2F7;padding:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.erro-envio{color:var(--erro);font-size:13px;margin-top:8px}
+footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font-size:12px;text-align:center}
+@media (min-width:560px){ dl.duas{grid-template-columns:1fr 1fr} .valor{font-size:32px} }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><img id="logo" src="../marca/cliente/bm-logo-branco.png" alt="Brandão &amp; Marmo"
+       onerror="if(!this.dataset.t){this.dataset.t=1;this.src='../../portal/marca/cliente/bm-logo-branco.png';}else{this.replaceWith(Object.assign(document.createElement('span'),{className:'marca-txt',innerHTML:'BRANDÃO <b>&amp;</b> MARMO'}));}"/></div>
+  <div class="tit">Envio de nota fiscal</div>
+</div></header>
+<div class="faixa"></div>
+<main id="app"><div class="card msg"><div class="ico">⏳</div><p>Carregando a autorização…</p></div></main>
+<footer id="rodape">Brandão &amp; Marmo Engenharia e Construções</footer>
+
+<script>
+(function(){
+  /* o publicar.js troca estes dois pela produção */
+  var SB_URL='https://cupdrskggjmhbzdxiume.supabase.co';
+  var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
+  var FUNCAO=SB_URL+'/functions/v1/fin-nf-fornecedor';
+  var MAX=5*1024*1024;
+  var app=document.getElementById('app');
+  var token=((location.hash||'').match(/[#&]t=([0-9a-f]{64})/)||[])[1]||'';
+  var demo=/^(localhost|127\.0\.0\.1|)$/.test(location.hostname)&&/[?&]demo\b/.test(location.search);
+  var arquivos=[], resumo=null, enviando=false;
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function brl(v){ return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function cnpj(s){ var d=String(s||'').replace(/\D/g,''); return d.length===14?d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):(s||''); }
+  function data(iso){ if(!iso)return ''; if(/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso.split('-').reverse().join('/'); var d=new Date(iso); return isNaN(d)?String(iso).split('-').reverse().join('/'):d.toLocaleDateString('pt-BR'); }
+  function dataHora(iso){ var d=new Date(iso); return isNaN(d)?'':d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); }
+  function linha(rot,val){ return val?'<div><dt>'+esc(rot)+'</dt><dd>'+val+'</dd></div>':''; }
+
+  function chamar(corpo){
+    var h={'Content-Type':'application/json',apikey:SB_KEY};
+    if(/^eyJ/.test(SB_KEY)) h.Authorization='Bearer '+SB_KEY;
+    return fetch(FUNCAO,{method:'POST',headers:h,body:JSON.stringify(corpo)})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,erro:'resposta inválida ('+r.status+')'}; }); });
+  }
+  function mensagem(ico,tit,txt){ app.innerHTML='<div class="card msg"><div class="ico">'+ico+'</div><h1>'+esc(tit)+'</h1><p class="sub">'+txt+'</p></div>'; }
+
+  function telaEstado(d){
+    if(d.estado==='invalido') return mensagem('🔒','Link inválido','Confira se o endereço foi copiado inteiro do e-mail de autorização. Se o problema continuar, fale com o Financeiro da Brandão &amp; Marmo.');
+    if(d.estado==='expirado') return mensagem('⌛','Este link venceu','O link vale 15 dias. Peça um novo ao Financeiro da Brandão &amp; Marmo.');
+    if(d.estado==='encerrado') return mensagem('✅','Link encerrado','A nota fiscal desta autorização já foi recebida pelo Financeiro'+(d.resumo&&d.resumo.contrato?' ('+esc(d.resumo.contrato)+')':'')+', ou a autorização mudou. Nada mais a enviar por aqui.');
+    return false;
+  }
+
+  function telaResumo(d){
+    resumo=d.resumo||{};
+    var r=resumo, o=r.obra||{};
+    var ref=[r.contrato,r.medicao?r.medicao.replace('MED-','MED '):'',r.pedido?('Pedido '+r.pedido):''].filter(Boolean).join(' / ');
+    var toms=(r.tomadores||[]).map(function(t,i){
+      return '<div class="tom"><b>'+esc(t.empresa||'—')+'</b>'+(t.cnpj?'CNPJ '+esc(cnpj(t.cnpj)):'')+
+        (t.endereco?'<div class="sub">'+esc(t.endereco)+'</div>':'')+
+        ((t.ie||t.im)?'<div class="sub">'+(t.ie?'IE '+esc(t.ie):'')+(t.ie&&t.im?' · ':'')+(t.im?'IM '+esc(t.im):'')+'</div>':'')+
+        (i===0&&(r.tomadores||[]).length>1?'<div class="sub" style="color:#9A5B00">Tomador principal da autorização</div>':'')+'</div>';
+    }).join('');
+    var obrig=[linha('Obra',esc((o.fantasia||o.nome||'').toUpperCase())),linha('CNO',esc(o.cno)),linha('Contrato B&M',esc(ref)),linha('Texto obrigatório',esc(r.textoObrigatorio))].join('');
+    var h='<div class="card"><p class="sub">Autorização de faturamento'+(r.empresa?' · '+esc(r.empresa):'')+'</p>'+
+      '<h1>'+esc(o.nome||'Obra')+'</h1>'+(ref?'<p class="sub">'+esc(ref)+'</p>':'')+
+      '<div class="valor">'+brl(r.valor)+'<small>valor total autorizado para a NF</small></div>'+
+      '<dl class="duas">'+linha('Fornecedor',esc(r.fornecedor&&r.fornecedor.nome)+(r.fornecedor&&r.fornecedor.cnpj?'<br><span class="sub">CNPJ '+esc(cnpj(r.fornecedor.cnpj))+'</span>':''))+
+        linha('Tipo de nota',esc(r.tipoNF))+linha('Prazo de pagamento',esc(r.prazoPgto))+linha('Forma de pagamento',esc(r.formaPgto))+
+        linha('Local da obra',esc(o.endereco))+'</dl>'+
+      '<h2 style="margin-top:14px">Faturar para</h2>'+(toms||'<p class="sub">—</p>')+
+      (obrig?'<div class="obrig"><h2 style="color:#9A5B00;margin-bottom:6px">Dados obrigatórios na nota fiscal</h2><dl>'+obrig+'</dl></div>':'')+
+      '</div>'+
+      '<div class="card" id="envio"><h2>Enviar a nota fiscal</h2>'+
+        '<p class="sub">Anexe o <b>PDF</b> e, se tiver, o <b>XML</b> da nota (com o XML a conferência é exata). Até 3 arquivos, 5 MB cada.</p>'+
+        '<label class="drop" id="drop" style="margin-top:12px"><input type="file" id="arq" multiple accept=".pdf,.xml,application/pdf,text/xml,application/xml,image/jpeg,image/png" hidden/>'+
+          '<strong>📎 Escolher arquivos</strong><span>PDF, XML ou foto da nota</span></label>'+
+        '<ul class="arqs" id="lista"></ul>'+
+        '<button class="btn" id="enviar" disabled>Enviar NF</button><div class="erro-envio" id="erro"></div>'+
+      '</div>'+
+      '<div id="resultado"></div><div id="historico"></div>';
+    app.innerHTML=h;
+    if(r.emailNF) document.getElementById('rodape').innerHTML='Dúvidas: <a href="mailto:'+esc(r.emailNF)+'" style="color:inherit">'+esc(r.emailNF)+'</a> · Brandão &amp; Marmo Engenharia e Construções';
+    var inp=document.getElementById('arq'), drop=document.getElementById('drop');
+    inp.onchange=function(){ juntar(inp.files); inp.value=''; };
+    ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add('ativo'); }); });
+    ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.remove('ativo'); }); });
+    drop.addEventListener('drop',function(e){ juntar(e.dataTransfer.files); });
+    document.getElementById('enviar').onclick=enviar;
+    telaHistorico(d.envios||[]);
+  }
+
+  function tipoDe(f){
+    var n=(f.name||'').toLowerCase();
+    if(/\.xml$/.test(n)||/xml/.test(f.type)) return 'XML';
+    if(/\.pdf$/.test(n)||f.type==='application/pdf') return 'PDF';
+    if(/^image\//.test(f.type)) return 'FOTO';
+    return '';
+  }
+  function juntar(lista){
+    var erro='';
+    Array.prototype.forEach.call(lista||[],function(f){
+      if(!tipoDe(f)){ erro='"'+f.name+'" não é PDF, XML nem foto.'; return; }
+      if(f.size>MAX){ erro='"'+f.name+'" tem mais de 5 MB.'; return; }
+      if(arquivos.length>=3){ erro='No máximo 3 arquivos.'; return; }
+      if(arquivos.some(function(a){ return a.name===f.name&&a.size===f.size; })) return;
+      arquivos.push(f);
+    });
+    document.getElementById('erro').textContent=erro;
+    desenharLista();
+  }
+  function desenharLista(){
+    var ul=document.getElementById('lista');
+    ul.innerHTML=arquivos.map(function(f,i){ return '<li><span class="t">'+tipoDe(f)+'</span><span class="n">'+esc(f.name)+'</span><span class="sub">'+Math.max(1,Math.round(f.size/1024))+' KB</span><button type="button" aria-label="Tirar" data-i="'+i+'">×</button></li>'; }).join('');
+    ul.querySelectorAll('button').forEach(function(b){ b.onclick=function(){ arquivos.splice(+b.dataset.i,1); desenharLista(); }; });
+    document.getElementById('enviar').disabled=!arquivos.length||enviando;
+  }
+  function base64(f){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result)); }; r.onerror=function(){ rej(new Error('não consegui ler '+f.name)); }; r.readAsDataURL(f); }); }
+
+  function enviar(){
+    if(!arquivos.length||enviando) return;
+    enviando=true;
+    var b=document.getElementById('enviar'); b.disabled=true; b.textContent='Enviando e conferindo…';
+    document.getElementById('erro').textContent='';
+    Promise.all(arquivos.map(function(f){ return base64(f).then(function(x){ return {nome:f.name,tipo:f.type||'',base64:x}; }); }))
+      .then(function(lista){ return demo?demoEnvio():chamar({acao:'enviar',token:token,arquivos:lista}); })
+      .then(function(d){
+        if(!d||!d.ok){
+          if(d&&(d.estado==='expirado'||d.estado==='encerrado'||d.estado==='invalido')) return telaEstado(d);
+          document.getElementById('erro').textContent=(d&&d.erro)||'Não consegui enviar. Tente de novo.';
+          return;
+        }
+        arquivos=[]; desenharLista();
+        telaResultado(d);
+        chamarVer(true);
+      })
+      .catch(function(e){ document.getElementById('erro').textContent='Sem conexão: '+((e&&e.message)||e)+'. Tente de novo.'; })
+      .then(function(){ enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.textContent='Enviar NF'; b2.disabled=!arquivos.length; } });
+  }
+
+  function telaResultado(d){
+    var e=d.envio||{}, n=d.dados||{};
+    var cls=e.resultado==='coerente'?'ok':e.resultado==='divergente'?'div':'il';
+    var tit=e.resultado==='coerente'?'Nota recebida e conferida':e.resultado==='divergente'?'Nota recebida, mas com divergência':'Não consegui ler a nota';
+    var ret=Object.keys(n.retencoes||{}).map(function(k){ return k.toUpperCase()+' '+brl(n.retencoes[k]); }).join(' · ');
+    var h='<div class="card res" id="res"><span class="selo '+cls+'">'+(cls==='ok'?'✓ Coerente':cls==='div'?'✕ Divergente':'? Não lida')+'</span>'+
+      '<h1 style="margin-top:8px">'+tit+'</h1>'+
+      (n.numero||n.valor_total?'<dl class="duas" style="margin-top:8px">'+linha('Nota',esc((n.tipo||'NF')+' nº '+(n.numero||'—'))+(n.data?' · '+esc(data(n.data)):''))+linha('Valor',brl(n.valor_total))+
+        linha('Emitente',esc(n.nome_emitente||'')+' '+esc(cnpj(n.cnpj_emitente)))+linha('Tomador',esc(n.nome_tomador||'')+' '+esc(cnpj(n.cnpj_tomador)))+
+        (ret?linha('Retenções',esc(ret)):'')+'</dl>':'')+
+      ((e.divergencias||[]).length?'<div class="div"><h2 style="margin:12px 0 0;color:var(--erro)">O que não bate com a autorização</h2><ul>'+e.divergencias.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>':'')+
+      ((e.avisos||[]).length?'<div class="av"><ul>'+e.avisos.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>':'')+
+      '<p class="sub" style="margin-top:10px">'+(cls==='ok'?'O Financeiro da Brandão &amp; Marmo já foi avisado. Se quiser, envie também o XML (ou o PDF) pelo mesmo quadro acima.':'Corrija a nota (ou envie o XML) e mande de novo pelo quadro acima. O Financeiro foi avisado deste envio.')+'</p></div>';
+    document.getElementById('resultado').innerHTML=h;
+    try{ document.getElementById('res').scrollIntoView({behavior:'smooth',block:'start'}); }catch(_e){}
+  }
+  function telaHistorico(envios){
+    var el=document.getElementById('historico'); if(!el) return;
+    if(!envios.length){ el.innerHTML=''; return; }
+    el.innerHTML='<div class="card hist"><h2>Envios anteriores</h2>'+envios.map(function(e){
+      var cls=e.resultado==='coerente'?'ok':e.resultado==='divergente'?'div':'il';
+      return '<div><span class="selo '+cls+'">'+(cls==='ok'?'Coerente':cls==='div'?'Divergente':'Não lida')+'</span><span>'+esc(dataHora(e.criado_em))+'</span>'+
+        (e.numero?'<span>NF '+esc(e.numero)+'</span>':'')+(e.valor_total?'<span>'+brl(e.valor_total)+'</span>':'')+(e.aceito?'<b style="color:var(--ok)">aceita</b>':'')+'</div>';
+    }).join('')+'</div>';
+  }
+  function chamarVer(soHistorico){
+    (demo?Promise.resolve(demoVer()):chamar({acao:'ver',token:token})).then(function(d){
+      if(!d||!d.ok&&d.estado!=='invalido'&&!d.estado) return mensagem('⚠️','Não consegui abrir','Verifique a conexão e recarregue a página.');
+      if(telaEstado(d)) return;
+      if(soHistorico) return telaHistorico(d.envios||[]);
+      telaResumo(d);
+    }).catch(function(){ mensagem('⚠️','Sem conexão','Verifique a internet e recarregue a página.'); });
+  }
+
+  /* ---- só no computador de quem desenvolve (localhost + ?demo): dados de exemplo ---- */
+  function demoVer(){ return {ok:true,estado:'aberto',envios:[],resumo:{empresa:'Brandão & Marmo',obra:{nome:'Hospital Exemplo — Bloco B',fantasia:'HOSPITAL EXEMPLO',cno:'90.012.34567/89',endereco:'Av. Exemplo, 1000 – São Paulo – SP'},
+    contrato:'CT-2026-0042',medicao:'MED-2026-0107',valor:48750.5,tipoNF:'SERVIÇO',prazoPgto:'30 DDL',formaPgto:'BOLETO OU DEPÓSITO',
+    fornecedor:{nome:'Empreiteira Exemplo Ltda',cnpj:'11222333000181'},textoObrigatorio:'CONTRATO ENTRE BRANDÃO & MARMO E CLIENTE EXEMPLO S.A.',emailNF:'nf@exemplo.com.br',
+    tomadores:[{empresa:'Brandão & Marmo Engenharia e Construções Ltda',cnpj:'00111222000133',endereco:'Rua Exemplo, 10 – São Paulo – SP',ie:'Isento',im:'1.234.567-8'}]}}; }
+  function demoEnvio(){ return new Promise(function(r){ setTimeout(function(){ r({ok:true,envio:{resultado:'divergente',divergencias:['Valor da nota (R$ 48.970,50) acima do autorizado (R$ 48.750,50).','A descrição da nota não cita o contrato (CT-2026-0042), a medição/pedido, o CNO nem a obra — são dados obrigatórios da autorização.'],avisos:['Nota lida por IA a partir do PDF/imagem: confira os números. Com o XML a conferência é exata.']},
+    dados:{tipo:'NFS-e',numero:'1587',data:'2026-09-30',nome_emitente:'Empreiteira Exemplo Ltda',cnpj_emitente:'11222333000181',nome_tomador:'Brandão & Marmo',cnpj_tomador:'00111222000133',valor_total:48970.5,retencoes:{inss:5386.76,iss:2448.53}}}); },700); }); }
+
+  if(!token&&!demo) return mensagem('🔒','Link incompleto','Abra esta página pelo botão “Enviar a NF” do e-mail de autorização da Brandão &amp; Marmo.');
+  chamarVer(false);
+})();
+</script>
+</body>
+</html>
