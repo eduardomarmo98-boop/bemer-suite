@@ -156,6 +156,10 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
 
 /* ================ 2FA (30/09/2026) ================ */
 input.codigo{font-size:26px;font-weight:600;letter-spacing:10px;text-align:center}
+.marcar-cfg{display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;line-height:1.4}
+.marcar-cfg input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--azul)}
+.dica-2fa{margin:-4px 0 18px;font-size:12.5px;line-height:1.5;color:var(--texto2)}
+.cartao .codigo-teste{display:block;margin-top:8px;padding:6px 10px;border-radius:8px;background:#FFF1DC;color:#7A4A00;font-weight:600;letter-spacing:.5px}
 .marcar{display:flex;align-items:center;gap:10px;margin:-4px 0 18px;font-size:13px;cursor:pointer}
 .marcar input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--azul)}
 .link:disabled{opacity:.55;cursor:default;text-decoration:none}
@@ -380,7 +384,7 @@ table.uso tr.sub td:first-child{padding-left:22px}
       <div id="recado-2fa" class="recado oculto" role="alert"></div>
       <label for="codigo2fa">Código</label>
       <input id="codigo2fa" class="codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" required>
-      <label class="marcar"><input type="checkbox" id="confiar2fa"> Confiar neste aparelho por 30 dias</label>
+      <p class="dica-2fa">Pedimos o código uma vez por dia em cada aparelho. Depois de confirmar, este aparelho fica liberado até a meia-noite.</p>
       <button class="botao" id="btn-2fa" type="submit">Confirmar</button>
       <div class="linha-link" style="justify-content:space-between;margin:12px 0 0">
         <button type="button" class="link" id="btn-reenviar" disabled>Reenviar código</button>
@@ -470,7 +474,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.09.30.1';
+var VERSAO   = '2026.10.02.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -660,18 +664,39 @@ function pendente2fa(){
   return sb.schema('core').rpc('dois_fatores_pendente')
     .then(function(r){ return !r.error && r.data === true; }, function(){ return false; });
 }
-/* resposta da edge sempre como {ok, motivo, ...} */
+/* Resposta da edge sempre como {ok, motivo, ...}. Falha de transporte vira
+   um motivo próprio — "sem internet" ≠ "servidor fora" ≠ "edge ausente/fora":
+     · 404 do gateway ............................ edge_ausente
+     · 5xx sem a nossa resposta / relay ........... edge_fora
+     · fetch falhou: aparelho offline ............. sem_internet
+       fetch falhou, mas o servidor responde ...... edge_ausente (função sem
+                                                    publicar não manda CORS)
+       fetch falhou e o servidor também não ....... servidor_fora */
+function sondarServidor(){
+  if(navigator.onLine === false) return Promise.resolve('sem_internet');
+  return fetch(SUPABASE_URL + '/auth/v1/health', { headers: { apikey: SUPABASE_ANON_KEY }, cache: 'no-store' })
+    .then(function(r){ return r.ok || r.status < 500 ? 'edge_ausente' : 'servidor_fora'; },
+          function(){ return navigator.onLine === false ? 'sem_internet' : 'servidor_fora'; });
+}
 function chamar2fa(corpo){
   return sb.functions.invoke('core-2fa', { body: corpo }).then(function(r){
-    if(r.data && typeof r.data === 'object') return r.data;
-    var ctx = r.error && r.error.context;
+    if(r.data && typeof r.data === 'object' && 'ok' in r.data) return r.data;
+    var err = r.error || {}, nome = err.name || '', ctx = err.context;
+    if(nome === 'FunctionsFetchError') return sondarServidor().then(function(m){ return { ok:false, motivo:m }; });
+    if(nome === 'FunctionsRelayError') return { ok:false, motivo:'edge_fora' };
+    var st = (ctx && ctx.status) || 0;
+    var porStatus = st === 404 ? 'edge_ausente' : st === 401 ? 'sem_sessao' : st >= 500 ? 'edge_fora' : 'erro';
     if(ctx && typeof ctx.json === 'function')
-      return ctx.json().then(function(j){ return j && typeof j === 'object' ? j : { ok:false, motivo:'erro' }; },
-                             function(){ return { ok:false, motivo:'erro' }; });
-    return { ok:false, motivo:'rede' };
-  }, function(){ return { ok:false, motivo:'rede' }; });
+      return ctx.json().then(function(j){ return j && typeof j === 'object' && j.motivo ? j : { ok:false, motivo:porStatus }; },
+                             function(){ return { ok:false, motivo:porStatus }; });
+    return { ok:false, motivo: st ? porStatus : 'erro' };
+  }, function(){ return sondarServidor().then(function(m){ return { ok:false, motivo:m }; }); });
 }
-/* Aparelho confiável passa direto; senão, mostra a tela do código. */
+/* homologação (secret CORE_2FA_TESTE=1): a edge devolve o código */
+function codigoTesteHtml(r){
+  return r && r.codigo_teste ? '<span class="codigo-teste">Homologação: o código é ' + esc(String(r.codigo_teste)) + '</span>' : '';
+}
+/* Aparelho já liberado hoje passa direto; senão, mostra a tela do código. */
 function passar2fa(uid){
   UID_2FA = uid;
   var token = aparelhoLer(uid);
@@ -686,7 +711,7 @@ function passar2fa(uid){
 function tela2fa(){
   caixa('form-2fa');
   recado('recado-2fa', '');
-  $('codigo2fa').value = ''; $('confiar2fa').checked = false; $('btn-2fa').disabled = false;
+  $('codigo2fa').value = ''; $('btn-2fa').disabled = false;
   enviar2fa();
   setTimeout(function(){ $('codigo2fa').focus(); }, 50);
 }
@@ -707,14 +732,18 @@ var MSG_2FA = {
   sem_email:      'Seu cadastro está sem e-mail. Fale com a TI.',
   nao_interno:    'Esta verificação é só para colaboradores.',
   sem_sessao:     'Sua sessão terminou. Entre de novo.',
-  rede:           'Sem conexão com o servidor. Confira a internet e tente de novo.',
+  sem_internet:   'Este aparelho está sem internet. Confira a conexão e tente de novo.',
+  rede:           'Este aparelho está sem internet. Confira a conexão e tente de novo.',
+  servidor_fora:  'O servidor do BeMer não respondeu. Se a internet está boa, avise a TI.',
+  edge_ausente:   'A verificação por e-mail não está instalada neste ambiente (função core-2fa). Avise a TI.',
+  edge_fora:      'O serviço que manda o código está fora do ar agora. Tente de novo em alguns minutos ou avise a TI.',
   erro:           'Não foi possível continuar agora. Tente de novo em instantes.'
 };
 function enviar2fa(){
   $('btn-reenviar').disabled = true;
   return chamar2fa({ acao:'enviar' }).then(function(r){
     if(r.ok){
-      $('sub-2fa').innerHTML = 'Enviamos um código de 6 dígitos para <b>' + esc(r.email || 'o seu e-mail') + '</b>. Vale por ' + (r.validade_min || 10) + ' minutos.';
+      $('sub-2fa').innerHTML = 'Enviamos um código de 6 dígitos para <b>' + esc(r.email || 'o seu e-mail') + '</b>. Vale por ' + (r.validade_min || 10) + ' minutos.' + codigoTesteHtml(r);
       recado('recado-2fa', '');
       return contagem2fa(r.espera_s || 60);
     }
@@ -725,7 +754,7 @@ function enviar2fa(){
     if(r.motivo === 'sem_sessao') return sb.auth.signOut().then(function(){ telaLogin(MSG_2FA.sem_sessao); });
     $('sub-2fa').textContent = 'Precisamos confirmar que é você com um código enviado ao seu e-mail.';
     recado('recado-2fa', MSG_2FA[r.motivo] || MSG_2FA.erro);
-    contagem2fa(r.motivo === 'falha_email' || r.motivo === 'rede' || r.motivo === 'erro' ? 5 : 60);
+    contagem2fa(/^(falha_email|rede|sem_internet|servidor_fora|edge_ausente|edge_fora|erro)$/.test(r.motivo || '') ? 5 : 60);
   });
 }
 $('btn-reenviar').addEventListener('click', function(){ $('codigo2fa').value = ''; enviar2fa(); $('codigo2fa').focus(); });
@@ -738,9 +767,8 @@ $('form-2fa').addEventListener('submit', function(e){
   e.preventDefault();
   var codigo = $('codigo2fa').value.replace(/\D/g, '');
   if(codigo.length !== 6) return recado('recado-2fa', 'Digite os 6 números do código.');
-  var confiar = $('confiar2fa').checked;
   $('btn-2fa').disabled = true;
-  chamar2fa({ acao:'verificar', codigo: codigo, confiar: confiar }).then(function(r){
+  chamar2fa({ acao:'verificar', codigo: codigo }).then(function(r){
     if(r.ok){
       if(r.token && UID_2FA) aparelhoGravar(UID_2FA, r.token);
       pararContagem2fa();
@@ -936,8 +964,10 @@ function desenharSeguranca(){
   $('cfg-conteudo').innerHTML =
       '<section class="bloco"><div class="linha"><div style="flex:1;min-width:240px">'
     +   '<h2>Verificação em duas etapas por e-mail</h2>'
-    +   '<p class="dica">Depois da senha, o colaborador recebe um código de 6 dígitos no e-mail do cadastro (vale 10 minutos) '
-    +   'e pode marcar “Confiar neste aparelho por 30 dias”. Fornecedor não passa por isso. Quem já confirma com o '
+    +   '<p class="dica">Depois da senha, o colaborador recebe um código de 6 dígitos no e-mail do cadastro (vale 10 minutos). '
+    +   'É pedido <b>uma vez por dia em cada aparelho</b>: confirmou, o aparelho fica liberado até a meia-noite — no portal, no Docs e nos outros módulos. '
+    +   'Vale também para quem entra direto pelo Docs.</p>'
+    +   '<p class="dica" style="margin-top:6px">Não passam por isso: fornecedor, cliente e vigia/portaria. Quem já confirma com o '
     +   'aplicativo autenticador do Docs também não.</p></div>'
     +   '<div style="display:flex;align-items:center;gap:12px"><span class="estado' + (lig ? ' lig' : '') + '">' + (lig ? 'Ligada' : 'Desligada') + '</span>'
     +   '<label class="chave-lig"><input type="checkbox" id="sw-2fa"' + (lig ? ' checked' : '') + (podeLigar ? '' : ' disabled')
@@ -971,18 +1001,18 @@ function desenharSeguranca(){
     var b = this; b.disabled = true; $('t2fa-res').textContent = 'Enviando…';
     chamar2fa({ acao: 'enviar' }).then(function(r){
       b.disabled = false;
-      if(r.ok) return res('Código enviado para ' + esc(r.email || 'o seu e-mail') + '. Digite ao lado e clique em Conferir.', true);
+      if(r.ok) return res('Código enviado para ' + esc(r.email || 'o seu e-mail') + '. Digite ao lado e clique em Conferir.' + codigoTesteHtml(r), true);
       if(r.motivo === 'espere') return res('Já saiu um código há pouco para ' + esc(r.email || 'o seu e-mail') + ' — use esse (novo em ' + r.segundos + ' s).', true);
-      res(MSG_2FA[r.motivo] || ('Falhou: ' + esc(r.motivo || 'erro') + '. A edge core-2fa já foi publicada?'));
+      res(MSG_2FA[r.motivo] || ('Falhou: ' + esc(r.motivo || 'erro') + '.'));
     });
   });
   $('t2fa-conferir').addEventListener('click', function(){
     var cod = $('t2fa-cod').value.replace(/\D/g, '');
     if(cod.length !== 6) return res('Digite os 6 números.');
     var b = this; b.disabled = true;
-    chamar2fa({ acao: 'verificar', codigo: cod, confiar: false }).then(function(r){
+    chamar2fa({ acao: 'verificar', codigo: cod }).then(function(r){
       b.disabled = false;
-      if(r.ok){ SEG.testeOk = true; SEG.testeMsg = '<span class="ok-txt">Funcionou: o e-mail saiu e o código conferiu. Já pode ligar.</span>'; return desenharSeguranca(); }
+      if(r.ok){ if(r.token && EU && EU.id) aparelhoGravar(EU.id, r.token); SEG.testeOk = true; SEG.testeMsg = '<span class="ok-txt">Funcionou: o e-mail saiu e o código conferiu. Já pode ligar.</span>'; return desenharSeguranca(); }
       res({ codigo_errado: 'Código não confere.', bloqueado: 'Tentativas esgotadas — envie outro.', expirado: 'Venceu — envie outro.',
             sem_codigo: 'Envie um código primeiro.' }[r.motivo] || MSG_2FA[r.motivo] || 'Falhou: ' + esc(r.motivo || 'erro'));
     });
@@ -995,10 +1025,10 @@ var IA_MODELOS = [['gemini-3.1-flash-lite', 'gemini-3.1-flash-lite — rápido e
 var IA = { linha: null, novas: [], remover: [], trocar: [], res: [] };
 function telaIA(){
   $('cfg-conteudo').innerHTML = blocoMsg('Carregando…');
-  sb.schema('core').from('config_ia').select('habilitada,modelo,chaves,atualizado_em').maybeSingle().then(function(r){
+  sb.schema('core').from('config_ia').select('habilitada,modelo,chaves,auto_aprovar,atualizado_em').maybeSingle().then(function(r){
     if(CFG.aba !== 'ia') return;
     if(r.error) return ($('cfg-conteudo').innerHTML = blocoMsg(esc(msgBanco(r.error)), true));
-    IA.linha = r.data || { habilitada: true, modelo: 'gemini-3.1-flash-lite', chaves: [] };
+    IA.linha = r.data || { habilitada: true, modelo: 'gemini-3.1-flash-lite', chaves: [], auto_aprovar: false };
     IA.novas = ['', '', '', '', '']; IA.remover = []; IA.trocar = []; IA.res = [];
     desenharIA();
   });
@@ -1036,7 +1066,9 @@ function desenharIA(){
     +   '<label class="chave-lig"><input type="checkbox" id="ia-lig"' + (L.habilitada ? ' checked' : '') + ' aria-label="Análise por IA ligada"><span></span></label></div></div>'
     +   '<div style="margin-top:16px;max-width:520px"><label for="ia-modelo">Modelo</label><select id="ia-modelo" class="campo-cfg">'
     +   opcoes.map(function(o){ return '<option value="' + esc(o[0]) + '"' + (o[0] === L.modelo ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('')
-    +   '</select></div></section>'
+    +   '</select></div>'
+    +   '<label class="marcar-cfg" style="margin-top:14px"><input type="checkbox" id="ia-auto"' + (L.auto_aprovar ? ' checked' : '') + '> '
+    +   'Docs: aprovar sozinho o documento que a IA aprovar (sem esperar o SESMT)</label></section>'
     + '<section class="bloco"><h2>Chaves</h2>'
     +   '<p class="dica">Até 5. Chaves de projetos Google diferentes somam as cotas gratuitas: quando uma esgota, o sistema passa para a próxima. '
     +   'A chave aparece mascarada; “Testar” pergunta ao Google se ela responde.</p>'
@@ -1050,6 +1082,7 @@ function desenharIA(){
     $('ia-estado').classList.toggle('lig', this.checked);
   });
   $('ia-modelo').addEventListener('change', function(){ IA.linha.modelo = this.value; });
+  $('ia-auto').addEventListener('change', function(){ IA.linha.auto_aprovar = this.checked; });
   document.querySelectorAll('[data-ia-campo]').forEach(function(el){
     el.addEventListener('input', function(){ IA.novas[+el.getAttribute('data-ia-campo')] = el.value; });
   });
@@ -1101,8 +1134,8 @@ function salvarIA(){
   if(!novas.length && IA.linha.habilitada && !confirm('Salvar SEM nenhuma chave? A análise por IA para de funcionar.')) return;
   var b = $('ia-salvar'); b.disabled = true; $('ia-salvo').textContent = 'Salvando…';
   sb.schema('core').from('config_ia')
-    .update({ habilitada: !!IA.linha.habilitada, modelo: IA.linha.modelo || 'gemini-3.1-flash-lite', chaves: novas })
-    .eq('id', true).select('habilitada,modelo,chaves,atualizado_em')
+    .update({ habilitada: !!IA.linha.habilitada, modelo: IA.linha.modelo || 'gemini-3.1-flash-lite', chaves: novas, auto_aprovar: !!IA.linha.auto_aprovar })
+    .eq('id', true).select('habilitada,modelo,chaves,auto_aprovar,atualizado_em')
     .then(function(r){
       if(r.error || !r.data || !r.data.length){ b.disabled = false; $('ia-salvo').innerHTML = '<span class="erro-txt">' + esc(r.error ? msgBanco(r.error) : 'Não gravou (sem permissão?).') + '</span>'; return; }
       IA.linha = r.data[0]; IA.novas = ['', '', '', '', '']; IA.remover = []; IA.trocar = []; IA.res = [];
@@ -1120,23 +1153,40 @@ function salvarIA(){
     · na compactação, o arquivo velho só sai se core.acervo_referencias = 0.
    🚨 A ORDEM NÃO MUDA: sobe o NOVO → aponta a LINHA → só então apaga o VELHO.
    ⚠️ Não mexe na aprovação: o papel é o mesmo, só mais leve. */
+/* 02/10/2026: TODOS os módulos aqui — Docs, Custos, Flow e Patrimônio, cada
+   um no seu bloco. Módulo que não existe neste banco mostra só um aviso no
+   bloco dele; os outros funcionam. Órfão: sempre 24 h de carência e o lote
+   é reconferido (core.acervo_liberar) logo antes de apagar. */
+var ACV_MODS = [
+  { id: 'docs', nome: 'Docs', buckets: ['documentos', 'backups'], comp: 'docs',
+    orfDica: 'nenhuma tabela do Docs aponta (SESMT, folha, FOPAG, documentos de obra e as listas de anexos)' },
+  { id: 'custos', nome: 'Custos', buckets: ['financeiro-anexos'], comp: 'pdf',
+    orfDica: 'nenhum registro do Custos aponta (solicitações, contratos, medições, pedidos, contas, notas de fornecedor)' },
+  { id: 'flow', nome: 'Flow', buckets: ['flow-anexos', 'anexos'], comp: 'pdf',
+    orfDica: 'nenhuma pendência aponta' },
+  { id: 'patrimonio', nome: 'Patrimônio', buckets: ['patrimonio'], comp: 'foto', orfDica: 'nenhum bem aponta' }
+];
 var BUCKET_MODULO = { 'documentos': 'Docs', 'backups': 'Docs (cópias de segurança)', 'financeiro-anexos': 'Custos',
                       'flow-anexos': 'Flow', 'anexos': 'Flow (antigo)', 'patrimonio': 'Patrimônio' };
 var PASTA_NOME = { empresa: 'Empresas', funcionario: 'Colaboradores', maquina: 'Máquinas', folha: 'Folha interna',
-                   fopag: 'FOPAG', obra: 'Documentos de obra', whats: 'WhatsApp', pendencias: 'Pendências' };
-var ESQUEMA_NOME = { 'public': 'Docs', core: 'Portal (core)', flow: 'Flow', patrimonio: 'Patrimônio (fotos ficam aqui)',
-                     financeiro: 'Custos', auth: 'Logins', storage: 'Índice do Storage' };
-var ACV = { uso: null, banco: null, erro: '', medindo: false, abertos: {}, candidatos: null, orfaos: null,
-            semDocs: '', rodando: false, parar: false, log: [] };
+                   fopag: 'FOPAG', obra: 'Documentos de obra', whats: 'WhatsApp', pendencias: 'Pendências',
+                   'nf-fornecedor': 'Notas de fornecedor' };
+var ACV = { uso: null, banco: null, mods: null, erro: '', erroMods: '', medindo: false, abertos: {}, m: {},
+            rodando: '', parar: false, log: [] };
+ACV_MODS.forEach(function(d){ ACV.m[d.id] = { cand: null, orf: null }; });
 var PDF_COMP_MIN = 3 * 1024 * 1024, PDF_COMP_DPI = 150, PDF_COMP_Q = 0.72, PDF_COMP_MAXPAG = 200,
-    PDF_COMP_MAXPX = 2200, PDF_COMP_GANHO = 0.30, ACV_ORFAO_IDADE_H = 24;
+    PDF_COMP_MAXPX = 2200, PDF_COMP_GANHO = 0.30, ACV_ORFAO_IDADE_H = 24,
+    FOTO_COMP_MIN = 200 * 1024, FOTO_LADO = 1024, FOTO_Q = 0.68;   // = o que o Patrimônio usa ao cadastrar
 
 function telaAcervo(){ desenharAcervo(); if(!ACV.uso && !ACV.medindo) medirUso(); }
 function medirUso(){
-  ACV.medindo = true; ACV.erro = '';
-  Promise.all([sb.schema('core').rpc('storage_uso'), sb.schema('core').rpc('banco_uso')]).then(function(rs){
+  ACV.medindo = true; ACV.erro = ''; ACV.erroMods = '';
+  Promise.all([sb.schema('core').rpc('storage_uso'), sb.schema('core').rpc('banco_uso'), sb.schema('core').rpc('acervo_modulos')]).then(function(rs){
     if(rs[0].error) throw rs[0].error;
     ACV.uso = rs[0].data || []; ACV.banco = rs[1].error ? null : (rs[1].data || []);
+    ACV.mods = {};
+    if(rs[2].error) ACV.erroMods = msgBanco(rs[2].error);
+    else (rs[2].data || []).forEach(function(r){ ACV.mods[r.modulo] = r; });
   }).catch(function(e){ ACV.erro = msgBanco(e); })
     .then(function(){ ACV.medindo = false; if(CFG.aba === 'acervo') desenharAcervo(); });
 }
@@ -1151,106 +1201,154 @@ function acvLogHtml(){
     return '<div class="' + (l.tipo === 'err' ? 'erro-txt' : l.tipo === 'ok' ? 'ok-txt' : 'fraco') + '">' + l.t + ' · ' + esc(l.txt) + '</div>';
   }).join('');
 }
-function acvProg(txt){ var el = $('acv-prog'); if(el) el.textContent = txt || ''; }
+function acvProg(txt){ var el = $('acv-prog-' + ACV.rodando); if(el) el.textContent = txt || ''; }
+function acvSoma(lista){ return (lista || []).reduce(function(a, c){ return a + (Number(c.bytes) || 0); }, 0); }
+
+/* uso do Storage agrupado por bucket */
+function acvPorBucket(){
+  var porBucket = {};
+  (ACV.uso || []).forEach(function(r){
+    var b = porBucket[r.bucket] = porBucket[r.bucket] || { bytes: 0, n: 0, pastas: [] };
+    b.bytes += Number(r.bytes) || 0; b.n += Number(r.arquivos) || 0;
+    if(r.arquivos > 0) b.pastas.push(r);
+  });
+  return porBucket;
+}
+function acvLista(cab, linhas, total, mais){
+  return '<div class="lista-acv"><table class="uso"><thead><tr>' + cab + '</tr></thead><tbody>' + linhas + '</tbody></table>'
+       + (mais > 0 ? '<p class="dica" style="padding:8px">…e mais ' + mais + '</p>' : '') + '</div>';
+}
 
 function desenharAcervo(){
   var html = '';
-  /* 1. Storage por bucket */
-  if(ACV.erro) html += blocoMsg(esc(ACV.erro), true);
-  else if(!ACV.uso) html += blocoMsg('Medindo o Storage…');
-  else {
-    var porBucket = {}, total = 0, totalN = 0;
-    ACV.uso.forEach(function(r){
-      var b = porBucket[r.bucket] = porBucket[r.bucket] || { bytes: 0, n: 0, pastas: [], recente: null };
-      b.bytes += Number(r.bytes) || 0; b.n += Number(r.arquivos) || 0;
-      if(r.arquivos > 0) b.pastas.push(r);
-      if(r.mais_recente && (!b.recente || r.mais_recente > b.recente)) b.recente = r.mais_recente;
-      total += Number(r.bytes) || 0; totalN += Number(r.arquivos) || 0;
+  if(ACV.erro) { $('cfg-conteudo').innerHTML = blocoMsg(esc(ACV.erro), true); return; }
+  if(!ACV.uso) { $('cfg-conteudo').innerHTML = blocoMsg('Medindo o Storage…'); return; }
+  var porBucket = acvPorBucket(), total = 0, totalN = 0;
+  Object.keys(porBucket).forEach(function(k){ total += porBucket[k].bytes; totalN += porBucket[k].n; });
+  var totB = (ACV.banco || []).reduce(function(a, r){ return a + (Number(r.bytes) || 0); }, 0);
+  var conhecidos = {}; ACV_MODS.forEach(function(d){ d.buckets.forEach(function(b){ conhecidos[b] = 1; }); });
+  var outros = Object.keys(porBucket).filter(function(b){ return !conhecidos[b]; });
+
+  /* panorama */
+  html += '<section class="bloco"><div class="linha"><div><h2>Acervo e Storage</h2>'
+       +  '<p class="dica">Storage: <b>' + fmtTam(total) + '</b> em ' + fmtNum(totalN) + ' arquivos'
+       +  (ACV.banco ? ' · Banco de dados: <b>' + fmtTam(totB) + '</b>' : '') + '. Cada módulo tem o seu bloco abaixo.</p></div>'
+       +  '<button class="btn" type="button" data-acv="medir"' + (ACV.medindo || ACV.rodando ? ' disabled' : '') + '>Medir de novo</button></div>'
+       +  (ACV.erroMods ? '<div class="aviso-cfg">' + esc(ACV.erroMods) + '</div>' : '')
+       +  '</section>';
+
+  ACV_MODS.forEach(function(d){ html += acvBloco(d, porBucket); });
+
+  if(outros.length){
+    html += '<section class="bloco"><h2>Outros arquivos</h2><p class="dica">Buckets que não são de nenhum módulo: só a medida, sem ferramentas.</p>'
+         +  acvLista('<th>Bucket</th><th class="num">Arquivos</th><th class="num">Tamanho</th>', outros.map(function(b){
+              return '<tr><td>' + esc(b) + '</td><td class="num">' + fmtNum(porBucket[b].n) + '</td><td class="num">' + fmtTam(porBucket[b].bytes) + '</td></tr>';
+            }).join(''), 0, 0) + '</section>';
+  }
+  html += '<section class="bloco"><h2>Registro</h2><div class="registro" id="acv-log">' + acvLogHtml() + '</div></section>';
+  $('cfg-conteudo').innerHTML = html;
+}
+
+function acvBloco(d, porBucket){
+  var info = ACV.mods ? ACV.mods[d.id] : null;
+  var existe = info ? info.existe !== false : true;
+  var st = ACV.m[d.id], ocupado = !!ACV.rodando, aqui = ACV.rodando === d.id, dis = ocupado ? ' disabled' : '';
+  var bks = d.buckets.filter(function(b){ return porBucket[b]; });
+  var stBytes = bks.reduce(function(a, b){ return a + porBucket[b].bytes; }, 0);
+  var stN = bks.reduce(function(a, b){ return a + porBucket[b].n; }, 0);
+  var h = '<section class="bloco acv-mod"><div class="linha"><div style="flex:1;min-width:220px"><h2>' + esc(d.nome) + '</h2>';
+  if(!existe){
+    return h + '<p class="dica fraco">Este módulo não está neste banco — nada a medir nem limpar aqui.</p></div></div></section>';
+  }
+  var partes = [];
+  if(d.comp === 'foto'){
+    partes.push('Fotos dos bens: <b>' + fmtTam(info && info.fotos_bytes) + '</b> em ' + fmtNum(info && info.fotos) + ' ficha(s)');
+    if(stN) partes.push('Storage: <b>' + fmtTam(stBytes) + '</b> em ' + fmtNum(stN) + ' arquivos');
+  } else partes.push('Storage: <b>' + fmtTam(stBytes) + '</b> em ' + fmtNum(stN) + ' arquivos');
+  if(info && info.banco_bytes != null) partes.push('Banco: <b>' + fmtTam(info.banco_bytes) + '</b>');
+  h += '<p class="dica">' + partes.join(' · ') + '</p></div>';
+  var temPastas = bks.some(function(b){ return porBucket[b].pastas.length; });
+  if(temPastas) h += '<button class="btn" type="button" data-acv="pastas" data-m="' + d.id + '">' + (ACV.abertos[d.id] ? 'Esconder pastas' : 'Ver pastas') + '</button>';
+  h += '</div>';
+  if(ACV.abertos[d.id] && temPastas){
+    var linhas = '';
+    bks.forEach(function(b){
+      porBucket[b].pastas.forEach(function(p){
+        linhas += '<tr><td>' + esc(PASTA_NOME[p.pasta] || p.pasta) + (d.buckets.length > 1 ? ' <span class="fraco">(' + esc(b) + ')</span>' : '') + '</td>'
+               +  '<td class="num">' + fmtNum(p.arquivos) + '</td><td class="num">' + fmtTam(p.bytes) + '</td>'
+               +  '<td class="fraco">' + (p.mais_recente ? esc(dataHora(p.mais_recente)) : '') + '</td></tr>';
+      });
     });
-    var nomes = Object.keys(porBucket).sort(function(a, b){ return porBucket[b].bytes - porBucket[a].bytes; });
-    var maior = nomes.length ? porBucket[nomes[0]].bytes || 1 : 1;
-    html += '<section class="bloco"><div class="linha"><div><h2>Uso do Storage</h2>'
-         + '<p class="dica">Arquivos guardados por módulo. Total: <b>' + fmtTam(total) + '</b> em ' + fmtNum(totalN) + ' arquivos.</p></div>'
-         + '<button class="btn" type="button" data-acv="medir"' + (ACV.medindo ? ' disabled' : '') + '>Medir de novo</button></div>'
-         + '<div class="tabela-rola"><table class="uso"><thead><tr><th>Módulo</th><th>Bucket</th><th class="num">Arquivos</th><th class="num">Tamanho</th><th style="width:22%"></th></tr></thead><tbody>'
-         + nomes.map(function(nm){
-             var b = porBucket[nm], aberto = !!ACV.abertos[nm], temSub = b.pastas.length > 1;
-             var linha = '<tr' + (temSub ? ' style="cursor:pointer" data-acv="abrir" data-b="' + esc(nm) + '"' : '') + '><td><b>' + esc(BUCKET_MODULO[nm] || nm) + '</b>'
-               + (temSub ? ' <span class="fraco">' + (aberto ? '▾' : '▸') + '</span>' : '') + '</td><td class="fraco">' + esc(nm) + '</td>'
-               + '<td class="num">' + fmtNum(b.n) + '</td><td class="num"><b>' + fmtTam(b.bytes) + '</b></td>'
-               + '<td><div class="barra-uso"><i style="width:' + Math.max(1, Math.round(b.bytes / maior * 100)) + '%"></i></div></td></tr>';
-             if(aberto) linha += b.pastas.map(function(p){
-               return '<tr class="sub"><td>' + esc(PASTA_NOME[p.pasta] || p.pasta) + '</td><td>' + esc(p.pasta) + '</td><td class="num">' + fmtNum(p.arquivos)
-                    + '</td><td class="num">' + fmtTam(p.bytes) + '</td><td>' + (p.mais_recente ? 'último em ' + esc(dataHora(p.mais_recente)) : '') + '</td></tr>';
-             }).join('');
-             return linha;
-           }).join('')
-         + '</tbody></table></div></section>';
-    if(ACV.banco && ACV.banco.length){
-      var totB = ACV.banco.reduce(function(a, r){ return a + (Number(r.bytes) || 0); }, 0);
-      html += '<section class="bloco"><h2>Banco de dados</h2><p class="dica">Tabelas e índices por módulo. Total: <b>' + fmtTam(totB) + '</b>.</p>'
-           + '<div class="tabela-rola"><table class="uso"><tbody>' + ACV.banco.map(function(r){
-               return '<tr><td>' + esc(ESQUEMA_NOME[r.esquema] || r.esquema) + '</td><td class="fraco">' + esc(r.esquema) + '</td><td class="num"><b>' + fmtTam(r.bytes) + '</b></td></tr>';
-             }).join('') + '</tbody></table></div></section>';
-    }
+    h += acvLista('<th>Pasta</th><th class="num">Arquivos</th><th class="num">Tamanho</th><th>Último</th>', linhas, 0, 0);
   }
 
-  /* 2. Ferramentas do acervo do Docs */
-  var cand = ACV.candidatos, orf = ACV.orfaos, dis = ACV.rodando ? ' disabled' : '';
-  var totCand = (cand || []).reduce(function(a, c){ return a + (Number(c.bytes) || 0); }, 0);
-  var totOrf = (orf || []).reduce(function(a, c){ return a + (Number(c.bytes) || 0); }, 0);
-  html += '<section class="bloco"><h2>Acervo do Docs — compactar e limpar</h2>'
-       + '<p class="dica">Compacta PDF escaneado que já está guardado e recupera espaço de arquivo sem dono. PDF com <b>assinatura digital</b> '
-       + 'e PDF com <b>texto de verdade</b> são pulados sozinhos. A ordem é sempre: sobe o novo, aponta o documento, só então apaga o velho. '
-       + 'A aprovação do documento não muda.</p>'
-       + (ACV.semDocs ? '<div class="aviso-cfg">' + esc(ACV.semDocs) + '</div>' : '')
-       + '<div class="btns">'
-       +   '<button class="btn forte" type="button" data-acv="mapear"' + dis + '>Mapear PDFs acima de ' + fmtTam(PDF_COMP_MIN) + '</button>'
-       +   (cand && cand.length ? '<button class="btn" type="button" data-acv="simular"' + dis + '>Simular os 3 maiores</button>'
-                              + '<button class="btn" type="button" data-acv="compactar"' + dis + '>Compactar os ' + cand.length + '</button>' : '')
-       +   '<button class="btn" type="button" data-acv="orfaos"' + dis + '>Procurar órfãos</button>'
-       +   (orf && orf.length ? '<button class="btn perigo" type="button" data-acv="apagar"' + dis + '>Apagar ' + orf.length + ' órfão(s)</button>' : '')
-       +   (ACV.rodando ? '<button class="btn perigo" type="button" data-acv="parar">Parar</button>' : '')
-       +   '<span class="prog" id="acv-prog"></span></div>'
-       + (cand ? '<p class="dica" style="margin-top:14px"><b>' + cand.length + ' candidato(s) · ' + fmtTam(totCand) + '</b></p>'
-              + (cand.length ? '<div class="lista-acv"><table class="uso"><thead><tr><th class="num">Tamanho</th><th>De quem</th><th>Documento</th></tr></thead><tbody>'
-              + cand.slice(0, 200).map(function(c){ return '<tr><td class="num"><b>' + fmtTam(c.bytes) + '</b></td><td>' + esc(c.quem) + '</td><td>' + esc(c.documento) + '</td></tr>'; }).join('')
-              + '</tbody></table>' + (cand.length > 200 ? '<p class="dica" style="padding:8px">…e mais ' + (cand.length - 200) + '</p>' : '') + '</div>' : '') : '')
-       + (orf ? '<p class="dica" style="margin-top:14px"><b>' + orf.length + ' órfão(s) · ' + fmtTam(totOrf) + '</b> — arquivo que nenhuma tabela do Docs aponta '
-              + '(nem SESMT, folha, FOPAG, documentos de obra, nem as listas de anexos) e com mais de ' + ACV_ORFAO_IDADE_H + ' h.</p>'
-              + (orf.length ? '<div class="lista-acv"><table class="uso"><tbody>' + orf.slice(0, 150).map(function(o){
-                  return '<tr><td class="num">' + fmtTam(o.bytes) + '</td><td style="font-family:ui-monospace,Consolas,monospace;font-size:12px;word-break:break-all">' + esc(o.caminho) + '</td></tr>';
-                }).join('') + '</tbody></table>' + (orf.length > 150 ? '<p class="dica" style="padding:8px">…e mais ' + (orf.length - 150) + '</p>' : '') + '</div>' : '') : '')
-       + '<p class="dica" style="margin-top:14px"><b>Registro</b></p><div class="registro" id="acv-log">' + acvLogHtml() + '</div>'
-       + '</section>';
-  $('cfg-conteudo').innerHTML = html;
+  /* ferramentas */
+  var semOrf = d.comp === 'foto' && !(info && info.bucket_existe);
+  var rotMapear = d.comp === 'foto' ? 'Mapear fotos acima de ' + fmtTam(FOTO_COMP_MIN) : 'Mapear PDFs acima de ' + fmtTam(PDF_COMP_MIN);
+  h += '<div class="btns">'
+    +  '<button class="btn" type="button" data-acv="mapear" data-m="' + d.id + '"' + dis + '>' + rotMapear + '</button>'
+    +  (st.cand && st.cand.length ? '<button class="btn" type="button" data-acv="simular" data-m="' + d.id + '"' + dis + '>Simular os 3 maiores</button>'
+                                 + '<button class="btn forte" type="button" data-acv="compactar" data-m="' + d.id + '"' + dis + '>Compactar ' + st.cand.length + '</button>' : '')
+    +  (semOrf ? '' : '<button class="btn" type="button" data-acv="orfaos" data-m="' + d.id + '"' + dis + '>Procurar órfãos</button>')
+    +  (st.orf && st.orf.length ? '<button class="btn perigo" type="button" data-acv="apagar" data-m="' + d.id + '"' + dis + '>Apagar ' + st.orf.length + ' órfão(s)</button>' : '')
+    +  (aqui ? '<button class="btn perigo" type="button" data-acv="parar">Parar</button>' : '')
+    +  '<span class="prog" id="acv-prog-' + d.id + '"></span></div>';
+  if(semOrf) h += '<p class="dica" style="margin-top:8px">As fotos ficam dentro da ficha de cada bem: não existe foto órfã.</p>';
+
+  if(st.cand){
+    h += '<p class="dica" style="margin-top:14px"><b>' + st.cand.length + ' ' + (d.comp === 'foto' ? 'foto(s)' : 'PDF(s)') + ' · ' + fmtTam(acvSoma(st.cand)) + '</b>'
+      +  (d.comp === 'foto' ? ' — regravadas em ' + FOTO_LADO + ' px, como o Patrimônio faz no cadastro.'
+                            : ' — PDF com assinatura digital ou com texto de verdade é pulado sozinho' + (d.comp === 'pdf' ? '; nota fiscal de fornecedor não entra.' : '.')) + '</p>';
+    if(st.cand.length) h += acvLista('<th class="num">Tamanho</th><th>De quem</th><th>' + (d.comp === 'foto' ? 'Bem' : 'Arquivo') + '</th>',
+      st.cand.slice(0, 200).map(function(c){
+        return '<tr><td class="num"><b>' + fmtTam(c.bytes) + '</b></td><td>' + esc(c.quem) + '</td><td>' + esc(c.documento) + '</td></tr>';
+      }).join(''), 0, st.cand.length - 200);
+  }
+  if(st.orf){
+    h += '<p class="dica" style="margin-top:14px"><b>' + st.orf.length + ' órfão(s) · ' + fmtTam(acvSoma(st.orf)) + '</b> — arquivo que ' + esc(d.orfDica)
+      +  ', com mais de ' + ACV_ORFAO_IDADE_H + ' h.</p>';
+    if(st.orf.length) h += acvLista('<th class="num">Tamanho</th><th>Arquivo</th>', st.orf.slice(0, 150).map(function(o){
+        return '<tr><td class="num">' + fmtTam(o.bytes) + '</td><td style="font-family:ui-monospace,Consolas,monospace;font-size:12px;word-break:break-all">' + esc(o.caminho) + '</td></tr>';
+      }).join(''), 0, st.orf.length - 150);
+  }
+  return h + '</section>';
 }
 $('cfg-conteudo').addEventListener('click', function(e){
   var b = e.target.closest('[data-acv]'); if(!b || CFG.aba !== 'acervo') return;
-  var a = b.getAttribute('data-acv');
+  var a = b.getAttribute('data-acv'), m = b.getAttribute('data-m');
   if(a === 'medir'){ ACV.uso = null; desenharAcervo(); medirUso(); }
-  if(a === 'abrir'){ var nm = b.getAttribute('data-b'); ACV.abertos[nm] = !ACV.abertos[nm]; desenharAcervo(); }
-  if(a === 'mapear') acvMapear();
-  if(a === 'simular') acvRodar(true);
-  if(a === 'compactar') acvRodar(false);
-  if(a === 'orfaos') acvOrfaos();
-  if(a === 'apagar') acvApagarOrfaos();
+  if(a === 'pastas'){ ACV.abertos[m] = !ACV.abertos[m]; desenharAcervo(); }
+  if(a === 'mapear') acvMapear(m);
+  if(a === 'simular') acvRodar(m, true);
+  if(a === 'compactar') acvRodar(m, false);
+  if(a === 'orfaos') acvOrfaos(m);
+  if(a === 'apagar') acvApagarOrfaos(m);
   if(a === 'parar'){ ACV.parar = true; acvProg('Parando depois do arquivo atual…'); }
 });
+function acvMod(id){ return ACV_MODS.filter(function(d){ return d.id === id; })[0]; }
 
-async function acvMapear(){
+async function acvMapear(m){
   if(ACV.rodando) return;
-  ACV.rodando = true; ACV.parar = false; ACV.semDocs = ''; desenharAcervo();
+  var d = acvMod(m); if(!d) return;
+  ACV.rodando = m; ACV.parar = false; desenharAcervo();
   try {
-    acvLog('Mapeando PDFs acima de ' + fmtTam(PDF_COMP_MIN) + '…');
-    var r = await sb.schema('core').rpc('acervo_candidatos', { p_min: PDF_COMP_MIN });
+    var r;
+    if(d.comp === 'docs'){
+      acvLog(d.nome + ': mapeando PDFs acima de ' + fmtTam(PDF_COMP_MIN) + '…');
+      r = await sb.schema('core').rpc('acervo_candidatos', { p_min: PDF_COMP_MIN });
+    } else if(d.comp === 'pdf'){
+      acvLog(d.nome + ': mapeando PDFs acima de ' + fmtTam(PDF_COMP_MIN) + '…');
+      r = await sb.schema('core').rpc('acervo_candidatos_mod', { p_modulo: m, p_min: PDF_COMP_MIN });
+    } else {
+      acvLog(d.nome + ': mapeando fotos acima de ' + fmtTam(FOTO_COMP_MIN) + '…');
+      r = await sb.schema('core').rpc('acervo_fotos', { p_min: FOTO_COMP_MIN });
+      if(!r.error) r.data = (r.data || []).map(function(f){ return { id: f.id, bytes: f.bytes, md5: f.md5, quem: 'Patrimônio', documento: f.rotulo }; });
+    }
     if(r.error) throw r.error;
-    ACV.candidatos = r.data || [];
-    acvLog(ACV.candidatos.length + ' arquivo(s) — ' + fmtTam(ACV.candidatos.reduce(function(a, c){ return a + Number(c.bytes || 0); }, 0)) + ' no total', 'ok');
-  } catch(e){
-    var m = msgBanco(e); if(/Docs não está/i.test(m)) ACV.semDocs = m;
-    acvLog('✗ ' + m, 'err');
-  } finally { ACV.rodando = false; if(CFG.aba === 'acervo') desenharAcervo(); }
+    ACV.m[m].cand = r.data || [];
+    acvLog(d.nome + ': ' + ACV.m[m].cand.length + ' item(ns) — ' + fmtTam(acvSoma(ACV.m[m].cand)) + ' no total', 'ok');
+  } catch(e){ acvLog('✗ ' + d.nome + ': ' + msgBanco(e), 'err'); }
+  finally { ACV.rodando = ''; if(CFG.aba === 'acervo') desenharAcervo(); }
 }
 
 /* ---- compactar PDF escaneado (o mesmo `_pdfComprimir` do Docs, v.98) ---- */
@@ -1340,8 +1438,8 @@ async function acvUm(item, simular){
   if(dl.error || !dl.data){ acvLog('✗ ' + rot + ' — não consegui baixar', 'err'); return null; }
   var nomeArq = item.caminho.slice(item.caminho.lastIndexOf('/') + 1), file;
   try { file = new File([dl.data], nomeArq, { type: 'application/pdf' }); } catch(e){ file = dl.data; }
-  var el = $('acv-prog'), base = el ? el.textContent : '';
-  pdfCompProgresso = function(i, n){ var e2 = $('acv-prog'); if(e2) e2.textContent = base + ' · página ' + i + '/' + n; };
+  var el = $('acv-prog-' + ACV.rodando), base = el ? el.textContent : '';
+  pdfCompProgresso = function(i, n){ acvProg(base + ' · página ' + i + '/' + n); };
   var r = null;
   try { r = await pdfComprimir(file); } finally { pdfCompProgresso = null; acvProg(base); }
   if(!r){ acvLog('– ' + rot + ' — mantido (' + pdfCompMotivo + ')'); return null; }
@@ -1374,71 +1472,147 @@ async function acvUm(item, simular){
   acvLog('✓ ' + rot + ' — ' + fmtTam(r.antes) + ' → ' + fmtTam(r.depois) + ' (' + pct + '%)', 'ok');
   return { antes: r.antes, depois: r.depois };
 }
-async function acvRodar(simular){
+/* Custos e Flow: o arquivo é regravado compactado NO MESMO LUGAR (o caminho
+   não muda, então nenhum registro precisa ser reapontado). O banco libera
+   aquele arquivo por 10 minutos (core.acervo_liberar_compactar) e só então
+   a regra do Storage deixa ler e regravar. */
+async function acvUmArquivo(m, item, simular){
+  var rot = item.quem + ' · ' + item.documento;
+  var lib = await sb.schema('core').rpc('acervo_liberar_compactar', { p_modulo: m, p_caminho: item.caminho });
+  if(lib.error || lib.data !== true){ acvLog('✗ ' + rot + ' — ' + (lib.error ? msgBanco(lib.error) : 'o banco não liberou este arquivo'), 'err'); return null; }
+  var dl = await sb.storage.from(item.bucket).download(item.caminho);
+  if(dl.error || !dl.data){ acvLog('✗ ' + rot + ' — não consegui baixar', 'err'); return null; }
+  var file; try { file = new File([dl.data], item.documento || 'arquivo.pdf', { type: 'application/pdf' }); } catch(e){ file = dl.data; }
+  var base = ($('acv-prog-' + m) || {}).textContent || '';
+  pdfCompProgresso = function(i, n){ acvProg(base + ' · página ' + i + '/' + n); };
+  var r = null;
+  try { r = await pdfComprimir(file); } finally { pdfCompProgresso = null; acvProg(base); }
+  if(!r){ acvLog('– ' + rot + ' — mantido (' + pdfCompMotivo + ')'); return null; }
+  var pct = Math.round((1 - r.depois / r.antes) * 100);
+  if(simular){ acvLog('≈ ' + rot + ' — ' + fmtTam(r.antes) + ' → ' + fmtTam(r.depois) + ' (' + pct + '%)', 'ok'); return { antes: r.antes, depois: r.depois }; }
+  var up = await sb.storage.from(item.bucket).upload(item.caminho, r.blob, { contentType: 'application/pdf', upsert: true, cacheControl: '3600' });
+  if(up.error){ acvLog('✗ ' + rot + ' — não regravou (o original ficou como estava): ' + up.error.message, 'err'); return null; }
+  acvLog('✓ ' + rot + ' — ' + fmtTam(r.antes) + ' → ' + fmtTam(r.depois) + ' (' + pct + '%)', 'ok');
+  return { antes: r.antes, depois: r.depois };
+}
+
+/* Patrimônio: foto em base64 na ficha do bem. Regrava em 1024 px / JPEG 0,68
+   (o mesmo do cadastro) e só troca se a foto no banco ainda for a mesma. */
+function fotoReduzir(dataUrl){
+  return new Promise(function(ok){
+    var img = new Image();
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight;
+      if(w > FOTO_LADO || h > FOTO_LADO){
+        if(w > h){ h = Math.round(h * FOTO_LADO / w); w = FOTO_LADO; } else { w = Math.round(w * FOTO_LADO / h); h = FOTO_LADO; }
+      }
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      var ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+      var out = null; try { out = cv.toDataURL('image/jpeg', FOTO_Q); } catch(e){}
+      cv.width = cv.height = 0; ok(out);
+    };
+    img.onerror = function(){ ok(null); };
+    img.src = dataUrl;
+  });
+}
+async function acvUmaFoto(item, simular){
+  var rot = item.documento;
+  var f = await sb.schema('core').rpc('acervo_foto', { p_id: item.id });
+  if(f.error || !f.data){ acvLog('✗ ' + rot + ' — ' + (f.error ? msgBanco(f.error) : 'sem foto'), 'err'); return null; }
+  var nova = await fotoReduzir(f.data);
+  var antes = Math.round(f.data.length * 3 / 4), depois = nova ? Math.round(nova.length * 3 / 4) : antes;
+  if(!nova || depois > antes * (1 - PDF_COMP_GANHO)){ acvLog('– ' + rot + ' — mantida (' + (nova ? 'ganho menor que ' + Math.round(PDF_COMP_GANHO * 100) + '%' : 'não abriu a imagem') + ')'); return null; }
+  var pct = Math.round((1 - depois / antes) * 100);
+  if(simular){ acvLog('≈ ' + rot + ' — ' + fmtTam(antes) + ' → ' + fmtTam(depois) + ' (' + pct + '%)', 'ok'); return { antes: antes, depois: depois }; }
+  var t = await sb.schema('core').rpc('acervo_trocar_foto', { p_id: item.id, p_md5: item.md5, p_foto: nova });
+  if(t.error || t.data !== true){ acvLog('✗ ' + rot + ' — ' + (t.error ? msgBanco(t.error) : 'a foto mudou enquanto isso (nada mudou)'), 'err'); return null; }
+  acvLog('✓ ' + rot + ' — ' + fmtTam(antes) + ' → ' + fmtTam(depois) + ' (' + pct + '%)', 'ok');
+  return { antes: antes, depois: depois };
+}
+
+async function acvRodar(m, simular){
   if(ACV.rodando) return;
-  var fila = simular ? (ACV.candidatos || []).slice(0, 3) : (ACV.candidatos || []).slice();
+  var d = acvMod(m); if(!d) return;
+  var lista = ACV.m[m].cand || [];
+  var fila = simular ? lista.slice(0, 3) : lista.slice();
   if(!fila.length) return alert('Nada na lista — clique em Mapear primeiro.');
-  if(!simular && !confirm('Compactar ' + fila.length + ' arquivo(s)?\n\nCada um: sobe a versão nova, aponta o documento para ela e só então apaga a antiga. '
-      + 'PDF com assinatura digital e PDF com texto de verdade são pulados sozinhos.\n\nDá para parar no meio — o que já foi feito fica feito.')) return;
-  ACV.rodando = true; ACV.parar = false; desenharAcervo();
+  var aviso = d.comp === 'docs'
+    ? 'Cada um: sobe a versão nova, aponta o documento para ela e só então apaga a antiga.'
+    : d.comp === 'pdf' ? 'Cada um é regravado compactado no mesmo lugar (o registro continua apontando para ele).'
+    : 'Cada foto é regravada em ' + FOTO_LADO + ' px, como o Patrimônio faz no cadastro.';
+  if(!simular && !confirm(d.nome + ': compactar ' + fila.length + ' item(ns)?\n\n' + aviso
+      + (d.comp === 'foto' ? '' : '\nPDF com assinatura digital e PDF com texto de verdade são pulados sozinhos.')
+      + '\n\nDá para parar no meio — o que já foi feito fica feito.')) return;
+  ACV.rodando = m; ACV.parar = false; desenharAcervo();
   var feitos = 0, pulados = 0, antes = 0, depois = 0;
   try {
     for(var i = 0; i < fila.length; i++){
       if(ACV.parar){ acvLog('⏸ parado a pedido — ' + feitos + ' já compactado(s)'); break; }
-      acvProg((simular ? 'Simulando ' : 'Compactando ') + (i + 1) + '/' + fila.length + ': ' + fila[i].quem);
-      var r = await acvUm(fila[i], simular);
+      acvProg((simular ? 'Simulando ' : 'Compactando ') + (i + 1) + '/' + fila.length);
+      var r = d.comp === 'docs' ? await acvUm(fila[i], simular)
+            : d.comp === 'pdf'  ? await acvUmArquivo(m, fila[i], simular)
+            : await acvUmaFoto(fila[i], simular);
       if(r){ feitos++; antes += r.antes; depois += r.depois; } else pulados++;
     }
   } finally {
-    ACV.rodando = false; acvProg('');
-    acvLog((simular ? 'Simulação: ' : 'Pronto: ') + feitos + ' compactado(s), ' + pulados + ' mantido(s) · ' + fmtTam(antes) + ' → ' + fmtTam(depois)
+    ACV.rodando = '';
+    acvLog(d.nome + (simular ? ' · simulação: ' : ' · pronto: ') + feitos + ' compactado(s), ' + pulados + ' mantido(s) · ' + fmtTam(antes) + ' → ' + fmtTam(depois)
            + (antes ? ' · economia de ' + fmtTam(antes - depois) : ''), 'ok');
-    if(!simular){ ACV.candidatos = null; ACV.uso = null; medirUso(); }
+    if(!simular){ ACV.m[m].cand = null; ACV.uso = null; medirUso(); }
     if(CFG.aba === 'acervo') desenharAcervo();
   }
 }
-/* ---- órfãos: calculados no banco ---- */
-async function acvOrfaos(){
+/* ---- órfãos: calculados no banco, por módulo ---- */
+async function acvOrfaos(m){
   if(ACV.rodando) return;
-  ACV.rodando = true; ACV.parar = false; desenharAcervo();
+  var d = acvMod(m); if(!d) return;
+  ACV.rodando = m; ACV.parar = false; desenharAcervo();
   try {
-    acvLog('Procurando órfãos…');
-    var r = await sb.schema('core').rpc('acervo_orfaos', { p_horas: ACV_ORFAO_IDADE_H });
+    acvLog(d.nome + ': procurando órfãos…');
+    var r = await sb.schema('core').rpc('acervo_orfaos_mod', { p_modulo: m, p_horas: ACV_ORFAO_IDADE_H });
     if(r.error) throw r.error;
-    ACV.orfaos = r.data || [];
-    acvLog(ACV.orfaos.length + ' órfão(s) · ' + fmtTam(ACV.orfaos.reduce(function(a, c){ return a + Number(c.bytes || 0); }, 0))
+    ACV.m[m].orf = r.data || [];
+    acvLog(d.nome + ': ' + ACV.m[m].orf.length + ' órfão(s) · ' + fmtTam(acvSoma(ACV.m[m].orf))
            + ' — arquivo com menos de ' + ACV_ORFAO_IDADE_H + ' h é poupado (pode ser envio em andamento)', 'ok');
-  } catch(e){ ACV.orfaos = null; acvLog('✗ ' + msgBanco(e), 'err'); }
-  finally { ACV.rodando = false; if(CFG.aba === 'acervo') desenharAcervo(); }
+  } catch(e){ ACV.m[m].orf = null; acvLog('✗ ' + d.nome + ': ' + msgBanco(e), 'err'); }
+  finally { ACV.rodando = ''; if(CFG.aba === 'acervo') desenharAcervo(); }
 }
-async function acvApagarOrfaos(){
-  var lista = ACV.orfaos || [];
+async function acvApagarOrfaos(m){
+  var d = acvMod(m); if(!d || ACV.rodando) return;
+  var lista = ACV.m[m].orf || [];
   if(!lista.length) return alert('Procure os órfãos primeiro.');
-  var tot = lista.reduce(function(a, c){ return a + Number(c.bytes || 0); }, 0);
-  if(!confirm('Apagar ' + lista.length + ' arquivo(s) órfão(s), liberando ' + fmtTam(tot) + '?\n\n'
-      + 'São arquivos que NENHUM documento aponta — nem do SESMT, nem da folha, nem do FOPAG, nem de obra, nem das listas de anexos.\n\n'
+  if(!confirm(d.nome + ': apagar ' + lista.length + ' arquivo(s) órfão(s), liberando ' + fmtTam(acvSoma(lista)) + '?\n\n'
+      + 'São arquivos que ' + d.orfDica + '.\n\n'
       + 'Cada lote é conferido de novo no banco antes de apagar. Isto não tem volta.')) return;
-  ACV.rodando = true; ACV.parar = false; desenharAcervo();
+  ACV.rodando = m; ACV.parar = false; desenharAcervo();
   var apagados = 0, poupados = 0;
   try {
     for(var i = 0; i < lista.length; i += 50){
       if(ACV.parar){ acvLog('⏸ parado a pedido'); break; }
       var lote = lista.slice(i, i + 50).map(function(o){ return o.caminho; });
       acvProg('Lote ' + (i / 50 + 1) + ' de ' + Math.ceil(lista.length / 50));
-      var conf = await sb.schema('core').rpc('acervo_orfaos', { p_horas: ACV_ORFAO_IDADE_H, p_caminhos: lote });
+      /* reconfere e libera por 10 min: só o que continua órfão volta */
+      var conf = await sb.schema('core').rpc('acervo_liberar', { p_modulo: m, p_caminhos: lote });
       if(conf.error){ acvLog('✗ não consegui reconferir o lote ' + (i / 50 + 1) + ': ' + msgBanco(conf.error) + ' — parei', 'err'); break; }
-      var ok = (conf.data || []).map(function(o){ return o.caminho; });
-      poupados += lote.length - ok.length;
-      if(!ok.length) continue;
-      var rm = await sb.storage.from('documentos').remove(ok);
-      if(rm.error) acvLog('✗ lote ' + (i / 50 + 1) + ': ' + rm.error.message, 'err');
-      else { apagados += (rm.data || ok).length; acvLog('✓ ' + apagados + '/' + lista.length + ' apagado(s)'); }
+      var porBucket = {};
+      (conf.data || []).forEach(function(o){ (porBucket[o.bucket] = porBucket[o.bucket] || []).push(o.caminho); });
+      var ok = (conf.data || []).length;
+      poupados += lote.length - ok;
+      for(var bk in porBucket){
+        var rm = await sb.storage.from(bk).remove(porBucket[bk]);
+        if(rm.error) acvLog('✗ lote ' + (i / 50 + 1) + ': ' + rm.error.message, 'err');
+        else {
+          var saiu = (rm.data || porBucket[bk]).length; apagados += saiu;
+          if(saiu < porBucket[bk].length) acvLog('✗ ' + (porBucket[bk].length - saiu) + ' arquivo(s) não saíram (o Storage recusou)', 'err');
+          acvLog('✓ ' + apagados + '/' + lista.length + ' apagado(s)');
+        }
+      }
     }
   } finally {
-    ACV.rodando = false; acvProg('');
+    ACV.rodando = '';
     if(poupados) acvLog(poupados + ' arquivo(s) deixaram de ser órfãos entre a busca e a limpeza — ficaram');
-    acvLog('Limpeza: ' + apagados + ' apagado(s)', 'ok');
-    ACV.orfaos = null; ACV.uso = null; medirUso();
+    acvLog(d.nome + ' · limpeza: ' + apagados + ' apagado(s)', 'ok');
+    ACV.m[m].orf = null; ACV.uso = null; medirUso();
     if(CFG.aba === 'acervo') desenharAcervo();
   }
 }
