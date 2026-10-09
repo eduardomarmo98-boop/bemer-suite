@@ -827,7 +827,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -848,7 +848,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -865,7 +865,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -985,7 +985,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.10.5';
+var APP_VERSAO = '2026.10.10.6';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -4716,6 +4716,12 @@ var Insumos = {
       InsAta.excel(InsAta.pautaAtual()).then(function(){ b.disabled = false; }, function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
     });
     Insumos.recarregar();
+    /* no ar: a permissão pode ter mudado com a página aberta (Cadastros) —
+       confere de novo e, se mudou, reabre com o rodapé certo */
+    if(INSUMOS) InsDados.info().then(function(x){
+      var era = podeInsumos(); INSUMOS = x;
+      if(podeInsumos() !== era && Insumos.m === m && m.isConnected) Insumos.abrir(alvo);
+    }, nadaInsumos);
     return m;
   },
   escolherObra: function(){
