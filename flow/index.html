@@ -128,7 +128,8 @@
   .parte-de b{font-weight:600}
   .rot-msg{display:block;font-size:14px;font-weight:600;color:var(--tinta);margin:12px 0 6px}
   .rot-msg span{font-weight:500;color:var(--tinta2)}
-  .n-cats{display:flex;flex-wrap:wrap;gap:8px}
+  .n-cats select{width:100%;min-height:48px;font-size:15px}
+  .n-cats select.vazio{color:var(--tinta2)}
   .n-sig{display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:14px;color:var(--tinta)}
   .n-sig input{margin-top:4px;accent-color:var(--azul);width:18px;height:18px}
   .n-sig small{display:block;font-size:13px;color:var(--tinta2)}
@@ -148,10 +149,6 @@
   .ins-filtros select{width:auto;flex:1 1 180px;min-height:44px}
   .ins-card h3{font-size:15px}
   .ins-dito{font-size:13.5px;color:var(--ok);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .ins-faixa{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;background:var(--laranja-bg);color:var(--laranja-txt);
-             border-radius:14px;padding:10px 14px;margin-bottom:12px;min-height:52px;box-shadow:inset 0 0 0 1.5px #F5C98A}
-  .ins-faixa b{font-size:15px}
-  .ins-faixa span{font-size:13.5px}
   .ins-tempo{padding:4px 16px 18px;display:flex;flex-direction:column;gap:8px}
   .ins-ev{background:#fff;border-radius:12px;padding:9px 12px;box-shadow:var(--sombra);font-size:14px;line-height:1.45}
   .ins-ev.fora{background:var(--neutro-bg)}
@@ -163,18 +160,36 @@
   .ins-ed-pauta{background:var(--fundo);border-radius:12px;padding:9px 12px;margin-bottom:8px}
   .ins-ed-pauta b{display:block;font-size:15px;line-height:1.35}
   .ins-ed-pauta small{display:block;font-size:13px;color:var(--tinta2);margin-top:2px}
-  .ins-reun-cab{background:#fff;border-radius:14px;padding:10px 14px;box-shadow:var(--sombra);font-size:14px;color:var(--tinta2)}
-  .ins-prog{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:14px;color:var(--tinta)}
-  .ins-prog .trilho{flex:1;height:8px;border-radius:4px;background:var(--neutro-bg);overflow:hidden}
-  .ins-prog .trilho i{display:block;height:100%;background:var(--ok);border-radius:4px}
-  .ins-ata-cab{display:flex;gap:14px;align-items:center;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:var(--sombra);margin-bottom:12px}
-  .ins-ata-cab img{width:96px;height:auto;flex:0 0 auto}
-  .ins-ata-cab b{display:block;font-size:15px;color:var(--azul)}
-  .ins-ata-cab span{display:block;font-size:13.5px;color:var(--tinta2);line-height:1.45}
   .ins-modal .modal-rodape .bt-sec{flex:0 1 auto}
+  /* a planilha (10/10/2026): tabela no computador, cartões no celular */
+  .fundo-modal .modal.ins-planilha{max-width:1440px}
+  .ins-so-ver{flex:1;font-size:14px;color:var(--tinta2)}
+  .ins-tab{display:none}
+  @media (min-width:1024px){
+    .fundo-modal .modal.ins-planilha{width:min(96vw,1440px)}
+    .ins-tab{display:block;overflow:auto;max-height:calc(100dvh - 330px);background:#fff;border-radius:12px;box-shadow:var(--sombra)}
+    .ins-cartoes{display:none}
+    .ins-tab table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;line-height:1.35}
+    .ins-tab th{position:sticky;top:0;z-index:1;background:var(--azul);color:#fff;font-weight:600;font-size:12px;text-align:center;
+                padding:8px 6px;border-right:1px solid rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.02em}
+    .ins-tab td{padding:7px 8px;border-bottom:1px solid var(--linha);border-right:1px solid var(--linha);vertical-align:middle;text-align:center;color:var(--tinta)}
+    .ins-tab td.e{text-align:left}
+    .ins-tab td.e b{font-weight:600}
+    .ins-tab td.n{font-weight:600;color:var(--tinta2);white-space:nowrap}
+    .ins-tab td.dt{white-space:nowrap;font-variant-numeric:tabular-nums}
+    .ins-tab td.dt.atr{color:var(--erro);font-weight:700}
+    .ins-tab td.and{min-width:240px;max-width:420px;color:var(--tinta2)}
+    .ins-tab td.and div{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .ins-tab td.st{font-weight:700;width:40px}
+    .ins-tab td.st-P{background:#FFE9A8;color:#6B4A00}
+    .ins-tab td.st-R{background:#CFE8BE;color:#1F5A12}
+    .ins-tab td.st-N{background:var(--erro);color:#fff}
+    .ins-tab tbody tr{cursor:pointer}
+    .ins-tab tbody tr:hover td:not(.st){background:var(--azul-bg)}
+    .ins-tab tbody tr:focus-visible{outline:2px solid var(--azul);outline-offset:-2px}
+  }
   @media (max-width:520px){
     .ins-ind{grid-template-columns:1fr 1fr}
-    .ins-ata-cab img{width:72px}
   }
   .bloco-obra{align-self:flex-start;border:none;background:#EEF2F9;color:var(--azul);border-radius:18px;padding:0 14px;min-height:36px;font:inherit;font-size:13px;cursor:pointer}
   .modulo-nome{font-size:18px;font-weight:700;color:var(--azul)}
@@ -246,6 +261,7 @@
   .card .meta{font-size:13.5px;color:var(--tinta2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .card .meta em{font-style:normal;font-weight:600;color:var(--laranja-txt)}
   .card .meta em.v{color:var(--ok)}
+  .card .meta em.ag{color:var(--tinta2)}
   .card .it-dir{display:flex;align-items:center;gap:7px;flex:0 0 auto}
   .card .data{font-size:14px;font-weight:600;color:var(--tinta2);white-space:nowrap}
   .card .data.atr{color:var(--erro)}
@@ -811,7 +827,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -832,7 +848,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -849,7 +865,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -969,7 +985,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.10.1';
+var APP_VERSAO = '2026.10.10.3';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1484,6 +1500,24 @@ var Regras = {
     return p;
   },
 
+  /* 10/10/2026: Aguardando terceiros pede uma linha (o quê / quem). Vai
+     para a conversa (mesmo texto de flow.marcar_aguardando, 0058). */
+  validarAguardando: function(p, texto, ator){
+    if(!mesmoId(ator, p.criado_por) && !mesmoId(ator, p.responsavel_id))
+      throw new Error('Só quem abriu ou quem recebeu marca aguardando terceiros.');
+    if(ABERTOS.indexOf(p.status)<0) throw new Error('Esta pendência já está encerrada.');
+    if(p.status === 'aguardando') throw new Error('Já está aguardando terceiros.');
+    var t = String(texto||'').replace(/\s+/g,' ').trim();
+    if(t.length < 3) throw new Error('Escreva o que (ou quem) está sendo aguardado.');
+    return t.slice(0, 200);
+  },
+  marcarAguardando: function(p, texto, ator){
+    var t = RegrasBase.validarAguardando(p, texto, ator);
+    RegrasBase.alterarStatus(p, 'aguardando', ator);
+    RegrasBase._nota(p.id, ator, pessoa(ator).nome+' marcou aguardando terceiros: '+t+'.');
+    return p;
+  },
+
   /* Redirecionar: quem abriu OU quem recebeu, e só antes do prazo assumido
      (mesma regra de flow.redirecionar, 0044). */
   validarRedir: function(p, para, ator){
@@ -1493,6 +1527,10 @@ var Regras = {
     if(p.prazo_original)
       throw new Error('Depois do prazo assumido a pendência não muda de responsável. Adie ou peça para quem abriu cancelar.');
     if(!para || mesmoId(para, p.responsavel_id)) throw new Error('Escolha outra pessoa.');
+    /* 10/10/2026: devolver para quem abriu não é redirecionar — é conversa */
+    if(mesmoId(para, p.criado_por))
+      throw new Error((mesmoId(para, ator) ? 'Você abriu' : primeiro(pessoa(para).nome)+' abriu')+
+        ' esta pendência. Não dá para redirecionar para quem abriu: resolva pela conversa desta pendência.');
   },
   redirecionar: function(p, para, motivo, ator){
     RegrasBase.validarRedir(p, para, ator);
@@ -1945,8 +1983,8 @@ function desenhar(){
 var BLOCO_ABERTO = false;
 function blocosVisoes(R, dentro){
   var h = '<div class="blocos"><div class="blocos-topo"><button type="button" class="bloco-obra" id="bloco-obra">Obra: <b>'+esc(OBRA_F ? nomeObraFiltro(true) : 'Todas as obras')+'</b> ▾</button>'+
-    /* 10/10/2026: Insumos (pauta e ata por obra) — discreto, só para quem tem a ação e com o módulo liberado */
-    (typeof podeInsumos === 'function' && podeInsumos() ? '<button type="button" class="bloco-obra bloco-ins" id="bloco-insumos">Insumos ›</button>' : '')+'</div>';
+    /* 10/10/2026: Insumos (a planilha Pauta e Ata da obra) — todo mundo consulta; quem tem a ação edita. Só com a chave ligada */
+    (typeof verInsumos === 'function' && verInsumos() ? '<button type="button" class="bloco-obra bloco-ins" id="bloco-insumos">Insumos ›</button>' : '')+'</div>';
   VISOES.forEach(function(g){ g[1].forEach(function(v){
     var k = v[0], n = R[k] ? R[k].length : 0, on = k === ABA && BLOCO_ABERTO;
     h += '<div class="bloco'+(on?' on':'')+'"><button type="button" class="bloco-cab" data-bloco="'+k+'"><span>'+esc(v[1])+'</span><b class="'+(k==='atrasadas'&&n?'r':'')+'">'+n+'</b><i>'+(on?'▾':'▸')+'</i></button>'+
@@ -1987,12 +2025,12 @@ function telaVazia(busca){
 }
 
 /* =====================================================================
-   GRUPOS — Atrasadas, Precisa de você, Hoje, Próximas e, recolhido no
-   fim, Aguardando terceiros. Grupo vazio não aparece.
+   GRUPOS — Atrasadas, Precisa de você, Hoje, Próximas. Grupo vazio não
+   aparece. Aguardando terceiros entra pelo prazo, com a marca no cartão.
    ===================================================================== */
 function grupoDe(p){
   if(!aberta(p)) return 'encerradas';
-  if(p.status==='aguardando') return 'aguardando';
+  /* 10/10/2026: aguardando terceiros fica no grupo do prazo (sem aba à parte); o cartão diz "aguardando terceiros" */
   if(precisaDeMim(p)) return 'precisa';
   if(situacao(p)==='atrasada') return 'atrasadas';
   if(p.prazo && new Date(p.prazo) <= fimDeHoje()) return 'hoje';
@@ -2025,7 +2063,6 @@ function agrupar(lista, esperando){
     if(it && it.length) h += secao(g[0], g[1], it.sort(ordenar));
   });
   if(por.encerradas) h += secao('encerradas', 'Resolvidas e canceladas', por.encerradas.sort(maisRecente));
-  h += recolhido('aguardando', 'Aguardando terceiros', por.aguardando);
   if(esperando) h += recolhido('esperando', 'Esperando confirmação', esperando);
   return h;
 }
@@ -2088,6 +2125,7 @@ function linha2(p){
   else if(ampla){ if(acao!=='prazo') partes.push(com); partes.push(de); }
   else if(souResp(p)) partes.push(de);
   else partes.push(com);
+  if(p.status==='aguardando') partes.push('<em class="ag">aguardando terceiros</em>');
   if(esperandoConfirmar(p)) partes.push('aguardando '+esc(primeiro(pessoa(p.criado_por).nome)));
   /* 09/10: principal com sub-itens abertos — "aguardando 2 de 3" */
   var subs = aberta(p) ? subItens(p) : [], ab = subs.filter(function(x){ return aberta(x); }).length;
@@ -2706,7 +2744,8 @@ var Nova = {
         /* 10/10/2026 (pedido do dono): categoria OBRIGATÓRIA, à vista como campo; e a
            marca "Sigilosa" sempre visível logo abaixo (TI marca e trava) */
         '<div class="campo-n"><div class="rot"><i>4</i>Categoria</div>'+
-          '<div class="n-cats" id="n-cats"></div><input type="hidden" id="n-categoria">'+
+          /* 10/10/2026: lista suspensa (pedido do dono), não fichas */
+          '<div class="n-cats" id="n-cats"><select id="n-categoria" aria-label="Categoria"></select></div>'+
           '<label class="n-sig"><input type="checkbox" id="n-sigilosa"><span><b>Sigilosa</b>'+
             '<small id="n-sig-dica">Só quem abriu, quem recebe, quem acompanha e o administrador veem.</small></span></label></div>'+
         '<div class="opc"><div class="t">Opcional</div><div class="opc-chips">'+
@@ -2824,24 +2863,24 @@ var Nova = {
     var env = Escolha.pessoas(q('#n-envolvidos'), { multi:true, dica:'Buscar e incluir pessoa', excluir:[EU.id], aoMudar: rotular,
       valores: salvo && salvo.env ? salvo.env.filter(function(id){ return podeReceber(pessoa(id)); }) : [] });
     ligarAssunto(m, rotular);
-    /* categoria: um toque escolhe, outro tira. Exige sigilo (TI): marca e trava. */
+    /* categoria: lista suspensa. Exige sigilo (TI): marca e trava. */
+    var selCat = q('#n-categoria');
+    selCat.innerHTML = '<option value="">'+((DB.categorias||[]).length ? 'Escolha a categoria…' : 'Nenhuma categoria cadastrada')+'</option>'+
+      (DB.categorias||[]).map(function(c){ return '<option value="'+esc(c.nome)+'">'+esc(c.nome)+'</option>'; }).join('');
+    if(salvo && salvo.categoria && categoria(salvo.categoria)) selCat.value = categoria(salvo.categoria).nome;
+    var catEra = selCat.value;
+    selCat.addEventListener('change', function(){
+      if(categoriaSigilosa(catEra) && !categoriaSigilosa(selCat.value)) q('#n-sigilosa').checked = false;
+      catEra = selCat.value;
+      pintarCategorias(); atualizar();
+    });
     function pintarCategorias(){
-      var atual = q('#n-categoria').value, trava = categoriaSigilosa(atual);
-      q('#n-cats').innerHTML = (DB.categorias||[]).map(function(c){
-        var on = normalizar(c.nome) === normalizar(atual);
-        return '<button type="button" class="ficha'+(on?' on':'')+'" data-cat="'+esc(c.nome)+'" aria-pressed="'+on+'">'+esc(c.nome)+'</button>';
-      }).join('') || '<div class="dica" style="margin:0">Nenhuma categoria cadastrada.</div>';
+      var atual = selCat.value, trava = categoriaSigilosa(atual);
+      selCat.classList.toggle('vazio', !atual);
       if(trava) q('#n-sigilosa').checked = true;
       q('#n-sigilosa').disabled = trava;
       q('#n-sig-dica').textContent = (trava ? 'Categoria '+atual+' é sempre sigilosa: s' : 'S')+
         'ó quem abriu, quem recebe, quem acompanha e o administrador veem.';
-      var bs = q('#n-cats').querySelectorAll('[data-cat]');
-      for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){
-        var era = categoriaSigilosa(q('#n-categoria').value);
-        q('#n-categoria').value = normalizar(q('#n-categoria').value) === normalizar(this.dataset.cat) ? '' : this.dataset.cat;
-        if(era && !categoriaSigilosa(q('#n-categoria').value)) q('#n-sigilosa').checked = false;
-        pintarCategorias(); atualizar();
-      });
     }
     q('#n-sigilosa').addEventListener('change', rotular);
     pintarCategorias();
@@ -3000,6 +3039,10 @@ var Dados = {
   },
   redirecionar: function(p, para, motivo){
     try { Regras.redirecionar(p, para, motivo, EU.id); salvar(); return Promise.resolve(); }
+    catch(e){ return Promise.reject(e); }
+  },
+  marcarAguardando: function(p, texto){
+    try { RegrasBase.marcarAguardando(p, texto, EU.id); salvar(); return Promise.resolve(); }
     catch(e){ return Promise.reject(e); }
   },
   /* já aplicados na tela pelo "Desfazer": aqui só se grava */
@@ -3319,8 +3362,16 @@ var Detalhe = {
     var arr = [];
     if(completa) arr.push({ t:p.criado_em, tipo:'abertura' });
     var temRepro = (p.reprogramacoes||[]).length > 0;
-    DB.notas.filter(function(n){ return mesmoId(n.pendencia_id, p.id); }).forEach(function(n){
+    var notasP = DB.notas.filter(function(n){ return mesmoId(n.pendencia_id, p.id); });
+    /* 0058: "marcou aguardando terceiros: …" já diz tudo; a nota de status do gatilho sai */
+    var comMotivo = notasP.filter(function(n){ return n.sistema && /marcou aguardando terceiros: /.test(n.texto||''); });
+    function gemea(n){
+      return /para "Aguardando terceiros"/.test(n.texto||'') && comMotivo.some(function(x){
+        return mesmoId(x.autor_id, n.autor_id) && Math.abs(new Date(x.criado_em) - new Date(n.criado_em)) < 120000; });
+    }
+    notasP.forEach(function(n){
       if(n.sistema){
+        if(gemea(n)) return;
         var k = Detalhe.classeSistema(n.texto);
         if(k==='dup' || (k==='repro' && temRepro) || (k==='menor' && !completa)) return;
         arr.push({ t:n.criado_em, tipo:'sist', n:n });
@@ -3344,6 +3395,8 @@ var Detalhe = {
       return { h:'<b>'+quem+' assumiu o prazo</b> · '+DIA3[d.getDay()]+' '+m[1]+'/'+m[2] };
     }
     if((m = /reprogramou o prazo para (\d\d\/\d\d)/.exec(t))) return { h:'<b>'+quem+' adiou</b> para '+m[1] };
+    if((m = /marcou aguardando terceiros: (.+?)\.$/.exec(t)))
+      return { h:'<b>'+quem+' marcou: aguardando terceiros</b><span class="motivo">'+esc(m[1])+'</span>' };
     if((m = /redirecionou para (.+?)(?:: (.+?))?\.$/.exec(t)))
       return { h:'<b>'+quem+' redirecionou para '+esc(primeiro(m[1]))+'</b>'+(m[2] ? '<span class="motivo">'+esc(m[2])+'</span>' : '') };
     var s = /alterou o status de "(.+?)" para "(.+?)"/.exec(t);
@@ -3486,7 +3539,8 @@ var Detalhe = {
       Detalhe.menuAbrir(m, false);
       try{ Regras.alterarStatus(p, novo, EU.id); Detalhe.feito(p, msg); } catch(e){ aviso(e.message,'erro'); }
     }
-    if(q('#d-st-aguardando')) q('#d-st-aguardando').addEventListener('click', function(){ status('aguardando','Marcada: aguardando terceiros.'); });
+    /* 10/10/2026: pede uma linha — aguardando o quê / quem */
+    if(q('#d-st-aguardando')) q('#d-st-aguardando').addEventListener('click', function(){ Detalhe.menuAbrir(m, false); Acoes.aguardando(p); });
     if(q('#d-st-andamento')) q('#d-st-andamento').addEventListener('click', function(){ status('em_andamento','De volta para em andamento.'); });
     if(q('#d-cancelar')) q('#d-cancelar').addEventListener('click', function(){
       Detalhe.menuAbrir(m, false);
@@ -3732,6 +3786,28 @@ var Acoes = {
     return f;
   },
 
+  /* Aguardando terceiros: uma linha obrigatória (o quê / quem). Vai para a conversa. */
+  aguardando: function(p){
+    var f = folha('Aguardando terceiros',
+      '<label class="primeiro" for="d-ag-txt">Aguardando o quê / quem?</label>'+
+      '<input type="text" id="d-ag-txt" maxlength="200" placeholder="Ex.: proposta da empreiteira X; liberação do cliente">'+
+      '<div class="dica" style="margin:8px 0 0">Fica registrado na conversa.</div>',
+      '<button class="bt-pri" id="d-ag-ok">Marcar</button>');
+    var campo = f.querySelector('#d-ag-txt');
+    setTimeout(function(){ try { campo.focus(); } catch(e){} }, 120);
+    function ok(){
+      var t;
+      try { t = RegrasBase.validarAguardando(p, campo.value, EU.id); } catch(e){ aviso(e.message,'erro'); return; }
+      var bt = f.querySelector('#d-ag-ok'); bt.disabled = true;
+      Dados.marcarAguardando(p, t).then(function(){
+        f.remove(); Detalhe.feito(p, 'Marcada: aguardando terceiros.');
+      }, function(e){ bt.disabled = false; aviso(e.message||String(e),'erro'); });
+    }
+    f.querySelector('#d-ag-ok').addEventListener('click', ok);
+    campo.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); ok(); } });
+    return f;
+  },
+
   /* Redirecionar: antes do prazo assumido. Tem Desfazer. */
   redir: function(p){
     var f = folha('Passar para outra pessoa',
@@ -3740,7 +3816,8 @@ var Acoes = {
       '<label for="d-redir-motivo">Por quê <span class="opcional">(opcional)</span></label>'+
       '<input type="text" id="d-redir-motivo" maxlength="300" placeholder="Ex.: isso é com o almoxarifado">',
       '<button class="bt-pri" id="d-redir-ok">Redirecionar</button>');
-    var escolha = Escolha.pessoas(f.querySelector('#d-redir-escolha'), { dica:'Digite o nome', excluir:[p.responsavel_id] });
+    var escolha = Escolha.pessoas(f.querySelector('#d-redir-escolha'), { dica:'Digite o nome', excluir:[p.responsavel_id],
+      aoMudar: function(v){ if(v[0] && mesmoId(v[0], p.criado_por)) try { RegrasBase.validarRedir(p, v[0], EU.id); } catch(e){ aviso(e.message,'erro'); } } });
     f._escolha = escolha;
     setTimeout(function(){ try { escolha.campo.focus(); } catch(e){} }, 120);
     f.querySelector('#d-redir-ok').addEventListener('click', function(){
@@ -4128,19 +4205,22 @@ function atualizarLista(){
 })();
 
 /* =====================================================================
-   INSUMOS — pauta e ata das reuniões de insumos, por obra (10/10/2026)
-   Base: as planilhas "Pauta e Ata - <Obra> <data>.xlsx" (uma aba por
-   reunião, copiada da anterior). Aqui cada item tem a sua linha do tempo
-   e a ata do dia é uma FOTOGRAFIA dos itens, gerada ao fechar a reunião.
-   Acesso discreto (botão "Insumos" ao lado do filtro de obra e no Painel),
-   só para quem tem a ação flow/insumos e com a chave insumos_liberado.
-   Banco: 0057 (RLS + funções que gravam o histórico). Esta parte é a
-   tela e a versão local; o _insumos_prod.js troca o InsDados no ar.
+   INSUMOS — a planilha "Pauta e Ata" de cada obra (controle de insumos
+   e contratações), dentro do Flow (10/10/2026, simplificada no mesmo dia
+   a pedido do dono: sem tela de reunião nem ata — só a planilha).
+   Suprimentos e engenharia atualizam toda semana; cada mudança fica no
+   histórico do item (com a data). Baixa em Excel no formato de hoje.
+   Quem vê: todo mundo do Flow que enxerga a obra. Quem edita: a ação
+   flow/insumos. Tudo só com a chave insumos_liberado.
+   Pendência com a categoria "Insumos" é pendência comum: fica nas abas
+   de sempre (Comigo, Abertas por mim…), não vem para cá.
+   Banco: 0057 + 0058. Esta parte é a tela e a versão local; o
+   _insumos_prod.js troca o InsDados no ar.
    ===================================================================== */
 
 var INS_ST = { P:'Pendente', N:'Não resolvido', R:'Resolvido' };
 var INS_ABERTOS = ['P', 'N'];
-/* no ar: { liberado, pode } vindo de flow.insumos_info(); nulo = versão local */
+/* no ar: { liberado, pode (edita), ve (consulta) } de flow.insumos_info(); nulo = versão local */
 var INSUMOS = null;
 var INS_EXCELJS = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
 var INS_LOGO = 'data:image/png;base64,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';
@@ -4149,9 +4229,15 @@ function insumosLiberado(){
   if(INSUMOS) return !!INSUMOS.liberado;
   return !(DB && DB.avisos && DB.avisos.insumos_liberado === false);
 }
+/* edita a planilha */
 function podeInsumos(){
   if(!EU || !insumosLiberado()) return false;
   return INSUMOS ? !!INSUMOS.pode : podeNoFlow('insumos');
+}
+/* consulta a planilha (o botão Insumos aparece) */
+function verInsumos(){
+  if(!EU || !insumosLiberado()) return false;
+  return INSUMOS ? !!(INSUMOS.ve || INSUMOS.pode) : true;
 }
 /* obras em que a pessoa pode abrir insumos: ativas e que ela enxerga */
 function insObraVisivel(id){
@@ -4467,7 +4553,7 @@ function insExcelJS(){
 
 /* =====================================================================
    DADOS — versão local (no navegador). No ar o _insumos_prod.js troca
-   tudo por chamadas às funções da 0057; as regras são as mesmas.
+   tudo por chamadas às funções da 0057/0058; as regras são as mesmas.
    ===================================================================== */
 function insBase(){
   if(!DB.insumos) DB.insumos = { itens:[], hist:[], reunioes:[], seq:{ item:1, hist:1, reuniao:1 } };
@@ -4475,29 +4561,24 @@ function insBase(){
 }
 function insCopia(x){ return JSON.parse(JSON.stringify(x)); }
 var InsLocal = {
-  checar: function(obraId){
-    if(!podeInsumos()) throw new Error('Sem acesso aos insumos.');
+  /* ler: quem vê a obra no Flow. Gravar: só quem tem a ação "insumos". */
+  checar: function(obraId, gravar){
+    if(!(gravar ? podeInsumos() : verInsumos())) throw new Error(gravar ? 'Seu perfil só consulta os insumos.' : 'Sem acesso aos insumos.');
     if(!obraId || !insObraVisivel(obraId)) throw new Error('Sem acesso aos insumos desta obra.');
   },
-  hist: function(it, reuniaoId, dataR, extra){
+  hist: function(it, extra){
     var I = insBase();
-    var h = Object.assign({ id:I.seq.hist++, item_id:it.id, obra_id:it.obra_id, reuniao_id:reuniaoId || null,
-      data: dataR || insHoje(), autor_id:EU.id, autor_nome:pessoa(EU.id).nome, tipo:'atualizacao', texto:'',
+    var h = Object.assign({ id:I.seq.hist++, item_id:it.id, obra_id:it.obra_id, reuniao_id:null,
+      data:insHoje(), autor_id:EU.id, autor_nome:pessoa(EU.id).nome, tipo:'atualizacao', texto:'',
       status_antes:null, status_depois:null, data_antes:null, data_depois:null, mudou:{}, criado_em:new Date().toISOString() }, extra);
     I.hist.push(h); return h;
   },
-  salvarItem: function(itemId, obraId, dados, texto, reuniaoId){
-    var I = insBase(), d = dados || {}, txt = insTxt(texto), r = null, dataR = insHoje();
+  salvarItem: function(itemId, obraId, dados, texto){
+    var I = insBase(), d = dados || {}, txt = insTxt(texto);
     var v = itemId != null ? I.itens.filter(function(x){ return mesmoId(x.id, itemId); })[0] : null;
     if(itemId != null && !v) throw new Error('Item de insumo inexistente.');
     if(v) obraId = v.obra_id;
-    InsLocal.checar(obraId);
-    if(reuniaoId != null){
-      r = I.reunioes.filter(function(x){ return mesmoId(x.id, reuniaoId); })[0];
-      if(!r || !mesmoId(r.obra_id, obraId)) throw new Error('Reunião de outra obra.');
-      if(r.status !== 'aberta') throw new Error('A reunião de '+insBR(r.data)+' já foi fechada: a ata não muda.');
-      dataR = r.data;
-    }
+    InsLocal.checar(obraId, true);
     if('status' in d && INS_ST[d.status] == null) throw new Error('Status inválido: use R, P ou N.');
     if(!v){
       if(!insTxt(d.pauta)) throw new Error('Escreva a pauta do item.');
@@ -4505,10 +4586,10 @@ var InsLocal = {
       var nv = { id:I.seq.item++, obra_id:obraId, numero:insTxt(d.numero), ordem: d.ordem != null ? Number(d.ordem) : maior+1,
         assunto:insTxt(d.assunto), pauta:insTxt(d.pauta), providencia:insTxt(d.providencia), responsavel:insTxt(d.responsavel),
         data_limite:d.data_limite||null, data_limite_original:d.data_limite||null, data_instalacao:d.data_instalacao||null,
-        status:d.status||'P', pendencia_id:null, origem: reuniaoId ? 'reuniao' : 'manual', criado_por:EU.id,
+        status:d.status||'P', pendencia_id:null, origem:'manual', criado_por:EU.id,
         criado_em:new Date().toISOString(), atualizado_em:new Date().toISOString() };
       I.itens.push(nv);
-      InsLocal.hist(nv, reuniaoId, dataR, { tipo:'criacao', texto:txt, status_depois:nv.status, data_depois:nv.data_limite });
+      InsLocal.hist(nv, { tipo:'criacao', texto:txt, status_depois:nv.status, data_depois:nv.data_limite });
       salvar(); return insCopia(nv);
     }
     var antes = insCopia(v), mud = {};
@@ -4523,83 +4604,25 @@ var InsLocal = {
       if((antes[k]||null) !== (v[k]||null)) mud[k] = [antes[k]||null, v[k]||null]; });
     var mudouData = (antes.data_limite||null) !== (v.data_limite||null);
     if(!txt && !Object.keys(mud).length && antes.status === v.status && !mudouData && antes.ordem === v.ordem){
-      Object.assign(v, antes); throw new Error('Nada mudou: escreva a atualização ou altere um campo.');
+      Object.assign(v, antes); throw new Error('Nada mudou: escreva o andamento ou altere um campo.');
     }
     v.atualizado_em = new Date().toISOString(); v.atualizado_por = EU.id;
     if(txt || Object.keys(mud).length || antes.status !== v.status || mudouData)
-      InsLocal.hist(v, reuniaoId, dataR, { tipo: (!txt && antes.status === v.status && !mudouData && !reuniaoId) ? 'edicao' : 'atualizacao',
+      InsLocal.hist(v, { tipo: (!txt && antes.status === v.status && !mudouData) ? 'edicao' : 'atualizacao',
         texto:txt, status_antes:antes.status, status_depois:v.status, data_antes:antes.data_limite||null, data_depois:v.data_limite||null, mudou:mud });
     salvar(); return insCopia(v);
-  },
-  foto: function(obraId, reuniaoId){
-    var I = insBase();
-    return I.itens.filter(function(x){ return mesmoId(x.obra_id, obraId); })
-      .sort(function(a,b){ return (a.ordem-b.ordem) || (a.id-b.id); })
-      .map(function(i){
-        var hs = I.hist.filter(function(h){ return mesmoId(h.item_id, i.id); });
-        return { id:i.id, numero:i.numero, assunto:i.assunto, pauta:i.pauta, providencia:i.providencia, responsavel:i.responsavel,
-          data_limite:i.data_limite, data_limite_original:i.data_limite_original, data_instalacao:i.data_instalacao, status:i.status,
-          historico:insHistTexto(hs), na_reuniao: hs.some(function(h){ return mesmoId(h.reuniao_id, reuniaoId); }) };
-      });
   }
 };
 var InsDados = {
-  info: function(){ return Promise.resolve({ liberado:insumosLiberado(), pode:podeNoFlow('insumos') }); },
+  info: function(){ return Promise.resolve({ liberado:insumosLiberado(), pode:podeNoFlow('insumos'), ve:true }); },
   carregar: function(obraId){
-    try { InsLocal.checar(obraId); } catch(e){ return Promise.reject(e); }
+    try { InsLocal.checar(obraId, false); } catch(e){ return Promise.reject(e); }
     var I = insBase(), daObra = function(x){ return mesmoId(x.obra_id, obraId); };
     return Promise.resolve({ itens:insCopia(I.itens.filter(daObra)), hist:insCopia(I.hist.filter(daObra)),
       reunioes:insCopia(I.reunioes.filter(daObra)) });
   },
-  salvarItem: function(itemId, obraId, dados, texto, reuniaoId){
-    try { return Promise.resolve(InsLocal.salvarItem(itemId, obraId, dados, texto, reuniaoId)); } catch(e){ return Promise.reject(e); }
-  },
-  abrirReuniao: function(obraId, cab){
-    try {
-      InsLocal.checar(obraId);
-      var I = insBase();
-      if(!cab.data) throw new Error('Informe a data da reunião.');
-      var aberta = I.reunioes.filter(function(x){ return mesmoId(x.obra_id, obraId) && x.status === 'aberta'; })[0];
-      if(aberta) throw new Error('Já existe a reunião de '+insBR(aberta.data)+' aberta nesta obra: continue nela ou feche antes.');
-      var num = I.reunioes.filter(function(x){ return mesmoId(x.obra_id, obraId); }).reduce(function(m,x){ return Math.max(m, x.numero||0); }, 0) + 1;
-      var r = { id:I.seq.reuniao++, obra_id:obraId, data:cab.data, numero:num, redator:insTxt(cab.redator),
-        participantes:String(cab.participantes||'').trim(), convidados:String(cab.convidados||'').trim(), status:'aberta', foto:null,
-        origem:'reuniao', aba:null, criado_por:EU.id, criado_em:new Date().toISOString() };
-      I.reunioes.push(r); salvar();
-      return Promise.resolve(insCopia(r));
-    } catch(e){ return Promise.reject(e); }
-  },
-  editarReuniao: function(id, d){
-    try {
-      var I = insBase(), r = I.reunioes.filter(function(x){ return mesmoId(x.id, id); })[0];
-      if(!r) throw new Error('Reunião inexistente.');
-      InsLocal.checar(r.obra_id);
-      if(r.status !== 'aberta') throw new Error('Reunião fechada: a ata não muda.');
-      ['redator','participantes','convidados'].forEach(function(k){ if(k in d) r[k] = String(d[k]||'').trim(); });
-      if(d.data){ r.data = d.data; I.hist.forEach(function(h){ if(mesmoId(h.reuniao_id, id)) h.data = d.data; }); }
-      salvar(); return Promise.resolve(insCopia(r));
-    } catch(e){ return Promise.reject(e); }
-  },
-  fecharReuniao: function(id){
-    try {
-      var I = insBase(), r = I.reunioes.filter(function(x){ return mesmoId(x.id, id); })[0];
-      if(!r) throw new Error('Reunião inexistente.');
-      InsLocal.checar(r.obra_id);
-      if(r.status !== 'aberta') throw new Error('Esta reunião já foi fechada.');
-      r.foto = InsLocal.foto(r.obra_id, r.id); r.status = 'fechada'; r.fechada_em = new Date().toISOString(); r.fechada_por = EU.id;
-      salvar(); return Promise.resolve(insCopia(r));
-    } catch(e){ return Promise.reject(e); }
-  },
-  cancelarReuniao: function(id){
-    try {
-      var I = insBase(), r = I.reunioes.filter(function(x){ return mesmoId(x.id, id); })[0];
-      if(!r) throw new Error('Reunião inexistente.');
-      InsLocal.checar(r.obra_id);
-      if(r.status !== 'aberta') throw new Error('Reunião fechada não se cancela: a ata fica.');
-      if(I.hist.some(function(h){ return mesmoId(h.reuniao_id, id); })) throw new Error('Esta reunião já tem atualizações registradas: feche-a para gerar a ata.');
-      I.reunioes = I.reunioes.filter(function(x){ return x !== r; }); salvar();
-      return Promise.resolve();
-    } catch(e){ return Promise.reject(e); }
+  salvarItem: function(itemId, obraId, dados, texto){
+    try { return Promise.resolve(InsLocal.salvarItem(itemId, obraId, dados, texto)); } catch(e){ return Promise.reject(e); }
   },
   /* cria a pendência pelo caminho normal do Flow e devolve o número */
   criarPendencia: function(dados){
@@ -4609,16 +4632,16 @@ var InsDados = {
     try {
       var I = insBase(), v = I.itens.filter(function(x){ return mesmoId(x.id, itemId); })[0], p = pend(pendId);
       if(!v) throw new Error('Item inexistente.');
-      InsLocal.checar(v.obra_id);
+      InsLocal.checar(v.obra_id, true);
       if(!p) throw new Error('Pendência inexistente.');
       v.pendencia_id = p.id;
-      InsLocal.hist(v, null, null, { tipo:'pendencia', texto:'Virou a pendência #'+p.id+' do Flow, para '+pessoa(p.responsavel_id).nome+'.' });
+      InsLocal.hist(v, { tipo:'pendencia', texto:'Virou a pendência #'+p.id+' do Flow, para '+pessoa(p.responsavel_id).nome+'.' });
       salvar(); return Promise.resolve(insCopia(v));
     } catch(e){ return Promise.reject(e); }
   },
   importar: function(obraId, pacote){
     try {
-      InsLocal.checar(obraId);
+      InsLocal.checar(obraId, true);
       var I = insBase();
       if(I.itens.some(function(x){ return mesmoId(x.obra_id, obraId); }) || I.reunioes.some(function(x){ return mesmoId(x.obra_id, obraId); }))
         throw new Error('Esta obra já tem insumos: a importação é só para obra vazia (senão duplicaria os itens).');
@@ -4665,30 +4688,32 @@ function insCartao(it, extra){
 }
 
 var Insumos = {
-  obra: null, D: null, aba: 'itens', f: { st:'abertos', resp:'', atras:false, q:'' }, m: null,
+  obra: null, D: null, f: { st:'abertos', resp:'', atras:false, q:'' }, m: null,
   abrir: function(obraId){
-    if(!podeInsumos()) return;
+    if(!verInsumos()) return;
     try { Visoes.fechar(); } catch(e){}
     var alvo = obraId || (OBRA_F && insObraVisivel(OBRA_F) ? OBRA_F : '') || Pref.ler('insumos_obra_'+EU.id);
     if(alvo && !insObraVisivel(alvo)) alvo = '';
     if(!alvo) return Insumos.escolherObra();
     Insumos.obra = alvo; Pref.gravar('insumos_obra_'+EU.id, alvo);
     if(Insumos.m && Insumos.m.isConnected) Insumos.m.remove();
-    Insumos.f = { st:'abertos', resp:'', atras:false, q:'' }; Insumos.aba = 'itens';
+    Insumos.f = { st:'abertos', resp:'', atras:false, q:'' };
+    var ed = podeInsumos();
     var m = Insumos.m = abrirModal(
       '<div class="modal-topo"><button type="button" class="fechar" aria-label="Voltar">'+ICO.voltar+'</button>'+
-        '<h2>Insumos<button type="button" class="ins-obra" id="ins-obra"></button></h2>'+
+        '<h2>Insumos e contratações<button type="button" class="ins-obra" id="ins-obra"></button></h2>'+
         '<button type="button" class="fechar-nao bt-tres" id="ins-mais" aria-label="Mais opções" style="flex:0 0 44px;height:44px;box-shadow:none">'+ICO.mais+'</button></div>'+
       '<div class="modal-corpo corpo-cinza ins-corpo" id="ins-corpo"><div class="dica">Carregando…</div></div>'+
-      '<div class="modal-rodape"><button type="button" class="bt-sec" id="ins-novo-item">'+ICO.mais1+' Item</button>'+
-        '<button type="button" class="bt-pri" id="ins-reuniao">Nova reunião</button></div>',
-      true, false, { modal:'ins-modal', volta:'insumos' });
+      '<div class="modal-rodape">'+(ed ? '<button type="button" class="bt-sec" id="ins-novo-item">'+ICO.mais1+' Item</button>'
+                                       : '<span class="ins-so-ver">Só consulta</span>')+
+        '<button type="button" class="bt-pri" id="ins-excel">Baixar Excel</button></div>',
+      true, false, { modal:'ins-modal ins-planilha', volta:'insumos' });
     m.querySelector('#ins-obra').addEventListener('click', function(){ Insumos.escolherObra(); });
     m.querySelector('#ins-mais').addEventListener('click', function(){ Insumos.menu(); });
-    m.querySelector('#ins-novo-item').addEventListener('click', function(){ InsItem.editar(null, null); });
-    m.querySelector('#ins-reuniao').addEventListener('click', function(){
-      var ab = Insumos.reuniaoAberta();
-      if(ab) InsReuniao.abrir(ab.id); else InsReuniao.nova();
+    if(ed) m.querySelector('#ins-novo-item').addEventListener('click', function(){ InsItem.editar(null); });
+    m.querySelector('#ins-excel').addEventListener('click', function(){
+      var b = this; if(!Insumos.D) return; b.disabled = true;
+      InsAta.excel(InsAta.pautaAtual()).then(function(){ b.disabled = false; }, function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
     });
     Insumos.recarregar();
     return m;
@@ -4697,9 +4722,6 @@ var Insumos = {
     EscolhaObra.abrir({ titulo:'Insumos — escolha a obra', atual:Insumos.obra || '', semInterno:true, filtro:insObraVisivel,
       aoEscolher: function(v){ if(v && v !== '__interno') Insumos.abrir(v); } });
   },
-  reuniaoAberta: function(){
-    return Insumos.D ? Insumos.D.reunioes.filter(function(r){ return r.status === 'aberta'; })[0] || null : null;
-  },
   item: function(id){ return Insumos.D ? Insumos.D.itens.filter(function(i){ return mesmoId(i.id, id); })[0] || null : null; },
   histDe: function(id){ return Insumos.D ? Insumos.D.hist.filter(function(h){ return mesmoId(h.item_id, id); }) : []; },
   recarregar: function(){
@@ -4707,12 +4729,10 @@ var Insumos = {
     return InsDados.carregar(obraId).then(function(D){
       if(obraId !== Insumos.obra) return;
       D.itens.sort(function(a,b){ return (a.ordem-b.ordem) || (Number(a.id)-Number(b.id)); });
-      D.reunioes.sort(function(a,b){ return String(b.data).localeCompare(String(a.data)) || (b.numero||0)-(a.numero||0); });
       Insumos.D = D;
-      /* redesenhar sem perder o lugar na lista (a reunião percorre 100+ itens) */
-      var rol = ['#ins-corpo', '#irn-corpo', '#ii-corpo'].map(function(s){ var e = document.querySelector(s); return [e, e ? e.scrollTop : 0]; });
+      /* redesenhar sem perder o lugar na planilha (100+ linhas) */
+      var rol = ['#ins-corpo', '#ii-corpo'].map(function(s){ var e = document.querySelector(s); return [e, e ? e.scrollTop : 0]; });
       Insumos.desenhar();
-      InsReuniao.redesenhar();
       InsItem.redesenhar();
       rol.forEach(function(x){ var e = x[0] && x[0].isConnected ? x[0] : null; if(e) e.scrollTop = x[1]; });
       return D;
@@ -4726,54 +4746,38 @@ var Insumos = {
     var m = Insumos.m; if(!m || !m.isConnected || !Insumos.D) return;
     var o = obra(Insumos.obra), D = Insumos.D, F = Insumos.f;
     m.querySelector('#ins-obra').innerHTML = '<span>'+esc(o ? o.nome : '—')+'</span> ▾';
-    var ab = Insumos.reuniaoAberta();
-    m.querySelector('#ins-reuniao').textContent = ab ? 'Continuar a reunião' : 'Nova reunião';
-    var abertos = D.itens.filter(function(i){ return INS_ABERTOS.indexOf(i.status) >= 0; });
-    var atras = D.itens.filter(insAtrasado);
     var conta = function(s){ return D.itens.filter(function(i){ return i.status === s; }).length; };
     var h = '';
-    if(ab){
-      var feitos = Insumos.feitosNa(ab.id).length;
-      h += '<button type="button" class="ins-faixa" id="ins-continuar"><b>Reunião de '+insBR(ab.data)+' aberta</b>'+
-        '<span>'+feitos+(feitos===1?' item atualizado':' itens atualizados')+' · toque para continuar</span></button>';
-    }
-    if(!D.itens.length && !D.reunioes.length){
-      h += '<div class="vazio"><b>Nenhum item de insumos nesta obra</b><p>Comece pela planilha que já existe ("Pauta e Ata") ou crie os itens.</p>'+
-        '<button type="button" id="ins-vazio-importar">Importar planilha</button></div>';
+    if(!D.itens.length){
+      h += '<div class="vazio"><b>Nenhum item de insumos nesta obra</b>'+
+        (podeInsumos() ? '<p>Comece pela planilha que já existe ("Pauta e Ata") ou crie os itens.</p>'+
+          '<button type="button" id="ins-vazio-importar">Importar planilha</button>'
+          : '<p>Quando suprimentos e engenharia começarem a planilha desta obra, ela aparece aqui.</p>')+'</div>';
       m.querySelector('#ins-corpo').innerHTML = h;
-      m.querySelector('#ins-vazio-importar').addEventListener('click', function(){ InsImportar.abrir(); });
+      if(m.querySelector('#ins-vazio-importar')) m.querySelector('#ins-vazio-importar').addEventListener('click', function(){ InsImportar.abrir(); });
       return;
     }
     h += '<div class="indicadores ins-ind">'+
-      '<button class="ind" data-ins-f="abertos"><div class="n">'+abertos.length+'</div><div class="l">Abertos (P e N)</div></button>'+
-      '<button class="ind vermelho" data-ins-f="atrasados"><div class="n">'+atras.length+'</div><div class="l">Atrasados</div></button>'+
-      '<button class="ind laranja" data-ins-f="N"><div class="n">'+conta('N')+'</div><div class="l">Não resolvidos</div></button>'+
-      '<button class="ind verde" data-ins-f="R"><div class="n">'+conta('R')+'</div><div class="l">Resolvidos</div></button></div>'+
-      '<div class="segmentos" style="margin-bottom:10px"><button data-ins-aba="itens"'+(Insumos.aba==='itens'?' class="on"':'')+'>Itens ('+D.itens.length+')</button>'+
-      '<button data-ins-aba="reunioes"'+(Insumos.aba==='reunioes'?' class="on"':'')+'>Reuniões ('+D.reunioes.length+')</button></div>';
-    if(Insumos.aba === 'reunioes') h += Insumos.htmlReunioes();
-    else {
-      var resps = {}; D.itens.forEach(function(i){ var r = insTxt(i.responsavel); if(r) resps[r] = 1; });
-      h += '<label class="busca-lista" for="ins-busca">'+ICO.busca+'<input type="search" id="ins-busca" placeholder="Buscar: pauta, assunto, responsável, nº" autocomplete="off" value="'+esc(F.q)+'" aria-label="Buscar item"></label>'+
-        '<div class="ins-filtros"><div class="fichas">'+[['abertos','Abertos'],['P','P'],['N','N'],['R','R'],['todos','Todos']].map(function(x){
-          return '<button type="button" class="ficha'+(F.st===x[0]?' on':'')+'" data-ins-st="'+x[0]+'">'+x[1]+'</button>'; }).join('')+
-          '<button type="button" class="ficha'+(F.atras?' on':'')+'" id="ins-atras">Atrasados</button></div>'+
-        '<select id="ins-resp" aria-label="Responsável"><option value="">Todos os responsáveis</option>'+
-          Object.keys(resps).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); }).map(function(r){
-            return '<option'+(F.resp===r?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+'</select></div>'+
-        '<div id="ins-lista"></div>';
-    }
+      '<button class="ind laranja" data-ins-f="P"><div class="n">'+conta('P')+'</div><div class="l">Pendentes</div></button>'+
+      '<button class="ind vermelho" data-ins-f="atrasados"><div class="n">'+D.itens.filter(insAtrasado).length+'</div><div class="l">Atrasados</div></button>'+
+      '<button class="ind" data-ins-f="N"><div class="n">'+conta('N')+'</div><div class="l">Não resolvidos</div></button>'+
+      '<button class="ind verde" data-ins-f="R"><div class="n">'+conta('R')+'</div><div class="l">Resolvidos</div></button></div>';
+    var resps = {}; D.itens.forEach(function(i){ var r = insTxt(i.responsavel); if(r) resps[r] = 1; });
+    h += '<label class="busca-lista" for="ins-busca">'+ICO.busca+'<input type="search" id="ins-busca" placeholder="Buscar: pauta, assunto, responsável, nº" autocomplete="off" value="'+esc(F.q)+'" aria-label="Buscar item"></label>'+
+      '<div class="ins-filtros"><div class="fichas">'+[['abertos','Abertos'],['P','P'],['N','N'],['R','R'],['todos','Todos']].map(function(x){
+        return '<button type="button" class="ficha'+(F.st===x[0]?' on':'')+'" data-ins-st="'+x[0]+'">'+x[1]+'</button>'; }).join('')+
+        '<button type="button" class="ficha'+(F.atras?' on':'')+'" id="ins-atras">Atrasados</button></div>'+
+      '<select id="ins-resp" aria-label="Responsável"><option value="">Todos os responsáveis</option>'+
+        Object.keys(resps).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); }).map(function(r){
+          return '<option'+(F.resp===r?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+'</select></div>'+
+      '<div id="ins-lista"></div>';
     m.querySelector('#ins-corpo').innerHTML = h;
-    if(ab) m.querySelector('#ins-continuar').addEventListener('click', function(){ InsReuniao.abrir(ab.id); });
     var bf = m.querySelectorAll('[data-ins-f]');
     for(var i=0;i<bf.length;i++) bf[i].addEventListener('click', function(){
-      var k = this.dataset.insF; Insumos.aba = 'itens';
+      var k = this.dataset.insF;
       Insumos.f = { st: k === 'atrasados' ? 'abertos' : k, resp:'', atras: k === 'atrasados', q:'' };
       Insumos.desenhar();
     });
-    var ba = m.querySelectorAll('[data-ins-aba]');
-    for(var j=0;j<ba.length;j++) ba[j].addEventListener('click', function(){ Insumos.aba = this.dataset.insAba; Insumos.desenhar(); });
-    if(Insumos.aba === 'reunioes'){ Insumos.ligarReunioes(); return; }
     var bs = m.querySelectorAll('[data-ins-st]');
     for(var k=0;k<bs.length;k++) bs[k].addEventListener('click', function(){ Insumos.f.st = this.dataset.insSt; Insumos.desenhar(); });
     m.querySelector('#ins-atras').addEventListener('click', function(){ Insumos.f.atras = !Insumos.f.atras; Insumos.desenhar(); });
@@ -4792,12 +4796,27 @@ var Insumos = {
       return true;
     });
   },
+  /* a planilha: tabela no computador (as colunas da Pauta e Ata), cartões no celular */
   pintarLista: function(){
     var m = Insumos.m, cx = m && m.querySelector('#ins-lista'); if(!cx) return;
     var lista = Insumos.filtrar(Insumos.D.itens, Insumos.f);
+    if(!lista.length){ cx.innerHTML = '<div class="vazio"><b>Nada com esse filtro</b></div>'; return; }
     cx.innerHTML = '<div class="grupo-cab"><span>'+lista.length+(lista.length===1?' item':' itens')+'</span></div>'+
-      (lista.length ? '<div class="cartoes">'+lista.map(function(i){ return insCartao(i); }).join('')+'</div>'
-                    : '<div class="vazio"><b>Nada com esse filtro</b></div>');
+      '<div class="ins-tab"><table><thead><tr><th>Item</th><th>Assunto</th><th>Pauta</th><th>Providência</th><th>Responsável</th>'+
+        '<th>Data limite de contratação</th><th>Andamento</th><th>Status</th><th>Instalação na obra</th></tr></thead><tbody>'+
+        lista.map(function(i){
+          var atr = insAtrasado(i), and = insHistTexto(Insumos.histDe(i.id));
+          return '<tr data-item="'+i.id+'" tabindex="0"'+(atr?' class="atr"':'')+'><td class="n">'+esc(i.numero||'')+'</td><td>'+esc(i.assunto||'')+'</td>'+
+            '<td class="e"><b>'+esc(i.pauta)+'</b></td><td>'+esc(i.providencia||'')+'</td><td>'+esc(i.responsavel||'')+'</td>'+
+            '<td class="dt'+(atr?' atr':'')+'">'+esc(insDataLimiteTexto(i))+'</td>'+
+            '<td class="e and"><div'+(and ? ' title="'+esc(and)+'"' : '')+'>'+esc(and)+'</div></td>'+
+            '<td class="st st-'+esc(i.status)+'">'+esc(i.status)+'</td><td class="dt">'+(i.data_instalacao ? insBR(i.data_instalacao) : '')+'</td></tr>';
+        }).join('')+'</tbody></table></div>'+
+      '<div class="cartoes ins-cartoes">'+lista.map(function(i){
+        var hs = Insumos.histDe(i.id).filter(function(h){ return insTxt(h.texto) && h.tipo !== 'fora_da_pauta'; })
+          .sort(function(a,b){ return String(b.data).localeCompare(String(a.data)) || Number(b.id)-Number(a.id); });
+        return insCartao(i, hs[0] ? '<div class="ins-dito">'+insDM(hs[0].data)+' '+esc(insTxt(hs[0].texto))+'</div>' : '');
+      }).join('')+'</div>';
     Insumos.ligarCartoes(cx, function(id){ InsItem.abrir(id); });
   },
   ligarCartoes: function(raiz, fn){
@@ -4807,45 +4826,18 @@ var Insumos = {
       cs[i].addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fn(this.dataset.item); } });
     }
   },
-  feitosNa: function(rid){
-    var vistos = {};
-    (Insumos.D ? Insumos.D.hist : []).forEach(function(h){ if(mesmoId(h.reuniao_id, rid)) vistos[String(h.item_id)] = 1; });
-    return Object.keys(vistos);
-  },
-  htmlReunioes: function(){
-    var D = Insumos.D;
-    if(!D.reunioes.length) return '<div class="vazio"><b>Nenhuma reunião ainda</b><p>Toque em “Nova reunião” para começar.</p></div>';
-    return '<div class="cartoes">'+D.reunioes.map(function(r){
-      var n = r.status === 'aberta' ? Insumos.feitosNa(r.id).length : (r.foto ? r.foto.filter(function(x){ return x.na_reuniao; }).length : 0);
-      var sub = r.status === 'aberta' ? 'Aberta · '+n+' atualizados' :
-        (r.origem === 'importacao' ? 'Da planilha (aba '+esc(r.aba||'')+') · '+(r.foto ? r.foto.length : 0)+' itens' : 'Fechada · '+n+' atualizados');
-      return '<div class="card '+(r.status==='aberta'?'b-laranja':'b-cinza')+'" data-reuniao="'+r.id+'" role="button" tabindex="0"><div class="it-txt">'+
-        '<h3>Ata '+String(r.numero||'').padStart(2,'0')+' · '+insBR(r.data)+'</h3><div class="meta">'+sub+'</div></div>'+
-        '<div class="it-dir"><span class="data">'+(r.status==='aberta'?'Continuar':'Ver ata')+' ›</span></div></div>';
-    }).join('')+'</div>';
-  },
-  ligarReunioes: function(){
-    var cs = Insumos.m.querySelectorAll('[data-reuniao]');
-    for(var i=0;i<cs.length;i++) cs[i].addEventListener('click', function(){
-      var r = Insumos.D.reunioes.filter(function(x){ return mesmoId(x.id, this.dataset.reuniao); }, this)[0];
-      if(!r) return;
-      if(r.status === 'aberta') InsReuniao.abrir(r.id); else InsAta.abrir(r);
-    });
-  },
   menu: function(){
-    var ultima = Insumos.D && Insumos.D.reunioes.filter(function(r){ return r.status === 'fechada'; })[0];
     var f = folha('Insumos', '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
-      '<button type="button" data-op="pauta">Pauta atual em Excel</button>'+
-      '<button type="button" data-op="imprimir">Imprimir a pauta atual (PDF)</button>'+
-      (ultima ? '<button type="button" data-op="ata">Última ata ('+insBR(ultima.data)+')</button>' : '')+
-      '<button type="button" data-op="importar">Importar planilha (Pauta e Ata)</button>'+
+      '<button type="button" data-op="excel">Baixar Excel (formato Pauta e Ata)</button>'+
+      '<button type="button" data-op="imprimir">Imprimir / PDF</button>'+
+      (podeInsumos() ? '<button type="button" data-op="importar">Importar planilha (Pauta e Ata)</button>' : '')+
       '<button type="button" data-op="obra">Trocar de obra</button></div>');
     var bs = f.querySelectorAll('[data-op]');
     for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){
       var op = this.dataset.op; f.remove();
-      if(op === 'pauta') InsAta.excel(InsAta.pautaAtual()).catch(function(e){ aviso(e.message||String(e), 'erro'); });
+      if(!Insumos.D && op !== 'obra') return;
+      if(op === 'excel') InsAta.excel(InsAta.pautaAtual()).catch(function(e){ aviso(e.message||String(e), 'erro'); });
       else if(op === 'imprimir') InsAta.imprimir(InsAta.pautaAtual());
-      else if(op === 'ata') InsAta.abrir(ultima);
       else if(op === 'importar') InsImportar.abrir();
       else if(op === 'obra') Insumos.escolherObra();
     });
@@ -4893,11 +4885,13 @@ var InsItem = {
     var bp = m.querySelector('#ii-pend');
     if(bp) bp.addEventListener('click', function(){ Detalhe.abrir(p.id); });
     var r = m.querySelector('#ii-rodape');
+    r.classList.toggle('oculto', !podeInsumos());
+    if(!podeInsumos()){ r.innerHTML = ''; return; }
     r.innerHTML = '<button type="button" class="bt-pri" id="ii-atualizar">Atualizar</button>'+
       '<button type="button" class="bt-sec" id="ii-editar">Editar</button>'+
       (it.pendencia_id == null && podeNoFlow('criar') ? '<button type="button" class="bt-sec" id="ii-virar">Virar pendência</button>' : '');
-    r.querySelector('#ii-atualizar').addEventListener('click', function(){ InsItem.atualizar(it.id, null); });
-    r.querySelector('#ii-editar').addEventListener('click', function(){ InsItem.editar(it.id, null); });
+    r.querySelector('#ii-atualizar').addEventListener('click', function(){ InsItem.atualizar(it.id); });
+    r.querySelector('#ii-editar').addEventListener('click', function(){ InsItem.editar(it.id); });
     if(r.querySelector('#ii-virar')) r.querySelector('#ii-virar').addEventListener('click', function(){ InsItem.virar(it.id); });
   },
   evento: function(h){
@@ -4918,16 +4912,17 @@ var InsItem = {
       (insTxt(h.texto) ? '<div class="txt">'+esc(h.texto)+'</div>' : '')+
       (mud.length ? '<div class="mud">'+mud.join(' · ')+'</div>' : '')+'</div>';
   },
-  /* Atualizar: o que foi dito + status + data limite (+ providência e responsável) */
-  atualizar: function(id, reuniao, aoSalvar){
+  /* Atualizar (a reunião da semana): andamento + status + data limite + responsável,
+     providência e instalação. Tudo vai para o histórico com a data de hoje. */
+  atualizar: function(id){
     var it = Insumos.item(id); if(!it) return;
     var ultimo = Insumos.histDe(id).filter(function(h){ return insTxt(h.texto); })
       .sort(function(a,b){ return String(b.data).localeCompare(String(a.data)) || Number(b.id)-Number(a.id); })[0];
     var resps = InsItem.nomes();
-    var f = folha(reuniao ? 'Reunião '+insDM(reuniao.data)+' · item '+(it.numero||'') : 'Atualizar item '+(it.numero||''),
+    var f = folha('Atualizar item '+(it.numero||''),
       '<div class="ins-ed-pauta"><b>'+esc(it.pauta)+'</b><small>'+esc([it.assunto, it.responsavel].filter(Boolean).join(' · '))+'</small></div>'+
       (ultimo ? '<div class="dica" style="margin:0 0 6px">Última: '+insDM(ultimo.data)+' — '+esc(ultimo.texto)+'</div>' : '')+
-      '<label class="primeiro" for="iu-txt">O que foi dito</label>'+
+      '<label class="primeiro" for="iu-txt">Andamento <span class="opcional">(entra com a data de hoje)</span></label>'+
       '<textarea id="iu-txt" rows="3" maxlength="4000" placeholder="Ex.: fechado com a Vão Livre; aguardando projeto até 16/06"></textarea>'+
       '<label>Status</label><div class="fichas" id="iu-st">'+['P','N','R'].map(function(s){
         return '<button type="button" class="ficha'+(it.status===s?' on':'')+'" data-st="'+s+'">'+s+' · '+INS_ST[s]+'</button>'; }).join('')+'</div>'+
@@ -4935,14 +4930,16 @@ var InsItem = {
         (it.data_limite ? '<div class="dica">Hoje: '+insBR(it.data_limite)+'. Mudar = reprogramar (fica no histórico).</div>' : '')+'</div>'+
         '<div><label for="iu-resp">Responsável</label><input type="text" id="iu-resp" list="iu-nomes" maxlength="200" value="'+esc(it.responsavel||'')+'">'+
         '<datalist id="iu-nomes">'+resps.map(function(n){ return '<option value="'+esc(n)+'">'; }).join('')+'</datalist></div></div>'+
-      '<label for="iu-prov">Providência</label><input type="text" id="iu-prov" maxlength="300" value="'+esc(it.providencia||'')+'">',
-      '<button type="button" class="bt-pri" id="iu-ok">Registrar</button>'+(reuniao ? '<button type="button" class="bt-sec" id="iu-prox">Registrar e próximo</button>' : ''));
+      '<div class="dupla"><div><label for="iu-prov">Providência</label><input type="text" id="iu-prov" maxlength="300" value="'+esc(it.providencia||'')+'"></div>'+
+        '<div><label for="iu-inst">Instalação na obra <span class="opcional">(engenharia)</span></label><input type="date" id="iu-inst" value="'+esc(it.data_instalacao||'')+'"></div></div>',
+      '<button type="button" class="bt-pri" id="iu-ok">Salvar</button>');
     var st = it.status;
     var bs = f.querySelectorAll('[data-st]');
     for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){
       st = this.dataset.st; for(var j=0;j<bs.length;j++) bs[j].classList.toggle('on', bs[j] === this); });
-    function enviar(proximo){
-      var dados = {};
+    function enviar(){
+      var dados = {}, inst = f.querySelector('#iu-inst').value || null;
+      if((inst||null) !== (it.data_instalacao||null)) dados.data_instalacao = inst;
       var dl = f.querySelector('#iu-dl').value || null, resp = insTxt(f.querySelector('#iu-resp').value), prov = insTxt(f.querySelector('#iu-prov').value);
       if(st !== it.status) dados.status = st;
       if((dl||null) !== (it.data_limite||null)) dados.data_limite = dl;
@@ -4950,19 +4947,17 @@ var InsItem = {
       if(prov !== insTxt(it.providencia)) dados.providencia = prov;
       var txt = f.querySelector('#iu-txt').value;
       var bts = f.querySelectorAll('.modal-rodape button'); for(var k=0;k<bts.length;k++) bts[k].disabled = true;
-      InsDados.salvarItem(it.id, Insumos.obra, dados, txt, reuniao ? reuniao.id : null).then(function(){
+      InsDados.salvarItem(it.id, Insumos.obra, dados, txt).then(function(){
         f.remove();
         return Insumos.recarregar();
       }).then(function(){
         aviso('Item '+(it.numero||'')+' atualizado.', 'ok');
-        if(aoSalvar) aoSalvar(proximo);
       }).catch(function(e){
         for(var k2=0;k2<bts.length;k2++) bts[k2].disabled = false;
         aviso(e.message||String(e), 'erro');
       });
     }
-    f.querySelector('#iu-ok').addEventListener('click', function(){ enviar(false); });
-    if(f.querySelector('#iu-prox')) f.querySelector('#iu-prox').addEventListener('click', function(){ enviar(true); });
+    f.querySelector('#iu-ok').addEventListener('click', enviar);
     setTimeout(function(){ try { f.querySelector('#iu-txt').focus(); } catch(e){} }, 60);
     return f;
   },
@@ -4973,11 +4968,11 @@ var InsItem = {
     return Object.keys(n).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); });
   },
   /* item novo (id nulo) ou editar os dados fixos (nº, assunto, pauta, instalação) */
-  editar: function(id, reuniao){
+  editar: function(id){
     var it = id != null ? Insumos.item(id) : null;
     var novo = !it, D = Insumos.D || { itens:[] };
     var assuntos = {}; D.itens.forEach(function(i){ if(insTxt(i.assunto)) assuntos[insTxt(i.assunto)] = 1; });
-    var f = folha(novo ? (reuniao ? 'Item novo na reunião' : 'Item novo') : 'Editar item '+(it.numero||''),
+    var f = folha(novo ? 'Item novo' : 'Editar item '+(it.numero||''),
       '<div class="dupla"><div><label class="primeiro" for="ie-num">Nº</label><input type="text" id="ie-num" maxlength="20" value="'+esc(novo ? insProximoNumero(D.itens) : it.numero)+'"></div>'+
       '<div><label class="primeiro" for="ie-ass">Assunto</label><input type="text" id="ie-ass" list="ie-assuntos" maxlength="200" value="'+esc(novo ? '' : it.assunto)+'">'+
       '<datalist id="ie-assuntos">'+Object.keys(assuntos).sort().map(function(a){ return '<option value="'+esc(a)+'">'; }).join('')+'</datalist></div></div>'+
@@ -4987,7 +4982,7 @@ var InsItem = {
               '<datalist id="ie-nomes">'+InsItem.nomes().map(function(n){ return '<option value="'+esc(n)+'">'; }).join('')+'</datalist></div></div>'+
               '<div class="dupla"><div><label for="ie-dl">Data limite</label><input type="date" id="ie-dl"></div><div></div></div>' : '')+
       '<label for="ie-inst">Data para instalação na obra <span class="opcional">(engenharia)</span></label><input type="date" id="ie-inst" value="'+esc(novo ? '' : (it.data_instalacao||''))+'">'+
-      (novo ? '<label for="ie-txt">Observação <span class="opcional">(opcional)</span></label><textarea id="ie-txt" rows="2" maxlength="4000"></textarea>' : ''),
+      (novo ? '<label for="ie-txt">Andamento <span class="opcional">(opcional)</span></label><textarea id="ie-txt" rows="2" maxlength="4000"></textarea>' : ''),
       '<button type="button" class="bt-pri" id="ie-ok">'+(novo ? 'Criar item' : 'Salvar')+'</button>');
     f.querySelector('#ie-ok').addEventListener('click', function(){
       var b = this, q = function(s){ var e = f.querySelector(s); return e ? e.value : ''; };
@@ -4996,7 +4991,7 @@ var InsItem = {
       if(novo){ dados.providencia = insTxt(q('#ie-prov')); dados.responsavel = insTxt(q('#ie-resp')); dados.data_limite = q('#ie-dl') || null; dados.status = 'P'; }
       else Object.keys(dados).forEach(function(k){ if((dados[k]||null) === (it[k]||null)) delete dados[k]; });
       b.disabled = true;
-      InsDados.salvarItem(novo ? null : it.id, Insumos.obra, dados, novo ? q('#ie-txt') : '', reuniao ? reuniao.id : null).then(function(){
+      InsDados.salvarItem(novo ? null : it.id, Insumos.obra, dados, novo ? q('#ie-txt') : '').then(function(){
         f.remove(); aviso(novo ? 'Item criado.' : 'Item salvo.', 'ok'); return Insumos.recarregar();
       }).catch(function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
     });
@@ -5008,7 +5003,7 @@ var InsItem = {
     var it = Insumos.item(id); if(!it) return;
     var o = obra(Insumos.obra), cat = categoria('Insumos');
     var f = folha('Virar pendência',
-      '<div class="dica" style="margin:0 0 4px">Cria uma pendência no Flow'+(cat ? ' (categoria <b>Insumos</b>)' : '')+', ligada a este item, para cobrar alguém fora da reunião.</div>'+
+      '<div class="dica" style="margin:0 0 4px">Cria uma pendência no Flow'+(cat ? ' (categoria <b>Insumos</b>)' : '')+', ligada a este item, para cobrar alguém pelo Flow.</div>'+
       '<label for="iv-tit">O que precisa ser feito?</label><textarea id="iv-tit" rows="2" maxlength="180">'+esc((it.providencia ? it.providencia+': ' : '')+it.pauta).slice(0,180)+'</textarea>'+
       '<label>Para quem?</label><div id="iv-quem"></div>'+
       '<label for="iv-data">Precisa até <span class="opcional">(sugestão; quem recebe assume o prazo)</span></label>'+
@@ -5021,7 +5016,7 @@ var InsItem = {
       if(!titulo){ aviso('Escreva o que precisa ser feito.', 'erro'); return; }
       if(!para){ aviso('Escolha para quem é a pendência.', 'erro'); return; }
       b.disabled = true;
-      var desc = 'Item '+(it.numero||'')+' da reunião de insumos'+(o ? ' — '+o.nome : '')+'.\nAssunto: '+(it.assunto||'—')+
+      var desc = 'Item '+(it.numero||'')+' da planilha de insumos'+(o ? ' — '+o.nome : '')+'.\nAssunto: '+(it.assunto||'—')+
         '\nPauta: '+it.pauta+(it.responsavel ? '\nResponsável na ata: '+it.responsavel : '')+(it.data_limite ? '\nData limite: '+insBR(it.data_limite) : '');
       InsDados.criarPendencia({ titulo:titulo, descricao:desc, responsavel_id:para, obra_id:Insumos.obra, frente:'', prioridade:'media',
         recorrencia:'', prazo_desejado:f.querySelector('#iv-data').value || null, categoria: cat ? cat.nome : null, sigiloso:false })
@@ -5034,151 +5029,9 @@ var InsItem = {
 };
 
 /* =====================================================================
-   REUNIÃO — abre, percorre os itens abertos registrando cada um, fecha
-   e gera a ata (fotografia dos itens)
-   ===================================================================== */
-var InsReuniao = {
-  m: null, id: null, aba: 'falta', q: '',
-  atual: function(){ return Insumos.D ? Insumos.D.reunioes.filter(function(r){ return mesmoId(r.id, InsReuniao.id); })[0] || null : null; },
-  nova: function(){
-    var D = Insumos.D || { reunioes:[] };
-    var ant = D.reunioes.filter(function(r){ return r.participantes; })[0];
-    var f = folha('Nova reunião de insumos',
-      '<div class="dupla"><div><label class="primeiro" for="ir-data">Data</label><input type="date" id="ir-data" value="'+insHoje()+'"></div>'+
-      '<div><label class="primeiro" for="ir-red">Redator</label><input type="text" id="ir-red" maxlength="120" value="'+esc(pessoa(EU.id).nome)+'"></div></div>'+
-      '<label for="ir-part">Participantes <span class="opcional">(um por linha)</span></label>'+
-      '<textarea id="ir-part" rows="4" maxlength="2000">'+esc(ant ? ant.participantes : pessoa(EU.id).nome)+'</textarea>'+
-      (ant ? '<div class="dica">Veio da reunião de '+insBR(ant.data)+'. Ajuste quem veio hoje.</div>' : '')+
-      '<label for="ir-conv">Convidados <span class="opcional">(opcional)</span></label><input type="text" id="ir-conv" maxlength="2000">',
-      '<button type="button" class="bt-pri" id="ir-ok">Começar a reunião</button>');
-    f.querySelector('#ir-ok').addEventListener('click', function(){
-      var b = this; b.disabled = true;
-      InsDados.abrirReuniao(Insumos.obra, { data:f.querySelector('#ir-data').value, redator:f.querySelector('#ir-red').value,
-        participantes:f.querySelector('#ir-part').value, convidados:f.querySelector('#ir-conv').value })
-        .then(function(r){ f.remove(); return Insumos.recarregar().then(function(){ InsReuniao.abrir(r.id); }); })
-        .catch(function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
-    });
-    return f;
-  },
-  abrir: function(id){
-    if(InsReuniao.m && InsReuniao.m.isConnected) InsReuniao.m.remove();
-    InsReuniao.id = id; InsReuniao.aba = 'falta'; InsReuniao.q = '';
-    InsReuniao.m = abrirModal(
-      '<div class="modal-topo"><button type="button" class="fechar" aria-label="Voltar">'+ICO.voltar+'</button><h2 id="irn-tit">Reunião</h2>'+
-        '<button type="button" class="lnk" id="irn-cab">Participantes</button></div>'+
-      '<div class="modal-corpo corpo-cinza" id="irn-corpo"></div>'+
-      '<div class="modal-rodape"><button type="button" class="bt-sec" id="irn-item">'+ICO.mais1+' Item</button>'+
-        '<button type="button" class="bt-pri" id="irn-fechar">Fechar e gerar ata</button></div>', true, true, { modal:'ins-modal', volta:'insumo-reuniao' });
-    var m = InsReuniao.m;
-    m.querySelector('#irn-cab').addEventListener('click', function(){ InsReuniao.cabecalho(); });
-    m.querySelector('#irn-item').addEventListener('click', function(){ InsItem.editar(null, InsReuniao.atual()); });
-    m.querySelector('#irn-fechar').addEventListener('click', function(){ InsReuniao.fechar(); });
-    InsReuniao.redesenhar();
-    return m;
-  },
-  listas: function(){
-    var r = InsReuniao.atual(), D = Insumos.D, feitos = Insumos.feitosNa(r.id);
-    var feito = function(i){ return feitos.indexOf(String(i.id)) >= 0; };
-    return {
-      falta: D.itens.filter(function(i){ return INS_ABERTOS.indexOf(i.status) >= 0 && !feito(i); }),
-      feitos: D.itens.filter(feito),
-      todos: D.itens
-    };
-  },
-  redesenhar: function(){
-    var m = InsReuniao.m; if(!m || !m.isConnected) return;
-    var r = InsReuniao.atual();
-    if(!r || r.status !== 'aberta'){ m.remove(); return; }
-    var L = InsReuniao.listas(), total = L.falta.length + L.feitos.filter(function(i){ return true; }).length;
-    var pct = total ? Math.round(L.feitos.length / total * 100) : 0;
-    m.querySelector('#irn-tit').textContent = 'Reunião '+insDM(r.data)+' · Ata '+String(r.numero||'').padStart(2,'0');
-    var part = String(r.participantes||'').split(/\n|,/).map(insTxt).filter(Boolean);
-    m.querySelector('#irn-corpo').innerHTML =
-      '<div class="ins-reun-cab"><div>'+(part.length ? esc(part.join(', ')) : '<i>Sem participantes</i>')+'</div>'+
-        '<div class="ins-prog"><span><b>'+L.feitos.length+'</b> de '+total+' atualizados</span><div class="trilho"><i style="width:'+pct+'%"></i></div></div></div>'+
-      '<div class="segmentos" style="margin:10px 0"><button data-irn="falta"'+(InsReuniao.aba==='falta'?' class="on"':'')+'>A atualizar ('+L.falta.length+')</button>'+
-        '<button data-irn="feitos"'+(InsReuniao.aba==='feitos'?' class="on"':'')+'>Atualizados ('+L.feitos.length+')</button>'+
-        '<button data-irn="todos"'+(InsReuniao.aba==='todos'?' class="on"':'')+'>Todos</button></div>'+
-      '<label class="busca-lista" for="irn-busca">'+ICO.busca+'<input type="search" id="irn-busca" placeholder="Buscar item" autocomplete="off" value="'+esc(InsReuniao.q)+'" aria-label="Buscar item"></label>'+
-      '<div id="irn-lista"></div>'+
-      (!L.feitos.length ? '<button type="button" class="ver-tudo" id="irn-cancelar" style="margin-top:12px">Cancelar esta reunião (sem atualizações)</button>' : '');
-    var bs = m.querySelectorAll('[data-irn]');
-    for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){ InsReuniao.aba = this.dataset.irn; InsReuniao.redesenhar(); });
-    m.querySelector('#irn-busca').addEventListener('input', function(){ InsReuniao.q = this.value; InsReuniao.pintar(); });
-    var bc = m.querySelector('#irn-cancelar');
-    if(bc) bc.addEventListener('click', function(){
-      InsDados.cancelarReuniao(r.id).then(function(){ m.remove(); aviso('Reunião cancelada.', 'ok'); return Insumos.recarregar(); })
-        .catch(function(e){ aviso(e.message||String(e), 'erro'); });
-    });
-    InsReuniao.pintar();
-  },
-  visiveis: function(){
-    var L = InsReuniao.listas(), q = normalizar(InsReuniao.q);
-    return L[InsReuniao.aba].filter(function(i){ return !q || normalizar([i.numero, i.assunto, i.pauta, i.responsavel].join(' ')).indexOf(q) >= 0; });
-  },
-  pintar: function(){
-    var m = InsReuniao.m, cx = m && m.querySelector('#irn-lista'); if(!cx) return;
-    var r = InsReuniao.atual(), lista = InsReuniao.visiveis();
-    cx.innerHTML = lista.length ? '<div class="cartoes">'+lista.map(function(i){
-      var hs = Insumos.histDe(i.id).filter(function(h){ return mesmoId(h.reuniao_id, r.id); });
-      var ult = hs[hs.length-1];
-      return insCartao(i, ult ? '<div class="ins-dito">✓ '+esc(insTxt(ult.texto) || 'atualizado')+'</div>' : '');
-    }).join('')+'</div>' : '<div class="vazio"><b>'+(InsReuniao.aba === 'falta' ? 'Todos os itens abertos foram atualizados' : 'Nenhum item aqui')+'</b>'+
-      (InsReuniao.aba === 'falta' ? '<p>Feche a reunião para gerar a ata.</p>' : '')+'</div>';
-    Insumos.ligarCartoes(cx, function(id){ InsReuniao.atualizar(id); });
-  },
-  atualizar: function(id){
-    var r = InsReuniao.atual();
-    InsItem.atualizar(id, r, function(proximo){
-      if(!proximo) return;
-      var prox = InsReuniao.listas().falta.filter(function(i){ return !mesmoId(i.id, id); })[0];
-      if(prox) InsReuniao.atualizar(prox.id); else aviso('Todos os itens abertos foram atualizados.', 'ok');
-    });
-  },
-  cabecalho: function(){
-    var r = InsReuniao.atual(); if(!r) return;
-    var f = folha('Reunião de '+insBR(r.data),
-      '<div class="dupla"><div><label class="primeiro" for="irc-data">Data</label><input type="date" id="irc-data" value="'+esc(r.data)+'"></div>'+
-      '<div><label class="primeiro" for="irc-red">Redator</label><input type="text" id="irc-red" maxlength="120" value="'+esc(r.redator||'')+'"></div></div>'+
-      '<label for="irc-part">Participantes <span class="opcional">(um por linha)</span></label><textarea id="irc-part" rows="4" maxlength="2000">'+esc(r.participantes||'')+'</textarea>'+
-      '<label for="irc-conv">Convidados</label><input type="text" id="irc-conv" maxlength="2000" value="'+esc(r.convidados||'')+'">',
-      '<button type="button" class="bt-pri" id="irc-ok">Salvar</button>');
-    f.querySelector('#irc-ok').addEventListener('click', function(){
-      var b = this; b.disabled = true;
-      InsDados.editarReuniao(r.id, { data:f.querySelector('#irc-data').value || r.data, redator:f.querySelector('#irc-red').value,
-        participantes:f.querySelector('#irc-part').value, convidados:f.querySelector('#irc-conv').value })
-        .then(function(){ f.remove(); return Insumos.recarregar(); })
-        .catch(function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
-    });
-  },
-  fechar: function(){
-    var r = InsReuniao.atual(); if(!r) return;
-    var L = InsReuniao.listas();
-    var f = folha('Fechar a reunião?',
-      '<p style="font-size:15px;line-height:1.5">'+L.feitos.length+(L.feitos.length===1?' item atualizado':' itens atualizados')+
-        (L.falta.length ? ', <b>'+L.falta.length+' abertos sem atualização</b> (entram na ata como estão)' : '')+'.</p>'+
-      '<p class="dica">Ao fechar, a ata de '+insBR(r.data)+' fica gravada como fotografia dos itens e não muda mais. Você baixa em PDF e Excel.</p>',
-      '<button type="button" class="bt-sec" id="irf-nao">Voltar</button><button type="button" class="bt-pri" id="irf-ok">Fechar e gerar ata</button>');
-    f.querySelector('#irf-nao').addEventListener('click', function(){ f.remove(); });
-    f.querySelector('#irf-ok').addEventListener('click', function(){
-      var b = this; b.disabled = true;
-      InsDados.fecharReuniao(r.id).then(function(fechada){
-        f.remove();
-        if(InsReuniao.m && InsReuniao.m.isConnected) InsReuniao.m.remove();
-        return Insumos.recarregar().then(function(){
-          var rr = Insumos.D.reunioes.filter(function(x){ return mesmoId(x.id, fechada.id); })[0] || fechada;
-          aviso('Ata gerada.', 'ok'); InsAta.abrir(rr);
-        });
-      }).catch(function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
-    });
-  }
-};
-
-/* =====================================================================
-   ATA — tela, impressão (PDF) e Excel no formato da planilha atual
+   A PLANILHA PARA FORA — impressão (PDF) e Excel no formato da Pauta e Ata
    ===================================================================== */
 var InsAta = {
-  /* reunião (ou pauta atual) num formato só */
   dados: function(r){
     var o = obra(r.obra_id || Insumos.obra);
     return { obra: o ? o.nome : '', data:r.data, numero:r.numero, redator:r.redator||'', titulo:r.titulo || 'ATA DE REUNIÃO',
@@ -5186,44 +5039,15 @@ var InsAta = {
       convidados:String(r.convidados||'').split(/\n|,/).map(insTxt).filter(Boolean),
       itens:(r.foto||[]).filter(function(x){ return !x.fora; }) };
   },
+  /* a planilha como está hoje (todos os itens, com o andamento) */
   pautaAtual: function(){
-    return { obra_id:Insumos.obra, data:insHoje(), numero:'', redator:pessoa(EU.id).nome, titulo:'PAUTA DE REUNIÃO',
-      participantes:'', convidados:'', foto:Insumos.D.itens.filter(function(i){ return true; }).map(function(i){
+    return { obra_id:Insumos.obra, data:insHoje(), numero:'', redator:'', titulo:'PAUTA E ATA - CONTROLE DE INSUMOS E CONTRATAÇÕES',
+      participantes:'', convidados:'', foto:Insumos.D.itens.map(function(i){
         return Object.assign({}, i, { historico:insHistTexto(Insumos.histDe(i.id)) }); }) };
-  },
-  abrir: function(r){
-    var A = InsAta.dados(r), c = { R:0, P:0, N:0 }, na = 0;
-    A.itens.forEach(function(i){ c[i.status] = (c[i.status]||0) + 1; if(i.na_reuniao) na++; });
-    var m = abrirModal(
-      '<div class="modal-topo"><button type="button" class="fechar" aria-label="Voltar">'+ICO.voltar+'</button>'+
-        '<h2>Ata '+String(A.numero||'').padStart(2,'0')+' · '+insBR(A.data)+'</h2></div>'+
-      '<div class="modal-corpo corpo-cinza">'+
-        '<div class="ins-ata-cab"><img src="'+INS_LOGO+'" alt="Brandão &amp; Marmo"><div><b>Obra '+esc(A.obra)+'</b>'+
-          '<span>Redator: '+esc(A.redator||'—')+'</span><span>Participantes: '+esc(A.participantes.join(', ')||'—')+'</span>'+
-          (A.convidados.length ? '<span>Convidados: '+esc(A.convidados.join(', '))+'</span>' : '')+
-          (r.origem === 'importacao' ? '<span>Importada da planilha (aba '+esc(r.aba||'')+')</span>' : '')+'</div></div>'+
-        '<div class="indicadores ins-ind"><div class="ind verde"><div class="n">'+c.R+'</div><div class="l">Resolvidos</div></div>'+
-          '<div class="ind laranja"><div class="n">'+c.P+'</div><div class="l">Pendentes</div></div>'+
-          '<div class="ind vermelho"><div class="n">'+c.N+'</div><div class="l">Não resolvidos</div></div>'+
-          (r.origem !== 'importacao' ? '<div class="ind"><div class="n">'+na+'</div><div class="l">Atualizados na reunião</div></div>' : '')+'</div>'+
-        '<div class="cartoes">'+A.itens.map(function(i){
-          return '<div class="card ins-card '+(i.status==='R'?'b-verde':i.status==='N'?'b-vermelho':'b-laranja')+'" style="cursor:default"><div class="it-txt">'+
-            '<h3>'+esc(i.pauta)+'</h3><div class="meta">'+esc([i.numero, i.assunto, i.responsavel].filter(Boolean).join(' · '))+'</div>'+
-            (i.historico ? '<div class="ins-dito">'+esc(i.historico)+'</div>' : '')+'</div>'+
-            '<div class="it-dir">'+(insDataLimiteTexto(i) ? '<span class="data">'+esc(insDataLimiteTexto(i))+'</span>' : '')+insStTag(i.status)+'</div></div>';
-        }).join('')+'</div></div>'+
-      '<div class="modal-rodape"><button type="button" class="bt-sec" id="ia-pdf">'+ICO.doc+' PDF / imprimir</button>'+
-        '<button type="button" class="bt-pri" id="ia-xls">Baixar Excel</button></div>', true, true, { modal:'ins-modal', volta:'insumo-ata' });
-    m.querySelector('#ia-pdf').addEventListener('click', function(){ InsAta.imprimir(r); });
-    m.querySelector('#ia-xls').addEventListener('click', function(){
-      var b = this; b.disabled = true;
-      InsAta.excel(r).then(function(){ b.disabled = false; }, function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
-    });
-    return m;
   },
   nomeArquivo: function(A, ext){
     var d = insBR(A.data).replace(/\//g, '.');
-    return ((A.titulo === 'PAUTA DE REUNIÃO' ? 'Pauta' : 'Pauta e Ata')+' - '+A.obra+' '+d).replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g,' ').trim()+'.'+ext;
+    return ('Pauta e Ata - '+A.obra+' '+d).replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g,' ').trim()+'.'+ext;
   },
   html: function(r){
     var A = InsAta.dados(r);
@@ -5239,11 +5063,10 @@ var InsAta = {
       '.leg{margin-top:8px;display:flex;gap:14px;font-size:10px}.leg span{display:inline-block;width:14px;height:10px;margin-right:4px;vertical-align:-1px}'+
       '.rod{margin-top:6px;font-size:9px;color:#555}</style></head><body>'+
       '<div class="cab"><img src="'+INS_LOGO+'" alt=""><div><h1>'+esc(A.titulo)+' - OBRA '+esc(A.obra.toUpperCase())+'</h1>'+
-        '<div>Reunião de insumos</div></div><div class="d"><b>Data: '+insBR(A.data)+'</b>'+(A.numero ? '<br>Ata Nº: '+String(A.numero).padStart(2,'0') : '')+'</div></div>'+
-      '<div class="info"><div><b>Redator:</b> '+esc(A.redator||'—')+'</div><div><b>Obra:</b> '+esc(A.obra)+'</div>'+
-        '<div><b>Participantes:</b> '+esc(A.participantes.join(', ')||'—')+'</div><div><b>Convidados:</b> '+esc(A.convidados.join(', ')||'—')+'</div></div>'+
-      '<table><thead><tr><th>ITEM</th><th>ASSUNTO</th><th>PAUTA</th><th>PROVIDÊNCIA</th><th>RESPONSÁVEL</th><th>DATA LIMITE DE CONTRATAÇÃO</th><th>HISTÓRICO</th><th>STATUS</th><th>DATA PARA INSTALAÇÃO NA OBRA</th></tr></thead><tbody>'+
-      '<tr class="sec"><td>1.0</td><td colspan="8">[reunião de insumos]</td></tr>'+
+        '<div>Controle de insumos e contratações</div></div><div class="d"><b>Data: '+insBR(A.data)+'</b>'+(A.numero ? '<br>Ata Nº: '+String(A.numero).padStart(2,'0') : '')+'</div></div>'+
+      '<div class="info"><div><b>Obra:</b> '+esc(A.obra)+'</div>'+(A.redator ? '<div><b>Redator:</b> '+esc(A.redator)+'</div>' : '<div></div>')+
+        (A.participantes.length ? '<div><b>Participantes:</b> '+esc(A.participantes.join(', '))+'</div><div><b>Convidados:</b> '+esc(A.convidados.join(', ')||'—')+'</div>' : '')+'</div>'+
+      '<table><thead><tr><th>ITEM</th><th>ASSUNTO</th><th>PAUTA</th><th>PROVIDÊNCIA</th><th>RESPONSÁVEL</th><th>DATA LIMITE DE CONTRATAÇÃO</th><th>ANDAMENTO</th><th>STATUS</th><th>DATA PARA INSTALAÇÃO NA OBRA</th></tr></thead><tbody>'+
       A.itens.map(function(i){
         return '<tr><td>'+esc(i.numero||'')+'</td><td>'+esc(i.assunto||'')+'</td><td class="e">'+esc(i.pauta)+'</td><td>'+esc(i.providencia||'')+'</td>'+
           '<td>'+esc(i.responsavel||'')+'</td><td>'+esc(insDataLimiteTexto(i))+'</td><td class="e">'+esc(i.historico||'')+'</td>'+
@@ -5252,7 +5075,7 @@ var InsAta = {
       }).join('')+'</tbody></table>'+
       '<div class="leg"><div><span style="background:#A8D08D"></span>R Resolvido</div><div><span style="background:#FFD965"></span>P Pendente</div>'+
         '<div><span style="background:#C00000"></span>N Não Resolvido</div></div>'+
-      '<div class="rod">Gerada pelo BeMer Flow em '+new Date().toLocaleString('pt-BR')+'.</div></body></html>';
+      '<div class="rod">Gerada pelo BeMer em '+new Date().toLocaleString('pt-BR')+'.</div></body></html>';
   },
   imprimir: function(r){
     var html = InsAta.html(r), w = null;
@@ -5281,16 +5104,15 @@ var InsAta = {
       ws.getCell('B'+l).value = 'Data: '+insBR(A.data); ws.getCell('E'+l).value = 'OBRA '+A.obra.toUpperCase();
       if(A.numero) ws.getCell('I'+l).value = 'Ata Nº: '+String(A.numero).padStart(2,'0');
       ['B','E','I'].forEach(function(c){ ws.getCell(c+l).font = { name:'Arial', size:12, bold:true }; });
-      l++; ws.getCell('B'+l).value = 'Redator: '+(A.redator||''); ws.getCell('B'+l).font = { name:'Arial', size:12, bold:true };
-      var parts = A.participantes.length ? A.participantes : [''];
-      parts.forEach(function(p, i){
+      if(A.redator){ l++; ws.getCell('B'+l).value = 'Redator: '+A.redator; ws.getCell('B'+l).font = { name:'Arial', size:12, bold:true }; }
+      A.participantes.forEach(function(p){
         l++; ws.getCell('B'+l).value = 'PARTICIPANTES:'; ws.getCell('B'+l).font = { name:'Arial', size:12, bold:true };   // como na planilha: o rótulo em cada linha
         ws.getCell('D'+l).value = p; ws.getCell('D'+l).font = { name:'Arial', size:12 };
       });
-      l++; ws.getCell('B'+l).value = 'CONVIDADOS:'; ws.getCell('B'+l).font = { name:'Arial', size:12, bold:true };
-      ws.getCell('D'+l).value = A.convidados.join(', ');
+      if(A.convidados.length){ l++; ws.getCell('B'+l).value = 'CONVIDADOS:'; ws.getCell('B'+l).font = { name:'Arial', size:12, bold:true };
+        ws.getCell('D'+l).value = A.convidados.join(', '); }
       l += 2;
-      var cab = ['ITEM','ASSUNTO','PAUTA','PROVIDÊNCIA','RESPONSÁVEL','DATA LIMITE DE CONTRATAÇÃO','HISTÓRICO','STATUS','DATA PARA INSTALAÇÃO NA OBRA (ENGENHARIA)'];
+      var cab = ['ITEM','ASSUNTO','PAUTA','PROVIDÊNCIA','RESPONSÁVEL','DATA LIMITE DE CONTRATAÇÃO','ANDAMENTO','STATUS','DATA PARA INSTALAÇÃO NA OBRA (ENGENHARIA)'];
       var hr = ws.getRow(l); hr.height = 36;
       cab.forEach(function(h, i){
         var c = hr.getCell(i+2); c.value = h;
@@ -5299,9 +5121,6 @@ var InsAta = {
         c.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
         c.border = { top:forte, bottom:forte, left:forte, right:forte };
       });
-      l++;
-      var sec = ws.getRow(l); sec.getCell(2).value = '1.0'; sec.getCell(3).value = '[reunião de insumos]';
-      for(var s=2; s<=10; s++){ var cs = sec.getCell(s); cs.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFD0CECE' } }; cs.font = { name:'Arial', size:11, bold:true }; cs.border = borda; }
       var corSt = { R:'FFA8D08D', P:'FFFFD965', N:'FFC00000' };
       A.itens.forEach(function(i){
         l++;
@@ -5344,7 +5163,7 @@ var InsImportar = {
     var f = abrirModal(
       '<div class="modal-topo"><button type="button" class="fechar" aria-label="Voltar">'+ICO.voltar+'</button><h2>Importar planilha</h2></div>'+
       '<div class="modal-corpo" id="imp-corpo">'+
-        '<div class="dica" style="margin:0 0 10px">Obra: <b>'+esc(o ? o.nome : '')+'</b>. Cada aba vira uma reunião (pela data da aba); o que mudou de uma aba para a outra vira histórico do item.</div>'+
+        '<div class="dica" style="margin:0 0 10px">Obra: <b>'+esc(o ? o.nome : '')+'</b>. A última aba vira a planilha da obra; o que mudou de uma aba para a outra vira o histórico de cada item (com a data da aba).</div>'+
         (ocupada ? '<div class="aviso aviso-erro">Esta obra já tem insumos. A importação é só para obra vazia (senão duplicaria os itens).</div>' :
           '<button type="button" class="btn btn-s" id="imp-arq">'+ICO.clipe+' Escolher o arquivo .xlsx</button>'+
           '<input type="file" id="imp-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">')+
@@ -5358,7 +5177,7 @@ var InsImportar = {
         (lido.obra && o && normalizar(o.nome).indexOf(normalizar(lido.obra).split(' ')[0]) < 0 ?
           '<div class="aviso">A planilha diz <b>'+esc(lido.obra)+'</b> e a obra aberta é <b>'+esc(o.nome)+'</b>. Confira antes de gravar.</div>' : '')+
         lido.avisos.map(function(a){ return '<div class="aviso">'+esc(a)+'</div>'; }).join('')+
-        '<div class="indicadores ins-ind"><div class="ind"><div class="n">'+lido.abas.length+'</div><div class="l">Reuniões (abas)</div></div>'+
+        '<div class="indicadores ins-ind"><div class="ind"><div class="n">'+lido.abas.length+'</div><div class="l">Abas (semanas)</div></div>'+
           '<div class="ind"><div class="n">'+(R.itens - R.fora)+'</div><div class="l">Itens na última ata</div></div>'+
           '<div class="ind"><div class="n">'+R.historico+'</div><div class="l">Registros de histórico</div></div>'+
           '<div class="ind"><div class="n">'+R.conta.R+' / '+R.conta.P+' / '+R.conta.N+'</div><div class="l">R / P / N</div></div></div>'+
@@ -5396,8 +5215,8 @@ var InsImportar = {
       var pacote = Object.assign({ arquivo:arquivo }, lido.pacote);
       InsDados.importar(Insumos.obra, pacote).then(function(r){
         f.remove();
-        aviso('Importado: '+r.itens+' itens, '+r.reunioes+' reuniões, '+r.historico+' registros de histórico.', 'ok');
-        Insumos.aba = 'itens'; return Insumos.recarregar();
+        aviso('Importado: '+r.itens+' itens e '+r.historico+' registros de histórico.', 'ok');
+        return Insumos.recarregar();
       }).catch(function(e){ b.disabled = false; b.textContent = 'Gravar na obra'; aviso(e.message||String(e), 'erro'); });
     });
     InsImportar._f = f; InsImportar._abas = function(a, nome){ abas = a; arquivo = nome || 'planilha.xlsx'; previa(); };
@@ -5407,13 +5226,10 @@ var InsImportar = {
 
 function nadaInsumos(){}
 
-/* exemplo da versão local: obra do CD DHL, uma reunião fechada */
+/* exemplo da versão local: planilha da obra do CD DHL */
 function insExemplo(){
   var dia = function(n){ var d = new Date(); d.setDate(d.getDate()+n); return comoInput(d); };
-  var I = { itens:[], hist:[], reunioes:[], seq:{ item:1, hist:1, reuniao:2 } };
-  var r1 = { id:1, obra_id:'o3', data:dia(-7), numero:1, redator:'Marcos Lima', participantes:'Marcos Lima\nCarla Nunes\nAna Ribeiro',
-    convidados:'', status:'fechada', foto:null, origem:'reuniao', aba:null, criado_por:'p7', criado_em:new Date().toISOString() };
-  I.reunioes.push(r1);
+  var I = { itens:[], hist:[], reunioes:[], seq:{ item:1, hist:1, reuniao:1 } };
   [['1.1','Seguro','SEGURO DE OBRA','CONTRATAÇÃO','Carla Nunes', dia(-10), 'R', 'Apólice emitida.'],
    ['1.2','PROJETOS','PROJETO DE PISO DE CONCRETO','CONTRATAÇÃO','Ana Ribeiro', dia(-3), 'P', 'Em cotação com 3 projetistas.'],
    ['1.3','ESQUADRIAS DE ALUMÍNIO','PORTAS DE ALUMÍNIO','CONTRATAÇÃO','Diego Alves', dia(10), 'P', 'Aguardar projeto de arquitetura.'],
@@ -5424,12 +5240,10 @@ function insExemplo(){
       data_limite:x[5], data_limite_original:x[5], data_instalacao:null, status:x[6], pendencia_id:null, origem:'manual',
       criado_por:'p7', criado_em:new Date().toISOString(), atualizado_em:new Date().toISOString() };
     I.itens.push(it);
-    I.hist.push({ id:I.seq.hist++, item_id:it.id, obra_id:'o3', reuniao_id:1, data:r1.data, autor_id:'p7', autor_nome:'Marcos Lima',
+    I.hist.push({ id:I.seq.hist++, item_id:it.id, obra_id:'o3', reuniao_id:null, data:dia(-7), autor_id:'p7', autor_nome:'Marcos Lima',
       tipo:'criacao', texto:x[7], status_antes:null, status_depois:x[6], data_antes:null, data_depois:x[5], mudou:{}, criado_em:new Date().toISOString() });
   });
   I.seq.item = 6;
-  r1.foto = I.itens.map(function(i){ var hs = I.hist.filter(function(h){ return h.item_id === i.id; });
-    return Object.assign({}, i, { historico:insHistTexto(hs), na_reuniao:true }); });
   return I;
 }
 
@@ -5478,7 +5292,7 @@ var Painel = {
       "<div class=\"mv-rodape painel-links\">"+
         [["btn-obras","Obras"]].concat(podeNoFlow("avisos") ? [["btn-avisos","Avisos"]] : [])
           .concat(podeNoFlow("assuntos") ? [["btn-cadastros","Categorias"]] : [])
-          .concat(podeInsumos() ? [["btn-insumos","Insumos"]] : [])
+          .concat(verInsumos() ? [["btn-insumos","Insumos"]] : [])
           .concat([["btn-dados","Exportar planilha"]])
           .map(function(x){ return "<button data-painel-link=\""+x[0]+"\">"+x[1]+"</button>"; }).join("")+"</div>";
 
@@ -6103,7 +5917,7 @@ $('btn-avisos').addEventListener('click', function(){
         (souAdminSistema() ? '' : ' <b>Só o administrador do sistema muda.</b>'), c.exclusao_liberada !== false, !souAdminSistema())+
       /* 10/10/2026: Insumos (pauta e ata por obra) — liga para quem tem a ação "insumos" */
       chave('av-ins', 'insumos_liberado', 'Insumos (pauta e ata por obra)',
-        'Mostra o botão Insumos para quem tem a ação "Insumos" em Cadastros › Permissões.'+
+        'Mostra a planilha de insumos de cada obra para todos; edita quem tem a ação "Insumos" em Cadastros › Permissões.'+
         (souAdminSistema() ? '' : ' <b>Só o administrador do sistema muda.</b>'), c.insumos_liberado === true, !souAdminSistema())+
       '</div>'+
       '<div class="bloco" style="margin-top:14px"><div class="rot">Hora do resumo (Brasília)</div>'+
@@ -6805,6 +6619,12 @@ Dados = {
       .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
       .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; })
       .then(function(){ Detalhe.recarregarSeAberta(p.id); });
+  },
+  /* 10/10/2026: aguardando terceiros com o quê / quem (0058) */
+  marcarAguardando: function(p, texto){
+    return Promise.resolve(sb.schema('flow').rpc('marcar_aguardando', { p_id:p.id, p_texto:texto }))
+      .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
+      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
   },
   /* Mensagem (e Concluí) digitada sem sinal vai para a fila: aparece com
      "enviando…" e, se falhar, "não enviado · tentar". Com anexo não entra
@@ -7785,13 +7605,13 @@ setTimeout(function(){
 trocarModo('entrar');
 
 /* =====================================================================
-   INSUMOS NO AR (0057) — troca o InsDados local por chamadas ao banco.
-   Leitura: as 3 tabelas (RLS: ação flow/insumos + obra que a pessoa vê +
-   chave insumos_liberado). Gravação: só pelas funções flow.insumos_*,
+   INSUMOS NO AR (0057/0058) — troca o InsDados local por chamadas ao banco.
+   Leitura: as 3 tabelas (RLS 0058: quem usa o Flow e vê a obra + chave
+   insumos_liberado). Edição: ação flow/insumos. Gravação: só pelas funções flow.insumos_*,
    que conferem a permissão e geram o histórico.
    Banco sem a 0057: insumos_info falha → INSUMOS = desligado, nada aparece.
    ===================================================================== */
-INSUMOS = { liberado:false, pode:false };
+INSUMOS = { liberado:false, pode:false, ve:false };
 
 function insRpc(nome, args){
   return Promise.resolve(sb.schema('flow').rpc(nome, args)).then(function(r){
@@ -7804,8 +7624,9 @@ InsDados = {
   info: function(){
     return Promise.resolve().then(function(){ return sb.schema('flow').rpc('insumos_info'); }).then(function(r){
       var d = r && !r.error && r.data && typeof r.data === 'object' ? r.data : null;
-      return { liberado: !!(d && d.liberado), pode: !!(d && d.pode) };
-    }, function(){ return { liberado:false, pode:false }; });
+      /* banco sem a 0058 não manda "ve": aí só quem edita vê (como na 0057) */
+      return { liberado: !!(d && d.liberado), pode: !!(d && d.pode), ve: !!(d && (d.ve || d.pode)) };
+    }, function(){ return { liberado:false, pode:false, ve:false }; });
   },
   carregar: function(obraId){
     return Promise.all([
@@ -7817,17 +7638,10 @@ InsDados = {
       return { itens:r[0].data || [], hist:r[1].data || [], reunioes:r[2].data || [] };
     });
   },
-  salvarItem: function(itemId, obraId, dados, texto, reuniaoId){
+  salvarItem: function(itemId, obraId, dados, texto){
     return insRpc('insumos_item_salvar', { p_item:itemId == null ? null : Number(itemId), p_obra:obraId, p_dados:dados || {},
-      p_texto:texto || '', p_reuniao:reuniaoId == null ? null : Number(reuniaoId) });
+      p_texto:texto || '', p_reuniao:null });
   },
-  abrirReuniao: function(obraId, cab){
-    return insRpc('insumos_reuniao_abrir', { p_obra:obraId, p_data:cab.data || null, p_redator:cab.redator || '',
-      p_participantes:cab.participantes || '', p_convidados:cab.convidados || '' });
-  },
-  editarReuniao: function(id, d){ return insRpc('insumos_reuniao_editar', { p_id:Number(id), p_dados:d || {} }); },
-  fecharReuniao: function(id){ return insRpc('insumos_reuniao_fechar', { p_id:Number(id) }); },
-  cancelarReuniao: function(id){ return insRpc('insumos_reuniao_cancelar', { p_id:Number(id) }); },
   /* a pendência nasce pelo caminho normal (quem cria é quem está logado) */
   criarPendencia: function(dados){
     return criarPendencia(dados, [], []).then(function(id){ return recarregarTudo().then(function(){ return id; }); });

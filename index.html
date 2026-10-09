@@ -37,8 +37,10 @@ a{color:var(--azul)}
 button{font-family:inherit}
 :focus-visible{outline:3px solid var(--laranja);outline-offset:2px}
 
-/* a assinatura BeMer: o logo (wordmark) novo — 09/10/2026, marca/bemer-wordmark.png
-   (colorido, fundo branco) e marca/bemer-wordmark-branco.png (fundo azul) */
+/* a assinatura BeMer: o logo (wordmark) — marca/bemer-wordmark.png = "BeMer Variação 08"
+   (Be azul + Mer laranja, o PADRÃO, fundo claro; trocado em 09/10/2026 à tarde) e
+   marca/bemer-wordmark-branco.png (todo branco, só a marca-d'água da faixa azul).
+   Originais em marca/nova/ (a 06, Be branco + Mer laranja, é a de fundo azul). */
 .marca{display:flex;align-items:center;gap:10px;text-decoration:none}
 .marca img{display:block;height:36px;width:auto}
 
@@ -493,7 +495,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.09.1';
+var VERSAO   = '2026.10.10.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
