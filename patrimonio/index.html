@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026.09.30.1">
+<meta name="app-version" content="2026.10.09.1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1B2A5E">
@@ -76,9 +76,7 @@
     border-bottom: 3px solid #FE9400;
   }
   header.topbar .bm-marca { display: flex; align-items: center; gap: 7px; text-decoration: none; flex: 0 0 auto; min-height: 36px; }
-  header.topbar .bm-marca img { height: 26px; width: auto; display: block; }
-  header.topbar .bm-palavra { font-size: 18px; font-weight: 800; letter-spacing: -.4px; line-height: 1; }
-  header.topbar .bm-palavra .be { color: #00296B; } header.topbar .bm-palavra .mer { color: #FE9400; }
+  header.topbar .bm-marca img { height: 28px; width: auto; display: block; }
   header.topbar .bm-fio { width: 1px; height: 26px; background: #E3E7ED; flex: 0 0 auto; }
   header.topbar .bm-modulo { display: flex; align-items: center; gap: 7px; background: none; border: 0; padding: 0;
     cursor: pointer; font: inherit; flex: 0 1 auto; min-width: 0; min-height: 36px; }
@@ -100,13 +98,31 @@
     display: flex; align-items: center; justify-content: center;
     padding: 0 4px; box-shadow: 0 0 0 2px #fff;
   }
-  /* "Portal" com texto só onde cabe; abaixo disso a assinatura já leva ao portal */
-  header.topbar .btn-portal-txt { width: auto; padding: 0 10px; gap: 6px; font-size: 13px; font-weight: 700;
-    border: 1px solid #C9D1DD; height: 34px; }
-  @media (max-width: 419px) { header.topbar .btn-portal-txt { display: none; } }
-  /* celular estreito: some o quadradinho do módulo; menor ainda, a palavra BeMer */
-  @media (max-width: 380px) { header.topbar .bm-tile, header.topbar .bm-fio { display: none; } }
-  @media (max-width: 330px) { header.topbar .bm-palavra { display: none; } }
+  /* ---- botão "← Portal" — PADRÃO DA SUÍTE (07/10/2026) ----
+     Copiado do Docs (.btn.btn-secondary.btn-sm do #btnPortal): canto superior
+     direito, fundo branco, texto e borda azul 294, raio 6, 12px/500, fonte do
+     Docs. Sobre topo AZUL é o mesmo botão branco, só a borda fica branca.
+     É a ÚNICA saída para o portal. Mesmo bloco em Flow, Custos, Cadastros,
+     Patrimônio e Folha — mudou aqui, muda nos cinco. */
+  .bm-portal{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;box-sizing:border-box;
+    margin:0;padding:4px 10px;border:1px solid #00296B;border-radius:6px;background:#fff;color:#00296B;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;font-weight:500;line-height:1.5;
+    white-space:nowrap;text-decoration:none;cursor:pointer;transition:background .15s}
+  .bm-portal:hover{background:#f0f4fb;color:#00296B}
+  .bm-portal:focus-visible{outline:3px solid #FE9400;outline-offset:2px}
+  .bm-portal.sobre-azul{border-color:#fff}
+  @media (max-width:768px){.bm-portal{min-height:40px;padding:8px 10px;font-size:13px}}
+  /* "← Portal" SEMPRE visível (a assinatura leva ao Início do Patrimônio):
+     no celular quem dá lugar é o quadradinho do módulo (o logo BeMer só encolhe). */
+  @media (max-width: 419px) {
+    header.topbar .bm-tile, header.topbar .bm-fio { display: none; }
+  }
+  @media (max-width: 380px) { header.topbar .bm-marca img { height: 24px; } }
+
+  /* 07/10/2026: regra de senha forte (docs/senha-forte.js) — ✓/✗ ao vivo */
+  .regras-senha { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; line-height: 1.35; display: grid; gap: 3px; text-align: left; }
+  .regras-senha li.nao { color: #B42318; } .regras-senha li.ok { color: #137A38; }
+  .login-card button[disabled] { opacity: .5; cursor: not-allowed; }
 
   /* aviso de nova versão (mesmo padrão do Flow e do portal) */
   .faixa-atualizar { position: fixed; left: 0; right: 0; top: 0; z-index: 190; background: #FE9400; color: #00296B;
@@ -444,10 +460,10 @@
 /* Formato AAAA.MM.DD.N, igual ao Flow e ao portal. O publicar.js grava este
    número em version.json — é ele que faz aparecer o aviso de nova versão.
    SUBA A CADA PUBLICAÇÃO. */
-const APP_VERSION = '2026.09.30.1';
-/* símbolo BeMer do cabeçalho (portal/marca/bemer-simbolo.png, reduzido).
+const APP_VERSION = '2026.10.09.1';
+/* logo BeMer do cabeçalho (portal/marca/bemer-wordmark.png, reduzido — logo novo de 09/10/2026).
    Embutido porque a CSP desta página só aceita imagem da própria origem ou data:. */
-const SIMBOLO_BEMER = 'data:image/png;base64,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';
+const SIMBOLO_BEMER = 'data:image/png;base64,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';
 try { const _mv = document.querySelector('meta[name="app-version"]'); if (_mv) _mv.setAttribute('content', APP_VERSION); } catch {}
 
 /* ----- Configuração Supabase -------------------------------- */
@@ -518,7 +534,15 @@ function dominioDaCategoria(catId){
    ler, ninguém além da diretoria ganha nada (o banco recusaria de qualquer
    jeito). */
 let ACOES_DE = null;   // perfil → Set de ações
+/* 06/10/2026 (0051): administrador do sistema = perfil TI ou a marca
+   "Administrador do sistema" (core.eh_admin). A diretoria SEM a marca vê e
+   aprova tudo, mas não exclui bem nem apaga lista (o banco também barra). */
+let ADM_SISTEMA = false;
 async function carregarAcoes(){
+  try {
+    const r = await SB.schema('core').rpc('eh_admin');
+    ADM_SISTEMA = !r.error && r.data === true;
+  } catch { ADM_SISTEMA = false; }
   try {
     const { data, error } = await SB.schema('core').from('perfil_acoes').select('perfil,acao').eq('modulo', 'patrimonio');
     if (error || !Array.isArray(data)) throw error || new Error('sem resposta');
@@ -532,7 +556,7 @@ async function carregarAcoes(){
 }
 function nivelPode(perfil, acao){
   if (!perfil) return false;
-  if (perfil === 'diretoria') return true;
+  if (perfil === 'diretoria') return acao === 'excluir' ? ADM_SISTEMA : true;   // 0051: excluir só com a marca
   const lista = (ACOES_DE || {})[perfil];
   return !!(lista && lista.has(acao));
 }
@@ -599,6 +623,21 @@ async function doisFatoresPendente() {
   if (!SB) return false;
   try {
     const { data, error } = await SB.schema('core').rpc('dois_fatores_pendente');
+    return !error && data === true;
+  } catch { return false; }
+}
+
+/* 06/10/2026: sessão aberta por link (recuperação/convite) que ainda não
+   criou a senha? Marca do aparelho (mesma chave do portal) ou
+   core.senha_pendente() (0048). Erro = false. */
+async function senhaPendente(user) {
+  try {
+    const m = JSON.parse(localStorage.getItem('bemer_definir_senha') || '{}') || {};
+    if (user && m[user.id]) return true;
+  } catch {}
+  if (!SB) return false;
+  try {
+    const { data, error } = await SB.schema('core').rpc('senha_pendente');
     return !error && data === true;
   } catch { return false; }
 }
@@ -1085,9 +1124,11 @@ function avisoErroAoSalvar(msg) {
      notificarWhatsApp('evento', { dados }, ['uuid1','uuid2'])
    Também aceita números prontos no array (formato 55DDDNNNNNNNN).
    Se destinatarios vier vazio, a Edge Function cai no WHATSAPP_TEST_NUMBER. */
-/* Notificações desligadas por enquanto: a Edge Function `notificar-whatsapp` foi
-   removida (WhatsApp aposentado). Quando entrar a notificação por e-mail, é aqui
-   que se liga de novo — troque para true e aponte o invoke pra nova função. */
+/* WhatsApp aposentado: a Edge Function `notificar-whatsapp` não existe mais.
+   05/10/2026: o AVISO POR E-MAIL não passa por aqui — nasce no BANCO (0046):
+   toda movimentação gravada vira evento (gatilho), e a edge
+   `patrimonio-notificar` manda o e-mail (Cc: departamento do bem, configurado
+   em Mais › E-mails de aviso). Nada a ligar na tela. Fica false. */
 const NOTIFICACOES_ATIVAS = false;
 
 async function notificarWhatsApp(evento, dados, destinatarios) {
@@ -1195,6 +1236,8 @@ const Perms = {
   soMeus(u) { return !!u && u.perfil !== 'diretoria' && !(DB.categorias || []).some(c => Perms.veCategoria(u, c.id)); },
   gereAlgumaArea(u) { return !!u && (DB.categorias || []).some(c => Perms.canManageCategoria(u, c.id)); },
   isDiretoria(u) { return !!u && u.perfil === 'diretoria'; },
+  /* 0051: apagar item de lista (subcategoria, localização) — diretoria COM a marca */
+  podeApagar(u) { return !!u && u.perfil === 'diretoria' && ADM_SISTEMA; },
   /* quem precisa de aprovação para cadastrar */
   isOperador(u) { return !!u && !(DB.categorias || []).some(c => Perms.canManageCategoria(u, c.id)); },   // não gerencia área nenhuma
   /* = ve_categoria() / gerencia_categoria() (0026): ver_<domínio> ou gerenciar_<domínio> */
@@ -1319,6 +1362,114 @@ let State = {
   filter: { q: '', status: '', categoria: '', subcategoria: '', local: '', responsavel: '' }
 };
 
+/* ============== VOLTAR DO CELULAR (05/10/2026) ==============
+   O "voltar" do Android fecha o que está aberto antes de sair do módulo:
+     ficha/janela aberta (.modal-backdrop) → fecha a de cima (pelo ✕ dela,
+     para o leitor de código desligar a câmera);
+     fora do Início (Bens, Cadastrar, Pendências, Mais) → volta ao Início;
+     no Início, sem nada aberto → sai para o portal (o navegador volta).
+   Cada janela aberta e o "fora do Início" ganham um passo no histórico (mesmo
+   endereço). Fechou pela tela: o passo sobra e é desfeito logo depois — ou
+   reaproveitado, se outra janela abrir no mesmo instante (fecha a ficha e abre
+   a movimentação, por exemplo). Por file:// o navegador proíbe pushState. */
+const Volta = {
+  vale: location.protocol === 'http:' || location.protocol === 'https:',
+  modais: 0,        // passos empilhados por janelas abertas
+  aba: false,       // passo empilhado por estar fora do Início
+  sobra: 0,         // passos liberados ainda não desfeitos
+  ignorar: 0,       // popstate que nós mesmos provocamos
+  abertos() { return document.querySelectorAll('.modal-backdrop').length; },
+  empilhar() {
+    try {
+      if (this.sobra > 0) { this.sobra--; history.replaceState({ patrVolta: 1 }, '', location.href); }
+      else history.pushState({ patrVolta: 1 }, '', location.href);
+      return true;
+    } catch (e) { this.vale = false; return false; }
+  },
+  liberar() {
+    this.sobra++;
+    setTimeout(() => {
+      if (this.sobra <= 0) return;
+      const k = this.sobra; this.sobra = 0; this.ignorar++;
+      try { history.go(-k); } catch (e) { this.ignorar--; }
+    }, 0);
+  },
+  /* acerta os passos com o que está na tela (chamado no render e quando abre/fecha janela) */
+  sincronizar() {
+    if (!this.vale) return;
+    const naApp = !!(DB && DB.currentUser) && !modoRecuperacao;
+    const n = naApp ? this.abertos() : 0;
+    const querAba = naApp && State.tab !== 'home';
+    if (querAba && !this.aba) { if (this.empilhar()) this.aba = true; }
+    while (this.modais < n) { if (!this.empilhar()) return; this.modais++; }
+    while (this.modais > n) { this.modais--; this.liberar(); }
+    if (!querAba && this.aba && this.modais === 0) { this.aba = false; this.liberar(); }
+  },
+  /* 06/10/2026 (pedido do Saurin): no Início, sem nada aberto, o ← NÃO sai
+     para o portal — o único caminho é o botão "Portal". Na 1ª interação (o
+     Chrome ignora passo criado sem gesto) a entrada atual vira a "raiz" e
+     ganha um passo por cima; o ← que chega na raiz fica aqui e rearma. */
+  guarda: false,
+  armar() {
+    if (!this.vale || this.guarda || this.modais || this.aba || this.sobra || this.ignorar) return;
+    if (!(DB && DB.currentUser) || modoRecuperacao) return;
+    try {
+      history.replaceState({ patrRaiz: 1 }, '', location.href);
+      history.pushState({ patrVolta: 1 }, '', location.href);
+      this.guarda = true;
+    } catch (e) {}
+  },
+  voltou() {
+    if (this.ignorar > 0) { this.ignorar--; return; }
+    if (history.state && history.state.patrRaiz) {
+      this.guarda = false;
+      if (!this.modais && !this.aba && !this.abertos()) { toast('Para voltar ao portal, toque em Portal'); return; }
+    }
+    const topo = Array.from(document.querySelectorAll('.modal-backdrop')).pop();
+    if (this.modais > 0 && topo) {
+      this.modais--;
+      const x = topo.querySelector('[data-close]');
+      if (x) x.click(); else topo.remove();
+      setTimeout(() => this.sincronizar(), 0);   // se a janela não fechou, o passo volta
+      return;
+    }
+    if (this.modais > 0) this.modais = 0;
+    if (this.aba) { this.aba = false; State.tab = 'home'; render(); return; }
+  },
+  ligar() {
+    if (!this.vale) return;
+    window.addEventListener('popstate', () => this.voltou());
+    const armar = () => this.armar();
+    document.addEventListener('pointerdown', armar, true);
+    document.addEventListener('keydown', armar, true);
+    document.addEventListener('touchstart', armar, { capture: true, passive: true });
+    try {
+      new MutationObserver(() => this.sincronizar()).observe(document.body, { childList: true });
+    } catch (e) {}
+  }
+};
+
+/* Rota de um bem (#/bem/123): é o que o botão do e-mail abre. Guardada até
+   haver sessão e dados; sem sessão o módulo manda para o portal e, ao voltar
+   na mesma aba, a ficha abre. */
+const RotaBem = {
+  CHAVE: 'patr_rota_bem',
+  ler() {
+    const m = /^#\/bem\/(\d+)$/.exec(location.hash || '');
+    if (!m) return;
+    try { sessionStorage.setItem(this.CHAVE, m[1]); } catch (e) {}
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  },
+  abrir() {
+    let id = null;
+    try { id = sessionStorage.getItem(this.CHAVE); sessionStorage.removeItem(this.CHAVE); } catch (e) {}
+    if (!id || !DB || !DB.currentUser) return;
+    const p = DB.patrimonios.find(x => String(x.id) === String(id));
+    if (!p) return toast('Este bem não está na sua lista', 'error');
+    openDetail(p.id);
+  }
+};
+
 /* ============== RENDER ============== */
 
 function render() {
@@ -1343,6 +1494,7 @@ function render() {
   bindTopbar();
   bindBottomNav();
   bindTab();
+  Volta.sincronizar();
 }
 
 /* --- LOGIN --- */
@@ -1472,11 +1624,12 @@ function renderNovaSenha() {
         <div class="brand-icon"><img src="icon-192.png" alt="Patrimônio Brandão & Marmo"></div>
         <div class="brand-mark"><span class="b1">BRANDÃO</span> <span class="b2">&amp; MARMO</span></div>
         <div class="system-name">Criar <strong>nova senha</strong></div>
-        <div class="system-desc">Mínimo de 12 caracteres, com letras e números</div>
+        <div class="system-desc">Senha forte: cumpra todas as regras abaixo</div>
         <form id="nova-senha-form">
           <div class="form-group">
             <label>Nova senha</label>
             <input type="password" id="ns-senha" required autocomplete="new-password">
+            <ul class="regras-senha" id="regras-ns" aria-live="polite"></ul>
           </div>
           <div class="form-group">
             <label>Repita a nova senha</label>
@@ -1490,17 +1643,119 @@ function renderNovaSenha() {
   `;
 }
 
+/* 07/10/2026: SENHA FORTE — cópia IGUAL de docs/senha-forte.js (a mesma do
+   portal e do Flow): uma régua só na suíte. Lista ✓/✗ ao vivo e o botão só
+   libera com tudo ✓. */
+/* ---------------- SENHA-FORTE v1 · início (copiar daqui) ---------------- */
+var SENHA_FORTE_MIN = 8;
+function senhaForteNorm(s){
+  s = String(s == null ? '' : s).toLowerCase();
+  try { s = s.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch(e){}
+  return s;
+}
+/* 3+ seguidos em ordem (pra frente ou pra trás) numa destas fileiras, ou repetidos */
+var SENHA_FORTE_FILEIRAS = ['abcdefghijklmnopqrstuvwxyz', '01234567890', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+function senhaForteSequencia(s){
+  s = senhaForteNorm(s);
+  for(var i = 0; i + 2 < s.length; i++){
+    var t = s.substr(i, 3);
+    if(t.charAt(0) === t.charAt(1) && t.charAt(1) === t.charAt(2)) return t;
+    var inv = t.split('').reverse().join('');
+    for(var f = 0; f < SENHA_FORTE_FILEIRAS.length; f++){
+      if(SENHA_FORTE_FILEIRAS[f].indexOf(t) >= 0 || SENHA_FORTE_FILEIRAS[f].indexOf(inv) >= 0) return t;
+    }
+  }
+  return '';
+}
+/* pedaços dos dados do login que não podem aparecer na senha */
+function senhaFortePedacos(d){
+  d = d || {};
+  var p = [], vistos = {};
+  function poe(x, min){
+    x = senhaForteNorm(x).replace(/[^a-z0-9]/g, '');
+    if(x.length >= (min || 3) && !vistos[x]){ vistos[x] = 1; p.push(x); }
+  }
+  var LIGA = { da:1, de:1, di:1, do:1, du:1, das:1, dos:1, e:1, 'del':1, van:1, von:1 };
+  String(d.nome || '').split(/[\s.'-]+/).forEach(function(w){ if(!LIGA[senhaForteNorm(w)]) poe(w, 3); });
+  var local = String(d.email || '').split('@')[0];
+  if(local){ poe(local, 3); local.split(/[._+\-0-9]+/).forEach(function(w){ poe(w, 3); }); }
+  var cpf = String(d.cpf || '').replace(/\D/g, '');
+  if(cpf.length >= 11){ for(var i = 0; i + 5 <= cpf.length; i++) poe(cpf.substr(i, 5), 5); }   // 5 dígitos seguidos do CPF
+  var n = String(d.nascimento || '').replace(/[^\d]/g, ' ').trim().split(/\s+/);   // aceita 1985-03-27 ou 27/03/1985
+  if(n.length === 3){
+    var a = n[0].length === 4 ? n[0] : n[2], m = n[1], dd = n[0].length === 4 ? n[2] : n[0];
+    if(dd.length === 1) dd = '0' + dd; if(m.length === 1) m = '0' + m;
+    [dd + m + a, dd + m + a.slice(2), a + m + dd, dd + m, m + dd, a].forEach(function(x){ poe(x, 4); });
+  }
+  return p;
+}
+function senhaForte(senha, dados){
+  var s = String(senha == null ? '' : senha), sn = senhaForteNorm(s).replace(/[^a-z0-9]/g, '');
+  var seq = senhaForteSequencia(s);
+  var achado = '';
+  senhaFortePedacos(dados).some(function(x){ if(sn.indexOf(x) >= 0){ achado = x; return true; } return false; });
+  var regras = [
+    { id:'tam', texto: SENHA_FORTE_MIN + ' ou mais caracteres', ok: s.length >= SENHA_FORTE_MIN },
+    { id:'mai', texto:'uma letra maiúscula',                  ok: /[A-ZÀ-ÖØ-Þ]/.test(s) },
+    { id:'min', texto:'uma letra minúscula',                  ok: /[a-zß-öø-ÿ]/.test(s) },
+    { id:'num', texto:'um número',                            ok: /[0-9]/.test(s) },
+    { id:'sim', texto:'um símbolo (! @ # $ % …)',             ok: /[^A-Za-zÀ-ÖØ-öø-ÿ0-9]/.test(s) },
+    { id:'seq', texto:'sem sequência nem repetição (123, abc, qwe, aaa)', ok: !!s && !seq },
+    { id:'pes', texto:'sem seu nome, e-mail ou outros dados seus',        ok: !!s && !achado }
+  ];
+  return { ok: regras.every(function(r){ return r.ok; }), regras: regras,
+           faltas: regras.filter(function(r){ return !r.ok; }).map(function(r){ return r.texto; }),
+           sequencia: seq, dadoPessoal: achado };
+}
+/* liga a lista ✓/✗ e o botão a um campo de senha. Devolve a função que repinta. */
+function senhaForteLigar(o){
+  function pintar(){
+    var v = o.campo.value, r = senhaForte(v, typeof o.dados === 'function' ? o.dados() : o.dados);
+    var regras = r.regras.slice();
+    if(o.confirmar) regras.push({ id:'igual', texto:'as duas senhas iguais', ok: !!v && v === o.confirmar.value });
+    var tudo = regras.every(function(x){ return x.ok; });
+    if(o.lista){
+      o.lista.innerHTML = '';
+      regras.forEach(function(x){
+        var li = document.createElement('li');
+        li.setAttribute('data-r', x.id);
+        li.className = x.ok ? 'ok' : 'nao';
+        li.textContent = (x.ok ? '✓ ' : '✗ ') + x.texto;
+        o.lista.appendChild(li);
+      });
+    }
+    if(o.botao) o.botao.disabled = !tudo;
+    if(o.aoMudar) o.aoMudar(tudo, r);
+    return tudo;
+  }
+  o.campo.addEventListener('input', pintar);
+  if(o.confirmar) o.confirmar.addEventListener('input', pintar);
+  pintar();
+  return pintar;
+}
+/* ---------------- SENHA-FORTE v1 · fim ---------------- */
+let DADOS_SENHA = {};
 function bindNovaSenha() {
   const form = $('#nova-senha-form');
   if (!form) return;
+  const pintar = senhaForteLigar({ campo: $('#ns-senha'), confirmar: $('#ns-senha2'), lista: $('#regras-ns'),
+    botao: form.querySelector('button[type=submit]'), dados: () => DADOS_SENHA });
+  (async () => {   // nome e e-mail que a senha não pode conter
+    try {
+      const u = await Auth.getUser(); if (!u) return;
+      DADOS_SENHA = { email: u.email || '', nome: (u.user_metadata && (u.user_metadata.nome || u.user_metadata.full_name)) || '' };
+      pintar();
+      const r = await SB.schema('core').from('pessoas').select('nome').eq('id', u.id).maybeSingle();
+      if (r && !r.error && r.data && r.data.nome) { DADOS_SENHA.nome = r.data.nome; pintar(); }
+    } catch (e) {}
+  })();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = form.querySelector('button[type=submit]');
-    const s1 = $('#ns-senha').value.trim();
-    const s2 = $('#ns-senha2').value.trim();
-    // Mesma regra da troca de senha dentro do app, pra não existirem duas réguas.
-    if (s1.length < 12) return toast('A senha precisa ter ao menos 12 caracteres', 'error');
-    if (!/[A-Za-z]/.test(s1) || !/\d/.test(s1)) return toast('A senha precisa conter letras E números', 'error');
+    const s1 = $('#ns-senha').value;
+    const s2 = $('#ns-senha2').value;
+    const forte = senhaForte(s1, DADOS_SENHA);
+    if (!forte.ok) return toast('A senha ainda não cumpre: ' + forte.faltas.join('; '), 'error');
     if (s1 !== s2) return toast('As duas senhas não são iguais', 'error');
     if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
     try {
@@ -1510,7 +1765,7 @@ function bindNovaSenha() {
       await Auth.signOut();                 // obriga a entrar de novo, já com a senha nova
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Salvar nova senha'; }
+      if (btn) { btn.textContent = 'Salvar nova senha'; pintar(); }
       toast('Não foi possível salvar: ' + ((err && err.message) || ''), 'error');
     }
   });
@@ -1673,9 +1928,8 @@ function renderTopbar() {
   const pending = Lookup.pendingCount(u.id);
   return `
     <header class="topbar">
-      <a class="bm-marca" href="../" aria-label="BeMer — voltar ao portal" title="Voltar ao portal">
-        <img src="${SIMBOLO_BEMER}" alt="">
-        <span class="bm-palavra"><span class="be">Be</span><span class="mer">Mer</span></span>
+      <a class="bm-marca" href="./" id="marca-inicio" aria-label="BeMer Patrimônio — página inicial" title="Ir para a página inicial do Patrimônio">
+        <img src="${SIMBOLO_BEMER}" alt="BeMer">
       </a>
       <span class="bm-fio" aria-hidden="true"></span>
       <button class="bm-modulo" id="brand-home" type="button" title="Ir para a página inicial do Patrimônio">
@@ -1683,8 +1937,7 @@ function renderTopbar() {
         <span class="bm-nome">Patrimônio</span>
       </button>
       <div class="right">
-        <button class="icon-btn btn-portal-txt" id="btn-portal" type="button" title="Voltar ao portal"
-                onclick="location.href='../'"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Portal</button>
+        <a id="btn-portal" class="bm-portal" href="../" title="Voltar ao portal BeMer">&#8592; Portal</a>
         <button class="icon-btn" id="btn-refresh" type="button" title="Atualizar" aria-label="Atualizar"><span class="ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span></button>
         <button class="icon-btn" id="btn-pending" type="button" title="Aceites pendentes" aria-label="Aceites pendentes${pending ? ' (' + pending + ')' : ''}">
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -1696,8 +1949,20 @@ function renderTopbar() {
   `;
 }
 function bindTopbar() {
+  /* 06/10/2026: marca e nome do módulo levam ao Início do Patrimônio (fecha
+     o que estiver aberto e sobe ao topo); o portal é só pelo botão "Portal". */
+  const irInicio = (e) => {
+    if (e) e.preventDefault();
+    Array.from(document.querySelectorAll('.modal-backdrop')).reverse().forEach(m => {
+      const x = m.querySelector('[data-close]'); if (x) x.click(); else m.remove();
+    });
+    State.tab = 'home'; render();
+    try { window.scrollTo(0, 0); } catch (x) {}
+  };
   const brandBtn = $('#brand-home');
-  if (brandBtn) brandBtn.addEventListener('click', () => { State.tab = 'home'; render(); });
+  if (brandBtn) brandBtn.addEventListener('click', irInicio);
+  const marca = $('#marca-inicio');
+  if (marca) marca.addEventListener('click', irInicio);
   $('#btn-refresh').addEventListener('click', () => {
     const btn = $('#btn-refresh');
     btn.classList.add('spinning');
@@ -2492,6 +2757,7 @@ function openMove(patrimonioId) {
     if (novoLocal) p.localizacaoAtualId = novoLocal;
     if (novoResp)  p.responsavelAtualId = novoResp;
     p.status = 'aguardando_aceite';
+    delete p.pendingMove;   // transferência por cima de um envio à manutenção: o aceite agora é de transferência
     p.atualizadoEm = new Date().toISOString();
     save();
     // Movimentação direta (admin/diretoria) — avisa partes envolvidas + pede aceite ao destino
@@ -2530,15 +2796,31 @@ function changeStatus(patrimonioId, novoStatus, motivo, tipoMov) {
   render();
 }
 
+/* 05/10/2026: o status que o bem assume no aceite. O pedido grava isso em
+   pending_move.statusAposAceite (o antigo p.pendingStatus não ia para o
+   banco: recarregou ou aceitou em outro aparelho, o bem voltava "ativo").
+   Sem a marca (bem enviado antes desta versão, ou marca trocada por um
+   pedido de baixa recusado), vale o último envio do histórico — o mesmo
+   critério do gatilho de e-mail (ev_mov, 0046). */
+const TIPOS_ENVIO = ['cadastro','aprovacao_cadastro','transferencia_local','transferencia_resp','transferencia_local_resp','manutencao'];
+function statusAposAceite(p) {
+  const pm = p.pendingMove;
+  if (pm && pm.statusAposAceite) return pm.statusAposAceite;
+  const ult = (DB.movimentacoes || [])
+    .filter(m => m.patrimonioId === p.id && TIPOS_ENVIO.includes(m.tipo))
+    .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || (a.id - b.id))
+    .pop();
+  return ult && ult.tipo === 'manutencao' ? 'manutencao' : 'ativo';
+}
+
 function acceptReceipt(patrimonioId) {
   const p = DB.patrimonios.find(x => x.id === patrimonioId);
   const u = Lookup.user(DB.currentUser);
   if (p.status !== 'aguardando_aceite' || p.responsavelAtualId !== u.id) {
     return toast('Apenas o destinatário pode aceitar', 'error');
   }
-  // Se havia status pendente (ex: aguardando aceite p/ envio à manutenção), aplica
-  if (p.pendingStatus) { p.status = p.pendingStatus; delete p.pendingStatus; }
-  else { p.status = 'ativo'; }
+  p.status = statusAposAceite(p);
+  delete p.pendingMove;
   p.atualizadoEm = new Date().toISOString();
   DB.movimentacoes.push({
     id: nextId('movimentacoes'), patrimonioId: p.id,
@@ -2554,7 +2836,7 @@ function acceptReceipt(patrimonioId) {
   render();
 }
 
-/* Envia patrimônio para manutenção via aceite. Pede destinatário e marca status='aguardando_aceite'+pendingStatus='manutencao' */
+/* Envia patrimônio para manutenção via aceite. Pede destinatário e marca status='aguardando_aceite'+pending_move.statusAposAceite='manutencao' */
 function sendToMaintenance(patrimonioId) {
   const p = DB.patrimonios.find(x => x.id === patrimonioId);
   const u = Lookup.user(DB.currentUser);
@@ -2592,7 +2874,7 @@ function sendToMaintenance(patrimonioId) {
     if (!respId) return toast('Selecione o responsável', 'error');
     p.responsavelAtualId = respId;
     p.status = 'aguardando_aceite';
-    p.pendingStatus = 'manutencao';
+    p.pendingMove = { statusAposAceite: 'manutencao' };   // vai para o banco (pending_move): quem aceita está em outro aparelho
     p.atualizadoEm = new Date().toISOString();
     DB.movimentacoes.push({
       id: nextId('movimentacoes'), patrimonioId: p.id,
@@ -3353,6 +3635,12 @@ function renderMore() {
           <button class="quick-action" data-action="import-csv"><span class="qa-icon">📥</span>Importar CSV</button>
         </div>
       </div>
+
+      <div class="card">
+        <h2>E-mails de aviso</h2>
+        <div class="card-hint">Todo cadastro, transferência, aceite, baixa e aprovação gera e-mail para quem é afetado. Os responsáveis do departamento do bem (Obra ou TI) vão sempre em cópia.</div>
+        <button class="btn secondary" data-action="cfg-email">✉️ Quem fica em cópia</button>
+      </div>
     ` : ''}
 
     <div class="card">
@@ -3385,7 +3673,75 @@ function bindMore() {
   $$('[data-action="cad-user"]').forEach(b => b.addEventListener('click', openCadUser));
   $$('[data-action="cad-subcat"]').forEach(b => b.addEventListener('click', openCadSubcat));
   $$('[data-action="import-csv"]').forEach(b => b.addEventListener('click', openImportCsv));
+  $$('[data-action="cfg-email"]').forEach(b => b.addEventListener('click', openCfgEmail));
   $$('[data-action="cad-sw"]').forEach(b => b.addEventListener('click', () => { State.tab='create'; render(); setTimeout(()=>{ const s=$('#c-cat'); if(s){s.value='3'; s.dispatchEvent(new Event('change')); const sw=$('#software-fields'); if(sw) sw.style.display='block'; } },100); }));
+}
+
+/* ============== E-MAILS DE AVISO (0046) ==============
+   O e-mail sai do banco (gatilho + edge patrimonio-notificar). Aqui só se
+   escolhe quem vai em CÓPIA por departamento do bem (domínio da categoria).
+   Grava por patrimonio.definir_copia — o banco confere quem pode (listas). */
+async function openCfgEmail() {
+  const u = Lookup.user(DB.currentUser);
+  if (!Perms.isAdmin(u)) return toast('Só quem administra o Patrimônio altera os e-mails de aviso', 'error');
+  if (!SB) return toast('Sem conexão com o banco', 'error');
+  let linhas = [];
+  try {
+    const { data, error } = await SB.schema('patrimonio').from('config_email').select('dominio,emails,atualizado_em');
+    if (error) throw error;
+    linhas = data || [];
+  } catch (e) {
+    return toast('Não consegui ler a configuração: ' + ((e && e.message) || e), 'error');
+  }
+  const deps = [['obra', 'Obra (Adm. de obra)'], ['ti', 'TI']];
+  const deHoje = (dom) => (DB.usuarios || []).filter(x => x.ativo !== false && x.perfil && x.perfil !== 'diretoria'
+                                                   && nivelPode(x.perfil, 'gerenciar_' + dom) && x.email);
+  const html = `
+    <div class="modal-backdrop" id="modal-cfg-email">
+      <div class="modal" onclick="event.stopPropagation()">
+        <button class="close-btn" data-close>&times;</button>
+        <h2>E-mails de aviso</h2>
+        <div class="card-hint" style="margin-bottom:12px;">Vão em <b>cópia</b> de todo e-mail de bem do departamento: cadastro, transferência, aceite, manutenção, baixa, extravio, exclusão e aprovações. Quem fez a ação não recebe o próprio aviso. Um e-mail por linha.</div>
+        ${deps.map(([dom, nome]) => {
+          const l = linhas.find(x => x.dominio === dom) || { emails: [] };
+          const sug = deHoje(dom);
+          return `
+          <div class="form-group">
+            <label>${nome}</label>
+            <textarea id="cfg-${dom}" rows="3" placeholder="nome@brandaoemarmo.com.br">${escapeHtml((l.emails || []).join('\n'))}</textarea>
+            <div class="form-help">${sug.length ? 'Hoje cadastram/movimentam bens de ' + escapeHtml(dom === 'ti' ? 'TI' : 'Obra') + ': ' +
+              sug.map(x => `<a href="#" data-add="${dom}" data-email="${escapeHtml(x.email)}" style="color:var(--brand-navy);">${escapeHtml(x.nome)}</a>`).join(', ') + ' (toque para incluir).'
+              : 'Ninguém além da diretoria cadastra bens desta área hoje.'}</div>
+          </div>`;
+        }).join('')}
+        <button class="btn" id="cfg-salvar">Salvar</button>
+      </div>
+    </div>`;
+  const wrap = document.createElement('div'); wrap.innerHTML = html;
+  const node = wrap.firstElementChild; document.body.appendChild(node);
+  node.querySelector('[data-close]').addEventListener('click', () => node.remove());
+  node.querySelectorAll('[data-add]').forEach(a => a.addEventListener('click', ev => {
+    ev.preventDefault();
+    const ta = node.querySelector('#cfg-' + a.dataset.add);
+    const atual = ta.value.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!atual.includes(a.dataset.email.toLowerCase())) ta.value = atual.concat([a.dataset.email.toLowerCase()]).join('\n');
+  }));
+  node.querySelector('#cfg-salvar').addEventListener('click', async () => {
+    const btn = node.querySelector('#cfg-salvar');
+    btn.disabled = true;
+    try {
+      for (const [dom] of deps) {
+        const emails = node.querySelector('#cfg-' + dom).value.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+        const { error } = await SB.schema('patrimonio').rpc('definir_copia', { p_dominio: dom, p_emails: emails });
+        if (error) throw error;
+      }
+      node.remove();
+      mostrarToast('E-mails de aviso salvos', 'success');
+    } catch (e) {
+      btn.disabled = false;
+      mostrarToast('Não foi salvo: ' + ((e && e.message) || e), 'error');
+    }
+  });
 }
 
 /* ============== INVENTORY ============== */
@@ -3684,7 +4040,7 @@ function openCadSubcat() {
               <div class="item" style="padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
                 <div class="item-info" style="flex:1"><div class="title">${escapeHtml(s.nome)}</div></div>
                 <button class="btn secondary sc-edit" data-sc-id="${s.id}" title="Editar nome" style="width:auto;padding:4px 10px;font-size:13px;">✏️</button>
-                ${u.perfil==='diretoria' ? `<button class="btn secondary sc-del" data-sc-id="${s.id}" title="Excluir subcategoria" style="width:auto;padding:4px 10px;font-size:13px;color:var(--danger);border-color:var(--danger);">🗑️</button>` : ''}
+                ${Perms.podeApagar(u) ? `<button class="btn secondary sc-del" data-sc-id="${s.id}" title="Excluir subcategoria" style="width:auto;padding:4px 10px;font-size:13px;color:var(--danger);border-color:var(--danger);">🗑️</button>` : ''}
               </div>`).join('') || '<div style="color:var(--muted);font-size:13px;padding:4px 0">Nenhuma subcategoria</div>'}
           </div>
         `).join('')}
@@ -3741,6 +4097,7 @@ function openCadSubcat() {
       const scId = parseInt(btn.dataset.scId);
       const sub  = (DB.subcategorias||[]).find(s => s.id === scId);
       if (!sub) return;
+      if (!Perms.podeApagar(u)) return toast('Apagar é do administrador do sistema (TI ou quem tem a marca).', 'error');
       if (!Perms.canManageCategoria(u, sub.categoriaId)) {
         const cat = Lookup.cat(sub.categoriaId);
         return toast(`Sem permissão para excluir subcategorias de "${cat ? cat.nome : 'esta categoria'}".`, 'error');
@@ -3771,7 +4128,7 @@ function openCadLoc() {
           ${DB.localizacoes.map(l => {
           const tipoIcon = l.tipo==='obra'?'🏗️':l.tipo==='escritorio'?'🏢':l.tipo==='deposito'?'📦':'📍';
           const tipoLabel = l.tipo==='obra'?'Obra':l.tipo==='escritorio'?'Escritório':l.tipo==='deposito'?'Depósito':l.tipo;
-          return `<div class="item" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;gap:10px;align-items:center;flex:1;"><div class="item-icon">${tipoIcon}</div><div class="item-info"><div class="title">${escapeHtml(l.nome)}</div><div class="subtitle">${tipoLabel}</div></div></div><div style="display:flex;gap:6px;flex-shrink:0;"><button class="btn secondary loc-edit" data-loc-id="${l.id}" title="Renomear" style="width:auto;padding:4px 10px;font-size:13px;">✏️</button>${u.perfil==='diretoria' ? `<button class="btn secondary loc-del" data-loc-id="${l.id}" title="Excluir" style="width:auto;padding:4px 10px;font-size:13px;color:var(--danger);border-color:var(--danger);">🗑️</button>` : ''}</div></div>`;
+          return `<div class="item" style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><div style="display:flex;gap:10px;align-items:center;flex:1;"><div class="item-icon">${tipoIcon}</div><div class="item-info"><div class="title">${escapeHtml(l.nome)}</div><div class="subtitle">${tipoLabel}</div></div></div><div style="display:flex;gap:6px;flex-shrink:0;"><button class="btn secondary loc-edit" data-loc-id="${l.id}" title="Renomear" style="width:auto;padding:4px 10px;font-size:13px;">✏️</button>${Perms.podeApagar(u) ? `<button class="btn secondary loc-del" data-loc-id="${l.id}" title="Excluir" style="width:auto;padding:4px 10px;font-size:13px;color:var(--danger);border-color:var(--danger);">🗑️</button>` : ''}</div></div>`;
         }).join('')}
         </div>
         <form id="loc-form">
@@ -3818,6 +4175,7 @@ function openCadLoc() {
       const lid = parseInt(btn.dataset.locId);
       const loc = (DB.localizacoes||[]).find(x => x.id === lid);
       if (!loc) return;
+      if (!Perms.podeApagar(u)) return toast('Apagar é do administrador do sistema (TI ou quem tem a marca).', 'error');
       const ativos = (DB.patrimonios||[]).filter(p => p.localizacaoAtualId === lid && p.status !== 'excluido').length;
       if (ativos > 0) return toast(`Não dá pra excluir: ${ativos} patrimônio(s) ativo(s) em "${loc.nome}". Movimente-os primeiro.`, 'error');
       const filhos = (DB.localizacoes||[]).filter(x => x.parent === lid).length;
@@ -4207,6 +4565,9 @@ function setupIdleLogout() {
   const appEl = document.getElementById('app');
   if (appEl) appEl.innerHTML = '<div style="padding:60px 20px;text-align:center;color:#1B2A5E;font-family:sans-serif;"><div style="font-size:32px;margin-bottom:16px;">⏳</div><div style="font-weight:700;">Carregando...</div></div>';
 
+  Volta.ligar();
+  RotaBem.ler();   // #/bem/123 (botão do e-mail): abre a ficha depois de carregar
+
   // Chegou pelo link de "esqueci minha senha"? Então a tela é a de nova senha.
   if (await tratarLinkRecuperacao()) {
     modoRecuperacao = true;
@@ -4227,9 +4588,10 @@ function setupIdleLogout() {
       DB = raw ? { ...JSON.parse(raw), currentUser: null } : { ...BMStore.seed(), currentUser: null };
     } catch { DB = { ...BMStore.seed(), currentUser: null }; }
     render();
-  } else if (await doisFatoresPendente()) {
+  } else if (await senhaPendente(session.user) || await doisFatoresPendente()) {
     /* 30/09/2026 (0041): falta a segunda etapa (código por e-mail). Quem pede
-       o código é o portal — volta para lá, como quando não há sessão. */
+       o código é o portal — volta para lá, como quando não há sessão.
+       06/10/2026: idem para quem entrou por link e ainda não criou a senha. */
     location.replace('../');
     return;
   } else {
@@ -4258,6 +4620,7 @@ function setupIdleLogout() {
         DB.currentUser = id;
       }
       render();
+      RotaBem.abrir();
     }
   }
 
@@ -4301,6 +4664,7 @@ function setupIdleLogout() {
       const id = await syncCurrentUserFromAuth(sess.user);
       DB.currentUser = id;
       render();
+      RotaBem.abrir();
     }
   });
 
