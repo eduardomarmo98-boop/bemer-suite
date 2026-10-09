@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BeMer — Sua obra em ordem</title>
 <meta name="theme-color" content="#00296B">
-<link rel="icon" type="image/png" sizes="192x192" href="marca/icon-192.png">
-<link rel="apple-touch-icon" href="marca/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="marca/icon-192.png?v=20261010">
+<link rel="apple-touch-icon" href="marca/apple-touch-icon.png?v=20261010">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,9 +37,9 @@ a{color:var(--azul)}
 button{font-family:inherit}
 :focus-visible{outline:3px solid var(--laranja);outline-offset:2px}
 
-/* a assinatura BeMer: o logo (wordmark) — marca/bemer-wordmark.png = "BeMer Variação 08"
+/* a assinatura BeMer: o logo (wordmark) — marca/bemer-wordmark.png?v=20261010 = "BeMer Variação 08"
    (Be azul + Mer laranja, o PADRÃO, fundo claro; trocado em 09/10/2026 à tarde) e
-   marca/bemer-wordmark-branco.png (todo branco, só a marca-d'água da faixa azul).
+   marca/bemer-wordmark-branco.png?v=20261010 (todo branco, só a marca-d'água da faixa azul).
    Originais em marca/nova/ (a 06, Be branco + Mer laranja, é a de fundo azul). */
 .marca{display:flex;align-items:center;gap:10px;text-decoration:none}
 .marca img{display:block;height:36px;width:auto}
@@ -342,7 +342,7 @@ table.uso tr.sub td:first-child{padding-left:22px}
     <svg class="arco" viewBox="0 0 560 300" fill="none" aria-hidden="true"><path d="M10 290C220 270 430 170 550 10" stroke="#FE9400" stroke-width="20" stroke-linecap="round"/></svg>
     <div class="palco-marca">
       <div>
-        <img src="marca/bemer-wordmark.png" alt="BeMer">
+        <img src="marca/bemer-wordmark.png?v=20261010" alt="BeMer">
         <span class="descritor">Gestão integrada de obras</span>
       </div>
     </div>
@@ -426,7 +426,7 @@ table.uso tr.sub td:first-child{padding-left:22px}
 <div id="tela-portal" class="oculto">
   <header class="topo">
     <a class="marca" href="./" aria-label="BeMer — início">
-      <img src="marca/bemer-wordmark.png" alt="BeMer">
+      <img src="marca/bemer-wordmark.png?v=20261010" alt="BeMer">
     </a>
     <div class="espaco"></div>
     <a id="btn-config" class="icone-btn oculto" aria-label="Configurações" title="Configurações">
@@ -440,7 +440,7 @@ table.uso tr.sub td:first-child{padding-left:22px}
 
   <div id="vista-inicio">
     <section class="faixa">
-      <img class="marca-agua" src="marca/bemer-wordmark-branco.png" alt="">
+      <img class="marca-agua" src="marca/bemer-wordmark-branco.png?v=20261010" alt="">
       <div class="faixa-conteudo">
         <img class="cliente-branco" id="cliente-logo-faixa" alt="">
         <span class="chip" id="chip-perfil">—</span>
@@ -468,7 +468,7 @@ table.uso tr.sub td:first-child{padding-left:22px}
 <!-- ============ FORNECEDOR ============ -->
 <div id="tela-externo" class="oculto">
   <header class="topo">
-    <span class="marca"><img src="marca/bemer-wordmark.png" alt="BeMer"></span>
+    <span class="marca"><img src="marca/bemer-wordmark.png?v=20261010" alt="BeMer"></span>
     <div class="espaco"></div>
     <button class="sair" type="button" onclick="sair()" aria-label="Sair">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="rotulo">Sair</span>
@@ -495,7 +495,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.10.1';
+var VERSAO   = '2026.10.10.2';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
