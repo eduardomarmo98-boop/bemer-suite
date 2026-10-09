@@ -129,7 +129,7 @@
   .rot-msg{display:block;font-size:14px;font-weight:600;color:var(--tinta);margin:12px 0 6px}
   .rot-msg span{font-weight:500;color:var(--tinta2)}
   .n-cats select{width:100%;min-height:48px;font-size:15px}
-  .n-cats select.vazio{color:var(--tinta2)}
+  .n-cats select.sem-cat{color:var(--tinta2)}
   .n-sig{display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:14px;color:var(--tinta)}
   .n-sig input{margin-top:4px;accent-color:var(--azul);width:18px;height:18px}
   .n-sig small{display:block;font-size:13px;color:var(--tinta2)}
@@ -827,7 +827,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -848,7 +848,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -865,7 +865,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.10.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -985,7 +985,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.10.4';
+var APP_VERSAO = '2026.10.10.5';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1984,7 +1984,7 @@ var BLOCO_ABERTO = false;
 function blocosVisoes(R, dentro){
   var h = '<div class="blocos"><div class="blocos-topo"><button type="button" class="bloco-obra" id="bloco-obra">Obra: <b>'+esc(OBRA_F ? nomeObraFiltro(true) : 'Todas as obras')+'</b> ▾</button>'+
     /* 10/10/2026: Insumos (a planilha Pauta e Ata da obra) — todo mundo consulta; quem tem a ação edita. Só com a chave ligada */
-    (typeof verInsumos === 'function' && verInsumos() ? '<button type="button" class="bloco-obra bloco-ins" id="bloco-insumos">Insumos ›</button>' : '')+'</div>';
+    (typeof verInsumos === 'function' && verInsumos() ? '<button type="button" class="bloco-obra bloco-ins" id="bloco-insumos">Status Insumos ›</button>' : '')+'</div>';
   VISOES.forEach(function(g){ g[1].forEach(function(v){
     var k = v[0], n = R[k] ? R[k].length : 0, on = k === ABA && BLOCO_ABERTO;
     h += '<div class="bloco'+(on?' on':'')+'"><button type="button" class="bloco-cab" data-bloco="'+k+'"><span>'+esc(v[1])+'</span><b class="'+(k==='atrasadas'&&n?'r':'')+'">'+n+'</b><i>'+(on?'▾':'▸')+'</i></button>'+
@@ -2876,7 +2876,7 @@ var Nova = {
     });
     function pintarCategorias(){
       var atual = selCat.value, trava = categoriaSigilosa(atual);
-      selCat.classList.toggle('vazio', !atual);
+      selCat.classList.toggle('sem-cat', !atual);
       if(trava) q('#n-sigilosa').checked = true;
       q('#n-sigilosa').disabled = trava;
       q('#n-sig-dica').textContent = (trava ? 'Categoria '+atual+' é sempre sigilosa: s' : 'S')+
@@ -4701,7 +4701,7 @@ var Insumos = {
     var ed = podeInsumos();
     var m = Insumos.m = abrirModal(
       '<div class="modal-topo"><button type="button" class="fechar" aria-label="Voltar">'+ICO.voltar+'</button>'+
-        '<h2>Insumos e contratações<button type="button" class="ins-obra" id="ins-obra"></button></h2>'+
+        '<h2>Status Insumos<button type="button" class="ins-obra" id="ins-obra"></button></h2>'+
         '<button type="button" class="fechar-nao bt-tres" id="ins-mais" aria-label="Mais opções" style="flex:0 0 44px;height:44px;box-shadow:none">'+ICO.mais+'</button></div>'+
       '<div class="modal-corpo corpo-cinza ins-corpo" id="ins-corpo"><div class="dica">Carregando…</div></div>'+
       '<div class="modal-rodape">'+(ed ? '<button type="button" class="bt-sec" id="ins-novo-item">'+ICO.mais1+' Item</button>'
@@ -4719,7 +4719,7 @@ var Insumos = {
     return m;
   },
   escolherObra: function(){
-    EscolhaObra.abrir({ titulo:'Insumos — escolha a obra', atual:Insumos.obra || '', semInterno:true, filtro:insObraVisivel,
+    EscolhaObra.abrir({ titulo:'Status Insumos — escolha a obra', atual:Insumos.obra || '', semInterno:true, filtro:insObraVisivel,
       aoEscolher: function(v){ if(v && v !== '__interno') Insumos.abrir(v); } });
   },
   item: function(id){ return Insumos.D ? Insumos.D.itens.filter(function(i){ return mesmoId(i.id, id); })[0] || null : null; },
@@ -4827,7 +4827,7 @@ var Insumos = {
     }
   },
   menu: function(){
-    var f = folha('Insumos', '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
+    var f = folha('Status Insumos', '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
       '<button type="button" data-op="excel">Baixar Excel (formato Pauta e Ata)</button>'+
       '<button type="button" data-op="imprimir">Imprimir / PDF</button>'+
       (podeInsumos() ? '<button type="button" data-op="importar">Importar planilha (Pauta e Ata)</button>' : '')+
@@ -5292,7 +5292,7 @@ var Painel = {
       "<div class=\"mv-rodape painel-links\">"+
         [["btn-obras","Obras"]].concat(podeNoFlow("avisos") ? [["btn-avisos","Avisos"]] : [])
           .concat(podeNoFlow("assuntos") ? [["btn-cadastros","Categorias"]] : [])
-          .concat(verInsumos() ? [["btn-insumos","Insumos"]] : [])
+          .concat(verInsumos() ? [["btn-insumos","Status Insumos"]] : [])
           .concat([["btn-dados","Exportar planilha"]])
           .map(function(x){ return "<button data-painel-link=\""+x[0]+"\">"+x[1]+"</button>"; }).join("")+"</div>";
 
