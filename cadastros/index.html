@@ -212,7 +212,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.10.1';
+var APP_VERSION = '2026.10.13.1';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -677,7 +677,8 @@ function abrirPessoa(id){
         + (sou ? '<div class="sub">Ninguém muda o próprio perfil.</div>' : consulta ? '' : protegido ? '<div class="sub">Perfil da diretoria/TI: só o administrador do sistema altera.</div>'
            : folhaTrava ? '<div class="sub">Perfil com acesso à folha: só a diretoria ou o DP altera.</div>' : ''))
     + campo('WhatsApp', '<input type="tel" id="p-whats" placeholder="11 91234-5678" value="' + esc(p.whatsapp) + '"' + dis + '>')
-    + campo('', '<label class="marcar"><input type="checkbox" id="p-avisa"' + (p.avisa_whatsapp ? ' checked' : '') + dis + '> Receber avisos pelo WhatsApp</label>')
+    + campo('', '<label class="marcar"><input type="checkbox" id="p-avisa"' + (p.avisa_whatsapp ? ' checked' : '') + dis + '> Receber avisos de aprovação do Custos pelo WhatsApp</label>'
+        + '<div class="sub">O resumo diário do Flow chega sozinho a quem tem WhatsApp preenchido e pendência em aberto.</div>')
     + campo('Situação', '<div class="seg" id="p-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
         + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (travaSit ? ' disabled' : '') + '>Ativo</button>'
         + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>'
