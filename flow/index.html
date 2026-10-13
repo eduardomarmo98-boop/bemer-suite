@@ -832,7 +832,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -853,7 +853,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -870,7 +870,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -993,7 +993,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.13.3';
+var APP_VERSAO = '2026.10.13.4';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3202,7 +3202,9 @@ var Detalhe = {
               : n===0 ? 'hoje' : n===1 ? 'amanhã' : 'em '+n+' dias';
       l1 = DIA3C[d.getDay()]+' '+ddmm(d)+' <span>· '+rel+'</span>';
       var st;
-      if(pp.pediu){ cls = 'ok'; st = pp.souResp ? 'Concluída · aguardando '+esc(criadorN)+' confirmar' : esc(respN)+' concluiu · falta você confirmar'; }
+      /* 13/10/2026: quem só acompanha não confirma — diz quem falta */
+      if(pp.pediu){ cls = 'ok'; st = pp.souResp ? 'Concluída · aguardando '+esc(criadorN)+' confirmar'
+        : pp.souCriador ? esc(respN)+' concluiu · falta você confirmar' : esc(respN)+' concluiu · falta '+esc(criadorN)+' confirmar'; }
       else if(p.status==='aguardando') st = 'Aguardando terceiros';
       else if(pp.atrasada){ cls = 'atr'; st = 'Atrasada'; }
       else if(n===0){ cls = 'acao'; st = 'Vence hoje'; }
