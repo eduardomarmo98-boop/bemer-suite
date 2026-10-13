@@ -234,6 +234,11 @@
   .etq-filtro span{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--azul);
                    background:var(--azul-bg);border-radius:14px;padding:3px 8px 3px 12px;max-width:62vw;
                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .faixa-push{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0;padding:10px 12px;border-radius:14px;background:var(--azul-bg);color:var(--azul);font-size:14px}
+  .faixa-push span{flex:1 1 200px;min-width:0}
+  .faixa-push button{min-height:40px;padding:0 14px;border-radius:10px;font-weight:600;font-size:14px}
+  .faixa-push .sim{background:var(--azul);color:#fff}
+  .faixa-push .nao{color:var(--azul)}
   .faixa-rede{margin:10px 0 0;padding:4px 4px 4px 12px;border-radius:12px;background:var(--erro-bg);color:var(--erro);
               font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px}
   .faixa-rede button{margin-left:auto;color:var(--erro);font-weight:700;font-size:14px;text-decoration:underline;
@@ -827,7 +832,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -848,7 +853,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -865,7 +870,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -934,6 +939,7 @@
   <button class="link-topo" id="btn-dados">Dados</button>
   <button class="link-topo" id="btn-sair">Sair</button>
   <button class="link-topo" id="btn-insumos">Insumos</button>
+  <button class="link-topo" id="btn-push">Avisos no aparelho</button>
 </div>
 
 <main>
@@ -944,6 +950,8 @@
   <label class="busca-lista" for="f-busca"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
     <input type="search" id="f-busca" placeholder="Buscar: título, nº, pessoa, obra, categoria" autocomplete="off" enterkeyhint="search" aria-label="Buscar pendência">
     <button type="button" class="fechar oculto" id="busca-fechar" aria-label="Limpar a busca">×</button></label>
+  <!-- 13/10/2026: convite para receber os avisos neste aparelho (push, 0061) -->
+  <div id="faixa-push" class="faixa-push oculto"></div>
   <div id="conteudo"></div>
 </main>
 <div class="lado-vazio" id="lado-vazio"><b>Escolha uma pendência</b>Ela abre aqui, ao lado da lista. ↑ e ↓ trocam, N abre uma nova.</div>
@@ -985,7 +993,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.13.2';
+var APP_VERSAO = '2026.10.13.3';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -5333,6 +5341,7 @@ var Painel = {
         [["btn-obras","Obras"]].concat(podeNoFlow("avisos") ? [["btn-avisos","Avisos"]] : [])
           .concat(podeNoFlow("assuntos") ? [["btn-cadastros","Categorias"]] : [])
           .concat(verInsumos() ? [["btn-insumos","Status Insumos"]] : [])
+          .concat(typeof Push !== "undefined" && Push.suporta() ? [["btn-push","Avisos no aparelho"]] : [])
           .concat([["btn-dados","Exportar planilha"]])
           .map(function(x){ return "<button data-painel-link=\""+x[0]+"\">"+x[1]+"</button>"; }).join("")+"</div>";
 
@@ -6375,6 +6384,100 @@ Regras = {
   _nota: function(){}   // no servidor, o histórico automático é gerado por gatilho
 };
 
+/* =====================================================================
+   AVISO NO APARELHO (Web Push) — 13/10/2026, só no ar (0061 + flow-push)
+   Ativar: pede a permissão, inscreve o aparelho (sw-push.js) e grava em
+   flow.push_inscricoes. Depois manda um teste. Cada aviso do sino passa a
+   chegar no aparelho (o gatilho do banco chama a edge).
+   iPhone: só funciona com o BeMer instalado na Tela de Início.
+   ===================================================================== */
+var PUSH_CHAVE = 'BO7OibIBD3WA6K2RMOLN1yW8PeWXHZtKczz8cEEb9TW2uWez4ZWW9vR_5Iau5k3RLftD4brHa5ej3HoP7xDYBbw';
+var Push = {
+  ios: function(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); },
+  instalado: function(){ try { return !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches); } catch(e){ return false; } },
+  suporta: function(){ return 'serviceWorker' in navigator && 'Notification' in window && ('PushManager' in window || Push.ios()); },
+  chave: function(){
+    var b = PUSH_CHAVE.replace(/-/g, '+').replace(/_/g, '/'); b += '==='.slice((b.length + 3) % 4);
+    var s = atob(b), u = new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i] = s.charCodeAt(i); return u;
+  },
+  reg: function(){ return navigator.serviceWorker.register('sw-push.js', { scope:'./' }).then(function(){ return navigator.serviceWorker.ready; }); },
+  /* 'ativo' | 'inativo' | 'negado' | 'instalar' (iPhone fora do app) | 'sem' */
+  estado: function(){
+    if(Push.ios() && !Push.instalado()) return Promise.resolve('instalar');
+    if(!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return Promise.resolve('sem');
+    if(Notification.permission === 'denied') return Promise.resolve('negado');
+    return navigator.serviceWorker.getRegistration('./').then(function(r){
+      return r && r.pushManager ? r.pushManager.getSubscription() : null;
+    }).then(function(s){ return s && Notification.permission === 'granted' ? 'ativo' : 'inativo'; }, function(){ return 'inativo'; });
+  },
+  ativar: function(){
+    return Notification.requestPermission().then(function(p){
+      if(p !== 'granted') throw new Error(p === 'denied' ? 'O aparelho bloqueou os avisos. Libere nas configurações do navegador (ou do app) e tente de novo.' : 'Permissão não concedida.');
+      return Push.reg();
+    }).then(function(r){
+      return r.pushManager.getSubscription().then(function(s){
+        return s || r.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:Push.chave() });
+      });
+    }).then(function(s){
+      var j = s.toJSON();
+      return Promise.resolve(sb.schema('flow').rpc('push_inscrever', { p_endpoint:j.endpoint, p_p256dh:j.keys.p256dh, p_auth:j.keys.auth,
+        p_agente:(navigator.userAgent||'').slice(0,200) })).then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message)); });
+    }).then(function(){ return Push.teste(); });
+  },
+  teste: function(){
+    return Promise.resolve(sb.functions.invoke('flow-push', { body:{ teste:true } })).then(function(r){
+      if(r && r.error) throw new Error('O teste não saiu: '+(r.error.message||r.error));
+      var d = r && r.data || {};
+      if(!d.enviados) throw new Error('O teste não chegou a nenhum aparelho'+(d.motivo ? ' ('+d.motivo+')' : '')+'.');
+      return d;
+    });
+  },
+  desativar: function(){
+    return navigator.serviceWorker.getRegistration('./').then(function(r){ return r ? r.pushManager.getSubscription() : null; }).then(function(s){
+      if(!s) return;
+      return Promise.resolve(sb.schema('flow').rpc('push_cancelar', { p_endpoint:s.endpoint })).then(function(){ return s.unsubscribe(); });
+    });
+  },
+  /* faixa no topo da lista: só enquanto não ativou e não disse "agora não" */
+  faixa: function(){
+    var f = $('faixa-push'); if(!f || !Push.suporta()) return;
+    if(Pref.ler('push_nao_'+EU.id)) { f.classList.add('oculto'); return; }
+    Push.estado().then(function(st){
+      if(st !== 'inativo' && st !== 'instalar'){ f.classList.add('oculto'); return; }
+      f.innerHTML = st === 'instalar'
+        ? '<span>Para receber os avisos do Flow no iPhone, instale o BeMer na Tela de Início (Compartilhar › Adicionar à Tela de Início) e abra por lá.</span><button type="button" class="nao" id="fp-nao">Ok</button>'
+        : '<span>Receba os avisos do Flow neste aparelho, como um aplicativo.</span><button type="button" class="sim" id="fp-sim">Ativar</button><button type="button" class="nao" id="fp-nao">Agora não</button>';
+      f.classList.remove('oculto');
+      $('fp-nao').addEventListener('click', function(){ Pref.gravar('push_nao_'+EU.id, '1'); f.classList.add('oculto'); });
+      if($('fp-sim')) $('fp-sim').addEventListener('click', function(){
+        var b = this; b.disabled = true;
+        Push.ativar().then(function(){ f.classList.add('oculto'); aviso('Avisos ligados neste aparelho. Mandei um teste.', 'ok'); },
+          function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
+      });
+    });
+  },
+  /* Painel › Avisos no aparelho */
+  folha: function(){
+    Push.estado().then(function(st){
+      var txt = { ativo:'Os avisos do Flow chegam <b>neste aparelho</b>.',
+        inativo:'Os avisos do Flow ainda <b>não</b> chegam neste aparelho.',
+        negado:'Este aparelho <b>bloqueou</b> os avisos. Libere nas configurações do navegador (ícone de cadeado ao lado do endereço) ou do celular e volte aqui.',
+        instalar:'No iPhone, os avisos só funcionam com o BeMer <b>instalado na Tela de Início</b> (Safari › Compartilhar › Adicionar à Tela de Início). Abra por lá e volte aqui.',
+        sem:'Este navegador não recebe avisos. Use o Chrome, o Edge ou o BeMer instalado.' }[st];
+      var bts = st === 'ativo' ? '<button class="bt-sec" id="pp-teste">Enviar um teste</button><button class="bt-sec" id="pp-off">Desligar</button>'
+              : st === 'inativo' ? '<button class="bt-pri" id="pp-on">Ativar neste aparelho</button>' : '';
+      var f = folha('Avisos no aparelho', '<p style="font-size:15px;line-height:1.5;margin:0">'+txt+'</p>'+
+        '<p class="dica" style="margin:10px 0 0">Vale para cada aparelho separado: celular e computador ativam cada um.</p>', bts);
+      function feito(msg){ f.remove(); aviso(msg, 'ok'); var fx = $('faixa-push'); if(fx) fx.classList.add('oculto'); }
+      function erro(b){ return function(e){ if(b) b.disabled = false; aviso(e.message||String(e), 'erro'); }; }
+      if(f.querySelector('#pp-on')) f.querySelector('#pp-on').addEventListener('click', function(){ var b=this; b.disabled=true; Push.ativar().then(function(){ feito('Avisos ligados neste aparelho. Mandei um teste.'); }, erro(b)); });
+      if(f.querySelector('#pp-teste')) f.querySelector('#pp-teste').addEventListener('click', function(){ var b=this; b.disabled=true; Push.teste().then(function(){ feito('Teste enviado.'); }, erro(b)); });
+      if(f.querySelector('#pp-off')) f.querySelector('#pp-off').addEventListener('click', function(){ var b=this; b.disabled=true; Push.desativar().then(function(){ feito('Avisos desligados neste aparelho.'); }, erro(b)); });
+    });
+  }
+};
+$('btn-push').addEventListener('click', function(){ Push.folha(); });
+
 /* pendência nova precisa do id que o banco gera */
 function criarPendencia(dados, envolvidos, anexos){
   var nova;
@@ -7328,6 +7431,7 @@ function iniciar(sessao){
         Rota.ouvir();
         Destino.restaurar();   // veio de um link e teve que entrar? volta para lá
         Rota.retomar();        // ou já entrou com #/p/124 no endereço
+        try { Push.faixa(); } catch(e){}   // 13/10/2026: convite do aviso no aparelho
         });
       });
   }
