@@ -827,7 +827,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -848,7 +848,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -865,7 +865,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.10.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -985,7 +985,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.10.6';
+var APP_VERSAO = '2026.10.13.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1194,7 +1194,7 @@ function podeNoFlow(acao){
   if(EU.papel==='diretor') return true;
   /* sem a tabela (versão local): a regra de antes — painel para quem não é
      colaborador, todo mundo cria, obras e assuntos só a diretoria */
-  if(!ACOES_FLOW) return (acao==='ver_painel' || acao==='insumos') ? EU.papel!=='colaborador' : acao==='criar';
+  if(!ACOES_FLOW) return (acao==='ver_painel' || acao==='insumos' || acao==='insumos_excluir') ? EU.papel!=='colaborador' : acao==='criar';
   /* 0030: na suíte a tabela é por PERFIL (core.perfil_acoes) */
   var k = EU.perfil || EU.papel;
   return !!(ACOES_FLOW[k] && ACOES_FLOW[k][acao]);
@@ -4234,6 +4234,11 @@ function podeInsumos(){
   if(!EU || !insumosLiberado()) return false;
   return INSUMOS ? !!INSUMOS.pode : podeNoFlow('insumos');
 }
+/* 13/10/2026: exclui a planilha inteira da obra (ação insumos_excluir, 0059) */
+function excluiInsumos(){
+  if(!EU || !insumosLiberado()) return false;
+  return INSUMOS ? !!INSUMOS.exclui : podeNoFlow('insumos_excluir');
+}
 /* consulta a planilha (o botão Insumos aparece) */
 function verInsumos(){
   if(!EU || !insumosLiberado()) return false;
@@ -4614,7 +4619,7 @@ var InsLocal = {
   }
 };
 var InsDados = {
-  info: function(){ return Promise.resolve({ liberado:insumosLiberado(), pode:podeNoFlow('insumos'), ve:true }); },
+  info: function(){ return Promise.resolve({ liberado:insumosLiberado(), pode:podeNoFlow('insumos'), ve:true, exclui:podeNoFlow('insumos_excluir') }); },
   carregar: function(obraId){
     try { InsLocal.checar(obraId, false); } catch(e){ return Promise.reject(e); }
     var I = insBase(), daObra = function(x){ return mesmoId(x.obra_id, obraId); };
@@ -4637,6 +4642,15 @@ var InsDados = {
       v.pendencia_id = p.id;
       InsLocal.hist(v, { tipo:'pendencia', texto:'Virou a pendência #'+p.id+' do Flow, para '+pessoa(p.responsavel_id).nome+'.' });
       salvar(); return Promise.resolve(insCopia(v));
+    } catch(e){ return Promise.reject(e); }
+  },
+  excluirPlanilha: function(obraId){
+    try {
+      InsLocal.checar(obraId, false);
+      if(!excluiInsumos()) throw new Error('Seu perfil não exclui a planilha de insumos.');
+      var I = insBase(), fora = function(x){ return !mesmoId(x.obra_id, obraId); };
+      I.itens = I.itens.filter(fora); I.hist = I.hist.filter(fora); I.reunioes = I.reunioes.filter(fora);
+      salvar(); return Promise.resolve({});
     } catch(e){ return Promise.reject(e); }
   },
   importar: function(obraId, pacote){
@@ -4837,7 +4851,8 @@ var Insumos = {
       '<button type="button" data-op="excel">Baixar Excel (formato Pauta e Ata)</button>'+
       '<button type="button" data-op="imprimir">Imprimir / PDF</button>'+
       (podeInsumos() ? '<button type="button" data-op="importar">Importar planilha (Pauta e Ata)</button>' : '')+
-      '<button type="button" data-op="obra">Trocar de obra</button></div>');
+      '<button type="button" data-op="obra">Trocar de obra</button>'+
+      (excluiInsumos() && Insumos.D && Insumos.D.itens.length ? '<button type="button" class="perigo" data-op="excluir">Excluir a planilha desta obra</button>' : '')+'</div>');
     var bs = f.querySelectorAll('[data-op]');
     for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){
       var op = this.dataset.op; f.remove();
@@ -4846,7 +4861,26 @@ var Insumos = {
       else if(op === 'imprimir') InsAta.imprimir(InsAta.pautaAtual());
       else if(op === 'importar') InsImportar.abrir();
       else if(op === 'obra') Insumos.escolherObra();
+      else if(op === 'excluir') Insumos.excluir();
     });
+  },
+  /* apaga itens e histórico da obra (para importar de novo, por exemplo). Pede a palavra EXCLUIR. */
+  excluir: function(){
+    var o = obra(Insumos.obra), n = Insumos.D ? Insumos.D.itens.length : 0;
+    var f = folha('Excluir a planilha?',
+      '<p style="font-size:15px;line-height:1.5;margin:0 0 8px">Apaga os <b>'+n+' itens</b> e todo o histórico da planilha de <b>'+esc(o ? o.nome : '')+'</b>. Não tem volta.</p>'+
+      '<label class="primeiro" for="ix-conf">Para confirmar, escreva EXCLUIR</label><input type="text" id="ix-conf" autocomplete="off">',
+      '<button type="button" class="bt-sec so" id="ix-nao">Voltar</button><button type="button" class="btn btn-perigo" id="ix-ok" style="flex:1;min-height:52px" disabled>Excluir a planilha</button>');
+    var c = f.querySelector('#ix-conf'), ok = f.querySelector('#ix-ok');
+    c.addEventListener('input', function(){ ok.disabled = normalizar(c.value) !== 'excluir'; });
+    f.querySelector('#ix-nao').addEventListener('click', function(){ f.remove(); });
+    ok.addEventListener('click', function(){
+      ok.disabled = true;
+      InsDados.excluirPlanilha(Insumos.obra).then(function(){ f.remove(); aviso('Planilha excluída.', 'ok'); return Insumos.recarregar(); })
+        .catch(function(e){ ok.disabled = false; aviso(e.message||String(e), 'erro'); });
+    });
+    setTimeout(function(){ try { c.focus(); } catch(e){} }, 120);
+    return f;
   }
 };
 
@@ -7617,7 +7651,7 @@ trocarModo('entrar');
    que conferem a permissão e geram o histórico.
    Banco sem a 0057: insumos_info falha → INSUMOS = desligado, nada aparece.
    ===================================================================== */
-INSUMOS = { liberado:false, pode:false, ve:false };
+INSUMOS = { liberado:false, pode:false, ve:false, exclui:false };
 
 function insRpc(nome, args){
   return Promise.resolve(sb.schema('flow').rpc(nome, args)).then(function(r){
@@ -7631,8 +7665,8 @@ InsDados = {
     return Promise.resolve().then(function(){ return sb.schema('flow').rpc('insumos_info'); }).then(function(r){
       var d = r && !r.error && r.data && typeof r.data === 'object' ? r.data : null;
       /* banco sem a 0058 não manda "ve": aí só quem edita vê (como na 0057) */
-      return { liberado: !!(d && d.liberado), pode: !!(d && d.pode), ve: !!(d && (d.ve || d.pode)) };
-    }, function(){ return { liberado:false, pode:false, ve:false }; });
+      return { liberado: !!(d && d.liberado), pode: !!(d && d.pode), ve: !!(d && (d.ve || d.pode)), exclui: !!(d && d.exclui) };
+    }, function(){ return { liberado:false, pode:false, ve:false, exclui:false }; });
   },
   carregar: function(obraId){
     return Promise.all([
@@ -7653,6 +7687,7 @@ InsDados = {
     return criarPendencia(dados, [], []).then(function(id){ return recarregarTudo().then(function(){ return id; }); });
   },
   ligarPendencia: function(itemId, pendId){ return insRpc('insumos_ligar_pendencia', { p_item:Number(itemId), p_pendencia:Number(pendId) }); },
+  excluirPlanilha: function(obraId){ return insRpc('insumos_excluir_planilha', { p_obra:obraId }); },
   importar: function(obraId, pacote){ return insRpc('insumos_importar', { p_obra:obraId, p_pacote:pacote }); }
 };
 
