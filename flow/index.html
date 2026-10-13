@@ -827,7 +827,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -848,7 +848,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -865,7 +865,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.13.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -985,7 +985,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.13.1';
+var APP_VERSAO = '2026.10.13.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2735,7 +2735,7 @@ var Nova = {
       '<form id="f-nova" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0" novalidate>'+
       '<div class="modal-corpo n-corpo">'+
         '<div class="campo-n"><label class="rot" for="n-titulo"><i>1</i>O que precisa ser feito?</label>'+
-          '<textarea id="n-titulo" rows="2" maxlength="180" required placeholder="Ex.: Enviar a ART da estrutura metálica"></textarea></div>'+
+          '<textarea id="n-titulo" rows="2" maxlength="500" required placeholder="Ex.: Enviar a ART da estrutura metálica"></textarea></div>'+
         '<div class="campo-n"><div class="rot"><i>2</i>Para quem?</div>'+
           '<div class="p-chips" id="n-pessoas"></div>'+
           '<div id="n-resp-escolha" class="oculto" style="margin-top:8px"></div><input type="hidden" id="n-resp"></div>'+
@@ -3903,7 +3903,7 @@ var Acoes = {
     var f = folha('Depende de…',
       '<div class="dica" style="margin:0 0 10px">Você continua responsável por #'+p.id+'. O sub-item vai para outra pessoa, com conversa e prazo próprios.</div>'+
       '<label for="dp-titulo" class="primeiro">O quê?</label>'+
-      '<textarea id="dp-titulo" rows="2" maxlength="180" placeholder="Ex.: Enviar a cotação do aço"></textarea>'+
+      '<textarea id="dp-titulo" rows="2" maxlength="500" placeholder="Ex.: Enviar a cotação do aço"></textarea>'+
       '<label>Para quem</label><div id="dp-quem"></div>'+
       '<label>Precisa até <span class="opcional">(opcional)</span></label>'+
       '<div class="fichas" id="dp-fichas">'+fichasPedido()+'</div>'+
@@ -5044,7 +5044,7 @@ var InsItem = {
     var o = obra(Insumos.obra), cat = categoria('Insumos');
     var f = folha('Virar pendência',
       '<div class="dica" style="margin:0 0 4px">Cria uma pendência no Flow'+(cat ? ' (categoria <b>Insumos</b>)' : '')+', ligada a este item, para cobrar alguém pelo Flow.</div>'+
-      '<label for="iv-tit">O que precisa ser feito?</label><textarea id="iv-tit" rows="2" maxlength="180">'+esc((it.providencia ? it.providencia+': ' : '')+it.pauta).slice(0,180)+'</textarea>'+
+      '<label for="iv-tit">O que precisa ser feito?</label><textarea id="iv-tit" rows="2" maxlength="500">'+esc((it.providencia ? it.providencia+': ' : '')+it.pauta).slice(0,500)+'</textarea>'+
       '<label>Para quem?</label><div id="iv-quem"></div>'+
       '<label for="iv-data">Precisa até <span class="opcional">(sugestão; quem recebe assume o prazo)</span></label>'+
       '<input type="date" id="iv-data" min="'+insHoje()+'" value="'+(it.data_limite && it.data_limite >= insHoje() ? esc(it.data_limite) : '')+'">',
