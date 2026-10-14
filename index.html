@@ -74,7 +74,10 @@ label{display:block;font-size:13px;font-weight:500;margin:0 0 6px;color:var(--te
 input{width:100%;height:50px;border:1px solid var(--borda-forte);border-radius:12px;padding:0 14px;
       font:inherit;font-size:16px;background:var(--campo);color:var(--texto);margin-bottom:16px}
 input:focus{outline:none;border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0,41,107,.12)}
-.linha-link{display:flex;justify-content:flex-end;margin:-6px 0 18px}
+.linha-link{display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap;margin:-6px 0 18px}
+/* 14/10/2026: "Salvar a senha neste aparelho" — o navegador guarda (não o BeMer) */
+.lembrar{display:flex;align-items:center;gap:8px;margin-right:auto;font-size:14px;color:inherit;cursor:pointer;font-weight:500}
+.lembrar input{width:18px;height:18px;margin:0;accent-color:#00296B}
 .link{background:none;border:0;padding:10px 0;font:inherit;font-size:13px;font-weight:500;color:var(--azul);
       text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .botao{width:100%;height:52px;border:0;border-radius:12px;background:var(--laranja);color:var(--azul);
@@ -364,7 +367,7 @@ table.uso tr.sub td:first-child{padding-left:22px}
       <input id="email" type="email" autocomplete="username" placeholder="nome@empresa.com.br" required>
       <label for="senha">Senha</label>
       <div class="campo-senha"><input id="senha" type="password" autocomplete="current-password" required></div>
-      <div class="linha-link"><button type="button" class="link" onclick="modoEsqueci()">Esqueci minha senha</button></div>
+      <div class="linha-link"><label class="lembrar"><input type="checkbox" id="lembrar-senha"> Salvar a senha neste aparelho</label><button type="button" class="link" onclick="modoEsqueci()">Esqueci minha senha</button></div>
       <button class="botao" id="btn-entrar" type="submit">Entrar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
     </form>
 
@@ -495,7 +498,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.14.1';
+var VERSAO   = '2026.10.14.2';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -848,6 +851,7 @@ function guardarSenha(email, senha){
   try { if(window.PasswordCredential && navigator.credentials && navigator.credentials.store)
     navigator.credentials.store(new PasswordCredential({ id: email, password: senha })).catch(function(){}); } catch(e){}
 }
+try { if(localStorage.getItem('bemer_lembrar') === '1' && $('lembrar-senha')) $('lembrar-senha').checked = true; } catch(e){}
 $('form-login').addEventListener('submit', function(e){
   e.preventDefault();
   var email = $('email').value.trim(), senha = $('senha').value;
@@ -859,7 +863,8 @@ $('form-login').addEventListener('submit', function(e){
       /* entrou com a senha: a marca "definir senha" deste aparelho perde o
          sentido (no banco, a sessão com senha também não é barrada) */
       if(r.data && r.data.user){ senhaLocal(r.data.user.id, false); marcarSenhaAgora(r.data.user.id); }
-      guardarSenha(email, senha);
+      if($('lembrar-senha') && $('lembrar-senha').checked) guardarSenha(email, senha);
+      try { localStorage.setItem('bemer_lembrar', $('lembrar-senha') && $('lembrar-senha').checked ? '1' : ''); } catch(e){}
       $('senha').value = '';
       abrir();
     })
