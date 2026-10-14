@@ -832,7 +832,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -853,7 +853,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -870,7 +870,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.13.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -993,7 +993,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.13.4';
+var APP_VERSAO = '2026.10.14.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1771,6 +1771,7 @@ var VISOES = [
 var VISAO_NOME = {};
 VISOES.forEach(function(g){ g[1].forEach(function(v){ VISAO_NOME[v[0]] = v[1]; }); });
 var OBRA_F = '';                 // '' todas · '__sem' interno · id da obra
+var CAT_F = '';                  // 14/10/2026: '' todas · '__sem' sem categoria · nome da categoria
 var RECOLHIDO_ABERTO = {};
 var DOZE_HORAS = 12*3600*1000;
 var prefLida = null;
@@ -1783,11 +1784,14 @@ function lerPreferencias(){
   if(v[0] && VISAO_NOME[v[0]]) ABA = (Date.now() - Number(v[1]||0) < DOZE_HORAS) ? v[0] : 'comigo';
   var o = Pref.ler('obra_'+EU.id);
   OBRA_F = obraFiltravel(o) ? o : '';
+  var c = Pref.ler('cat_'+EU.id);
+  CAT_F = c === '__sem' || categoria(c) ? (c === '__sem' ? c : categoria(c).nome) : '';
 }
 function gravarPreferencias(){
   if(!EU) return;
   Pref.gravar('visao_'+EU.id, ABA+'|'+Date.now());
   Pref.gravar('obra_'+EU.id, OBRA_F);
+  Pref.gravar('cat_'+EU.id, CAT_F);
 }
 function trocarVisao(v){
   if(!VISAO_NOME[v]) return;
@@ -1808,9 +1812,20 @@ function nomeObraFiltro(curto){
 }
 
 function porObra(l){
-  if(OBRA_F==='__sem') return l.filter(function(p){ return !p.obra_id; });
-  if(OBRA_F) return l.filter(function(p){ return mesmoId(p.obra_id, OBRA_F); });
+  if(OBRA_F==='__sem') l = l.filter(function(p){ return !p.obra_id; });
+  else if(OBRA_F) l = l.filter(function(p){ return mesmoId(p.obra_id, OBRA_F); });
+  /* 14/10/2026: e pela categoria (pedido do dono: "filtro de assunto") */
+  if(CAT_F === '__sem') l = l.filter(function(p){ return !p.categoria; });
+  else if(CAT_F) l = l.filter(function(p){ return normalizar(p.categoria||'') === normalizar(CAT_F); });
   return l;
+}
+/* escolher a categoria: Todas, cada categoria cadastrada e "Sem categoria" */
+function escolherCategoria(){
+  var ops = [['', 'Todas as categorias']].concat((DB.categorias||[]).map(function(c){ return [c.nome, c.nome]; }), [['__sem', 'Sem categoria']]);
+  var f = folha('Filtrar por categoria', '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
+    ops.map(function(o){ return '<button type="button" data-cat-f="'+esc(o[0])+'"'+(o[0]===CAT_F?' style="font-weight:700;color:var(--azul)"':'')+'>'+esc(o[1])+(o[0]===CAT_F?' ✓':'')+'</button>'; }).join('')+'</div>');
+  var bs = f.querySelectorAll('[data-cat-f]');
+  for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){ CAT_F = this.dataset.catF; f.remove(); gravarPreferencias(); desenhar(); });
 }
 function recortes(){
   var todas = visiveis();
@@ -1991,6 +2006,7 @@ function desenhar(){
 var BLOCO_ABERTO = false;
 function blocosVisoes(R, dentro){
   var h = '<div class="blocos"><div class="blocos-topo"><button type="button" class="bloco-obra" id="bloco-obra">Obra: <b>'+esc(OBRA_F ? nomeObraFiltro(true) : 'Todas as obras')+'</b> ▾</button>'+
+    ((DB.categorias||[]).length ? '<button type="button" class="bloco-obra" id="bloco-cat">Categoria: <b>'+esc(CAT_F === '__sem' ? 'Sem categoria' : CAT_F || 'Todas')+'</b> ▾</button>' : '')+
     /* 10/10/2026: Insumos (a planilha Pauta e Ata da obra) — todo mundo consulta; quem tem a ação edita. Só com a chave ligada */
     (typeof verInsumos === 'function' && verInsumos() ? '<button type="button" class="bloco-obra bloco-ins" id="bloco-insumos">Status Insumos ›</button>' : '')+'</div>';
   VISOES.forEach(function(g){ g[1].forEach(function(v){
@@ -2008,6 +2024,7 @@ function ligarBlocos(){
     else trocarVisao(k);
   });
   if($('bloco-obra')) $('bloco-obra').addEventListener('click', function(){ $('vis-obra').click(); });
+  if($('bloco-cat')) $('bloco-cat').addEventListener('click', escolherCategoria);
   if($('bloco-insumos')) $('bloco-insumos').addEventListener('click', function(){ $('btn-insumos').click(); });
 }
 
@@ -2025,7 +2042,8 @@ function marcarAberto(){
 function telaVazia(busca){
   if(busca) return '<div class="vazio"><b>Nada encontrado para “'+esc(busca)+'”.</b>'+
     '<p>Procure pelo título, pela pessoa, pela obra ou pelo número.</p></div>';
-  var filtro = OBRA_F ? '<button data-limpar-obra="1">Limpar filtro de obra</button>' : '';
+  var filtro = (OBRA_F ? '<button data-limpar-obra="1">Limpar filtro de obra</button>' : '')+
+    (CAT_F ? '<button data-limpar-cat="1">Limpar filtro de categoria</button>' : '');
   if(ABA==='comigo') return '<div class="vazio"><b>Nada com você agora</b>'+
     '<p>Quando alguém te pedir algo, aparece aqui e no sino.</p>'+
     '<button data-ir-visao="abri">Ver o que eu abri</button>'+filtro+'</div>';
@@ -2202,6 +2220,8 @@ function ligarCartoes(raiz){
   for(var x=0;x<v.length;x++) v[x].addEventListener('click', function(){ trocarVisao(this.dataset.irVisao); });
   var lo = raiz.querySelectorAll('[data-limpar-obra]');
   for(var y=0;y<lo.length;y++) lo[y].addEventListener('click', function(){ filtrarObra(''); });
+  var lc = raiz.querySelectorAll('[data-limpar-cat]');
+  for(var z=0;z<lc.length;z++) lc[z].addEventListener('click', function(){ CAT_F = ''; gravarPreferencias(); desenhar(); });
 }
 
 /* =====================================================================
