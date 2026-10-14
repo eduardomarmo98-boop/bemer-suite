@@ -495,7 +495,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.10.2';
+var VERSAO   = '2026.10.14.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -842,6 +842,12 @@ function sessaoPerdida(err){
 }
 
 /* ---------- entrar ---------- */
+/* 14/10/2026: oferece "Salvar senha?" do navegador/celular depois do login certo
+   (Chrome, Edge, Android). A senha fica no gerenciador do aparelho, nunca no BeMer. */
+function guardarSenha(email, senha){
+  try { if(window.PasswordCredential && navigator.credentials && navigator.credentials.store)
+    navigator.credentials.store(new PasswordCredential({ id: email, password: senha })).catch(function(){}); } catch(e){}
+}
 $('form-login').addEventListener('submit', function(e){
   e.preventDefault();
   var email = $('email').value.trim(), senha = $('senha').value;
@@ -853,6 +859,7 @@ $('form-login').addEventListener('submit', function(e){
       /* entrou com a senha: a marca "definir senha" deste aparelho perde o
          sentido (no banco, a sessão com senha também não é barrada) */
       if(r.data && r.data.user){ senhaLocal(r.data.user.id, false); marcarSenhaAgora(r.data.user.id); }
+      guardarSenha(email, senha);
       $('senha').value = '';
       abrir();
     })

@@ -542,6 +542,8 @@
   .compositor{display:flex;align-items:flex-end;gap:6px}
   .compositor textarea{flex:1;min-height:46px;max-height:140px;resize:none;padding:11px 16px;border-radius:23px;
                        font-size:15px;background:var(--fundo);box-shadow:inset 0 0 0 1px var(--linha)}
+  .arrastando .modal{outline:3px dashed var(--azul);outline-offset:-8px}
+  .arrastando .compositor{box-shadow:inset 0 0 0 2px var(--azul)}
   .cmp-btn{width:44px;height:46px;border-radius:23px;color:var(--azul);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
   .cmp-enviar{width:46px;height:46px;border-radius:50%;background:var(--azul);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
   .cmp-enviar[disabled]{opacity:.5}
@@ -832,7 +834,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -853,7 +855,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -870,7 +872,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -993,7 +995,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.14.1';
+var APP_VERSAO = '2026.10.14.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3353,7 +3355,10 @@ var Detalhe = {
         '<div class="limite-msg oculto" id="d-limite" role="status" aria-live="polite"></div>'+
         '<div class="compositor">'+
           '<textarea id="d-nota" rows="1" placeholder="Escrever…" aria-label="Escrever mensagem"></textarea>'+
-          '<button class="cmp-btn" id="d-foto-nota" aria-label="Foto ou arquivo" title="Foto ou arquivo">'+ICO.camera+'</button>'+
+          /* 14/10/2026: câmera (foto) e clipe (documento) separados; colar e arrastar também anexam */
+          '<button class="cmp-btn" id="d-clipe-nota" aria-label="Anexar documento" title="Anexar documento (PDF, Word, Excel, DWG…) — ou cole/arraste aqui">'+ICO.clipe+'</button>'+
+          '<button class="cmp-btn" id="d-foto-nota" aria-label="Foto" title="Foto">'+ICO.camera+'</button>'+
+          '<input type="file" id="d-foto-cam" multiple style="display:none" accept="image/*">'+
           '<button class="cmp-enviar" id="d-add" aria-label="Enviar" title="Enviar">'+ICO.enviar+'</button>'+
           '<input type="file" id="d-arq-nota" multiple style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.dwg,.txt">'+
         '</div>';
@@ -3598,8 +3603,31 @@ var Detalhe = {
       });
     }
     function anexar(e){ Anexos.preparar(e.target.files, function(l){ rascunho.push.apply(rascunho,l); pintarRascunho(); e.target.value=''; }); }
-    if(q('#d-foto-nota')) q('#d-foto-nota').addEventListener('click', function(){ q('#d-arq-nota').click(); });
+    if(q('#d-foto-nota')) q('#d-foto-nota').addEventListener('click', function(){ q('#d-foto-cam').click(); });
+    if(q('#d-clipe-nota')) q('#d-clipe-nota').addEventListener('click', function(){ q('#d-arq-nota').click(); });
     if(q('#d-arq-nota')) q('#d-arq-nota').addEventListener('change', anexar);
+    if(q('#d-foto-cam')) q('#d-foto-cam').addEventListener('change', anexar);
+    /* 14/10/2026: colar (Ctrl+V de print ou arquivo) e arrastar para a conversa */
+    /* a janela pode ser redesenhada com outra pendência: os ouvintes ficam uma vez só e
+       chamam sempre o m._junta da conversa aberta agora */
+    m._junta = q('#d-arq-nota') ? function(fs){ var l = [].slice.call(fs || []); if(!l.length) return false;
+      Anexos.preparar(l, function(x){ rascunho.push.apply(rascunho, x); pintarRascunho(); try { campo.focus(); } catch(e){} }); return true; } : null;
+    if(!m._colarLigado){
+      m._colarLigado = true;
+      var junta = function(fs){ return m._junta ? m._junta(fs) : false; };
+      m.addEventListener('paste', function(e){
+        var fs = e.clipboardData && e.clipboardData.files;
+        if(fs && fs.length && junta(fs)) e.preventDefault();
+      });
+      var fundo = 0;
+      m.addEventListener('dragenter', function(e){ if(e.dataTransfer && [].indexOf.call(e.dataTransfer.types||[], 'Files') >= 0){ fundo++; m.classList.add('arrastando'); } });
+      m.addEventListener('dragleave', function(){ if(--fundo <= 0){ fundo = 0; m.classList.remove('arrastando'); } });
+      m.addEventListener('dragover', function(e){ if(e.dataTransfer && [].indexOf.call(e.dataTransfer.types||[], 'Files') >= 0) e.preventDefault(); });
+      m.addEventListener('drop', function(e){
+        fundo = 0; m.classList.remove('arrastando');
+        if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){ e.preventDefault(); junta(e.dataTransfer.files); }
+      });
+    }
     if(q('#d-add')) q('#d-add').addEventListener('click', function(){
       var digitado = campo.value, txt = digitado;
       if(!txt.trim() && !rascunho.length) return;
@@ -7186,6 +7214,9 @@ document.getElementById('form-login').addEventListener('submit', function(e){
 
   /* ---- entrar ---- */
   if(!senha){ fim(); msgLogin('Informe sua senha.'); return; }
+  var guardarSenha = function(em, se){   // 14/10/2026: "Salvar senha?" do navegador
+    try { if(window.PasswordCredential && navigator.credentials && navigator.credentials.store)
+      navigator.credentials.store(new PasswordCredential({ id: em, password: se })).catch(function(){}); } catch(e){} };
   sb.auth.signInWithPassword({ email:email, password:senha }).then(function(r){
     if(r.error){
       fim();
@@ -7193,6 +7224,7 @@ document.getElementById('form-login').addEventListener('submit', function(e){
       return msgLogin(traduzErro(r.error.message));
     }
     limpaErro(email);
+    guardarSenha(email, senha);
     location.reload();
   });
 });
