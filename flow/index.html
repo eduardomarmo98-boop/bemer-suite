@@ -834,7 +834,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -855,7 +855,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -872,7 +872,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -995,7 +995,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.14.2';
+var APP_VERSAO = '2026.10.14.3';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -3967,7 +3967,13 @@ var Acoes = {
       '<div class="fichas" id="dp-fichas">'+fichasPedido()+'</div>'+
       '<input type="date" id="dp-data" min="'+comoInput(new Date())+'" style="margin-top:8px">',
       '<button class="bt-pri" id="dp-ok">Criar sub-item</button>');
-    var escolha = Escolha.pessoas(f.querySelector('#dp-quem'), { dica:'Digite o nome', excluir:[p.responsavel_id] });
+    /* 14/10/2026: sub-item para quem ABRIU a principal é devolver a pendência — vai pela conversa (como no Redirecionar) */
+    var paraQuemAbriu = function(para){
+      return mesmoId(para, p.criado_por) && !mesmoId(EU.id, p.criado_por)
+        ? primeiro(pessoa(para).nome)+' abriu a pendência #'+p.id+'. Não dá para mandar o sub-item para quem abriu: resolva pela conversa da #'+p.id+'.' : '';
+    };
+    var escolha = Escolha.pessoas(f.querySelector('#dp-quem'), { dica:'Digite o nome', excluir:[p.responsavel_id],
+      aoMudar: function(v){ var e = v[0] && paraQuemAbriu(v[0]); if(e) aviso(e, 'erro'); } });
     f._escolha = escolha;
     var fs_ = f.querySelectorAll('[data-desejado]'), campo = f.querySelector('#dp-data');
     for(var i=0;i<fs_.length;i++) fs_[i].addEventListener('click', function(){
@@ -3981,6 +3987,7 @@ var Acoes = {
       var b = this, titulo = f.querySelector('#dp-titulo').value.replace(/\s+/g,' ').trim(), para = escolha.valores()[0];
       if(!titulo){ aviso('Escreva o que falta.','erro'); return; }
       if(!para){ aviso('Escolha para quem é.','erro'); return; }
+      if(paraQuemAbriu(para)){ aviso(paraQuemAbriu(para),'erro'); return; }
       b.disabled = true;
       Dados.novaPendencia({ titulo:titulo, descricao:'', responsavel_id:para, obra_id:p.obra_id || '', frente:'',
           prioridade:'media', recorrencia:'', prazo_desejado:campo.value || null,
