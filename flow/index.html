@@ -112,6 +112,9 @@
   .card.sub .seta{color:var(--tinta2);margin-right:4px}
   .card.sub .meta{font-size:13px}
   .card.sub.feito h3{color:var(--tinta2);text-decoration:line-through}
+  .dep-link{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-top:12px;min-height:40px;padding:8px 0;color:var(--azul);font-weight:600;font-size:14px;text-align:left}
+  .dep-link small{font-weight:400;font-size:13px;color:var(--tinta2)}
+  .depende .dep-link{margin-top:4px;border-top:1px solid var(--linha);padding-top:10px;width:100%}
   .depende{margin-top:14px;border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--linha);padding:10px 12px}
   .dep-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:600;color:var(--tinta)}
   .dep-cab b{font-size:13px;font-weight:600;color:var(--laranja-txt);background:var(--laranja-bg);border-radius:10px;padding:1px 8px}
@@ -211,6 +214,7 @@
   .bt-painel{min-height:44px;height:44px;padding:0 12px;border-radius:12px;font-size:14px;font-weight:600;color:var(--azul);
              background:#fff;box-shadow:inset 0 0 0 1.5px var(--azul-borda);margin-left:4px;flex:0 0 auto}
   .btn-nova-topo{display:none}
+  @media (max-width:520px){ .so-largo{display:none} }
   .etq-filtro.etq-topo{display:none}
   /* busca: no celular o ícone vira o campo; o ✕ volta ao seletor */
   .busca{display:none;flex:1 1 auto;align-items:center;gap:8px;background:var(--fundo);border-radius:12px;
@@ -834,7 +838,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -855,7 +859,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -872,7 +876,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.14.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.14.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -909,6 +913,8 @@
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.9 1.9 0 003.4 0"></path></svg>
       <span class="sino-conta oculto" id="sino-conta"></span>
     </button>
+    <!-- 14/10/2026: Status Insumos no topo, ao lado do Painel (pedido do dono) -->
+    <button class="bt-painel oculto" id="btn-insumos-topo"><span class="so-largo">Status </span>Insumos</button>
     <button class="bt-painel" id="btn-painel">Painel</button>
     <button class="btn-nova-topo" id="btn-nova-topo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Nova</button>
     <!-- 07/10/2026: "← Portal" padrão da suíte — canto superior direito, a ÚNICA saída para o portal -->
@@ -995,7 +1001,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.14.3';
+var APP_VERSAO = '2026.10.14.4';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1941,6 +1947,7 @@ $('btn-recarregar').addEventListener('click', function(){
   Promise.resolve().then(atualizarLista).then(fim, fim);
 });
 $('btn-painel').addEventListener('click', function(){ Visoes.fechar(); Painel.abrir(); });
+$('btn-insumos-topo').addEventListener('click', function(){ Visoes.fechar(); $('btn-insumos').click(); });
 $('btn-nova-topo').addEventListener('click', function(){ $('btn-nova').click(); });
 $('etq-obra-topo').addEventListener('click', function(){ filtrarObra(''); });
 
@@ -1956,6 +1963,7 @@ function desenhar(){
   var R = recortes();
 
   $('btn-painel').classList.toggle('oculto', !podeNoFlow('ver_painel'));
+  $('btn-insumos-topo').classList.toggle('oculto', !(typeof verInsumos === 'function' && verInsumos()));
   $('btn-cadastros').classList.toggle('oculto', !podeNoFlow('assuntos'));
   /* o seletor fica só com as visões e a obra; Obras, Equipe, Assuntos e
      Exportar moram no fim do Painel (quem não tem Painel continua vendo aqui) */
@@ -2010,7 +2018,7 @@ function blocosVisoes(R, dentro){
   var h = '<div class="blocos"><div class="blocos-topo"><button type="button" class="bloco-obra" id="bloco-obra">Obra: <b>'+esc(OBRA_F ? nomeObraFiltro(true) : 'Todas as obras')+'</b> ▾</button>'+
     ((DB.categorias||[]).length ? '<button type="button" class="bloco-obra" id="bloco-cat">Categoria: <b>'+esc(CAT_F === '__sem' ? 'Sem categoria' : CAT_F || 'Todas')+'</b> ▾</button>' : '')+
     /* 10/10/2026: Insumos (a planilha Pauta e Ata da obra) — todo mundo consulta; quem tem a ação edita. Só com a chave ligada */
-    (typeof verInsumos === 'function' && verInsumos() ? '<button type="button" class="bloco-obra bloco-ins" id="bloco-insumos">Status Insumos ›</button>' : '')+'</div>';
+    '</div>';   /* 14/10/2026: Status Insumos subiu para a barra azul do topo */
   VISOES.forEach(function(g){ g[1].forEach(function(v){
     var k = v[0], n = R[k] ? R[k].length : 0, on = k === ABA && BLOCO_ABERTO;
     h += '<div class="bloco'+(on?' on':'')+'"><button type="button" class="bloco-cab" data-bloco="'+k+'"><span>'+esc(v[1])+'</span><b class="'+(k==='atrasadas'&&n?'r':'')+'">'+n+'</b><i>'+(on?'▾':'▸')+'</i></button>'+
@@ -3288,14 +3296,18 @@ var Detalhe = {
     var subs = subItens(p), ab = subs.filter(function(x){ return aberta(x); }).length;
     var pode = pp.aberta && (pp.souCriador || pp.souResp) && podeNoFlow('criar');
     if(!subs.length && !pode) return '';
-    return '<div class="depende" id="d-depende"><div class="dep-cab"><span>Depende de</span>'+
-      (subs.length ? (ab ? '<b>aguardando '+ab+' de '+subs.length+'</b>' : '<b class="ok">tudo resolvido</b>') : '')+'</div>'+
+    /* 14/10/2026 (pedido do dono: "o botão e o campo estão confusos"): sem sub-item, só um link;
+       com sub-itens, o quadro "Sub-itens" com quantos já foram resolvidos */
+    var novo = function(rot){ return '<button type="button" class="dep-link" id="d-depende-novo">＋ '+rot+' <small>parte que depende de outra pessoa</small></button>'; };
+    if(!subs.length) return novo('Criar sub-item');
+    return '<div class="depende" id="d-depende"><div class="dep-cab"><span>Sub-itens</span>'+
+      (ab ? '<b>'+(subs.length-ab)+' de '+subs.length+' resolvidos</b>' : '<b class="ok">todos resolvidos</b>')+'</div>'+
       subs.map(function(x){
         var st = statusSub(x);
         return '<button type="button" class="dep-item" data-ir-pend="'+x.id+'"><span class="t">'+esc(x.titulo)+'</span>'+
           '<small class="'+st.c+'">'+esc(st.t)+'</small></button>';
       }).join('')+
-      (pode ? '<button type="button" class="dep-novo" id="d-depende-novo">＋ Depende de…</button>' : '')+
+      (pode ? novo('Novo sub-item') : '')+
     '</div>';
   },
 
@@ -3958,7 +3970,7 @@ var Acoes = {
 
   /* "＋ Depende de…": cria o sub-item (o quê + para quem + precisa até) */
   depende: function(p){
-    var f = folha('Depende de…',
+    var f = folha('Novo sub-item',
       '<div class="dica" style="margin:0 0 10px">Você continua responsável por #'+p.id+'. O sub-item vai para outra pessoa, com conversa e prazo próprios.</div>'+
       '<label for="dp-titulo" class="primeiro">O quê?</label>'+
       '<textarea id="dp-titulo" rows="2" maxlength="500" placeholder="Ex.: Enviar a cotação do aço"></textarea>'+
