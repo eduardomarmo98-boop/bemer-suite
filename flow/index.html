@@ -852,7 +852,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -873,7 +873,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -890,7 +890,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1015,7 +1015,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.5';
+var APP_VERSAO = '2026.10.15.6';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1588,8 +1588,7 @@ var Regras = {
     if(pai.pai_id != null) throw new Error('A #'+pai.id+' é sub-item da #'+pai.pai_id+': vincule na principal (#'+pai.pai_id+').');
     if(String(p.obra_id || '') !== String(pai.obra_id || ''))
       throw new Error('As duas pendências precisam ser da mesma obra.');
-    if(mesmoId(p.responsavel_id, pai.responsavel_id))
-      throw new Error('As duas estão com '+primeiro(pessoa(p.responsavel_id).nome)+': é pendência repetida. Cancele uma e siga na outra.');
+    /* 0067: as duas com a mesma pessoa também vinculam (a trava de "repetida" saiu) */
     if(mesmoId(p.responsavel_id, pai.criado_por) && !mesmoId(ator, pai.criado_por))
       throw new Error(primeiro(pessoa(pai.criado_por).nome)+' abriu a pendência #'+pai.id+'. Não dá para mandar o sub-item para quem abriu: resolva pela conversa da #'+pai.id+'.');
     var filhos = DB.pendencias.filter(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id); });
