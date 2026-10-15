@@ -136,6 +136,7 @@
   .vinc-op small{font-size:13px;color:var(--tinta2)}
   .vinc-op.on{background:var(--azul-bg, #E8EEF8);box-shadow:inset 0 0 0 2px var(--azul)}
   .vinc-aviso{margin-top:10px;color:var(--laranja-txt);background:var(--laranja-bg);border-radius:10px;padding:8px 10px}
+  .vinc-aviso.erro{color:var(--erro);background:var(--erro-bg, #FDECEC)}
   .parte-de{display:flex;align-items:center;gap:6px;margin-top:10px;min-height:40px;font-size:14px;color:var(--azul);text-align:left}
   .parte-de b{font-weight:600}
   .rot-msg{display:block;font-size:14px;font-weight:600;color:var(--tinta);margin:12px 0 6px}
@@ -847,7 +848,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -868,7 +869,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -885,7 +886,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1010,7 +1011,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.1';
+var APP_VERSAO = '2026.10.15.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2140,17 +2141,32 @@ function recolhido(k, rotulo, itens){
   var ab = !!RECOLHIDO_ABERTO[k];
   return '<section class="grupo" data-grupo="'+k+'"><button class="mais-grupo'+(ab?' aberto':'')+'" data-recolhe="'+k+'" aria-expanded="'+ab+'">'+
     '<span>'+rotulo+' · '+itens.length+'</span><span class="chev">'+ICO.chev+'</span></button>'+
-    (ab ? '<div class="cartoes">'+itens.slice().sort(ordenar).map(cartao).join('')+'</div>' : '')+'</section>';
+    (ab ? '<div class="cartoes">'+semSubRepetido(itens).sort(ordenar).map(cartao).join('')+'</div>' : '')+'</section>';
 }
-/* sub-item cuja principal está na mesma lista aparece só recuado embaixo dela */
-function semSubRepetido(lista){
-  var ids = {}; lista.forEach(function(p){ ids[String(p.id)] = 1; });
-  return lista.filter(function(p){ return p.pai_id == null || !ids[String(p.pai_id)]; });
+/* sub-item aparece sempre recuado embaixo da principal. 15/10/2026 (regra do
+   dono: "se existe um vínculo, ele sempre tem que ser mostrado, nunca pode
+   estar sozinho"): se só o sub-item entrou na lista, a principal entra no
+   lugar dele (com os sub-itens embaixo). paraGrupo: a principal fica no
+   grupo do primeiro sub-item que a trouxe. */
+function semSubRepetido(lista, paraGrupo){
+  var ids = {}, ja = {}, saida = [];
+  lista.forEach(function(p){ if(p.pai_id == null) ids[String(p.id)] = 1; });
+  lista.forEach(function(p){
+    if(p.pai_id == null){ saida.push(p); return; }
+    if(ids[String(p.pai_id)] || ja[String(p.pai_id)]) return;
+    var pai = pend(p.pai_id);
+    if(!pai || pai._futura || (EU && !Regras.podeVer(pai, EU.id))){ saida.push(p); return; }   // sem acesso: fica o sub-item
+    ja[String(pai.id)] = 1;
+    if(paraGrupo) paraGrupo[String(pai.id)] = grupoDe(p);
+    saida.push(pai);
+  });
+  return saida;
 }
 function agrupar(lista, esperando){
-  lista = semSubRepetido(lista);
+  var grupoPai = {};
+  lista = semSubRepetido(lista, grupoPai);
   var por = {};
-  lista.forEach(function(p){ var g = grupoDe(p); (por[g] = por[g] || []).push(p); });
+  lista.forEach(function(p){ var g = grupoPai[String(p.id)] || grupoDe(p); (por[g] = por[g] || []).push(p); });
   var h = '';
   GRUPOS.forEach(function(g){
     var it = por[g[0]];
@@ -3366,7 +3382,7 @@ var Detalhe = {
        com sub-itens, o quadro "Sub-itens" com quantos já foram resolvidos */
     var novo = function(rot){ return '<button type="button" class="dep-link" id="d-depende-novo">＋ '+rot+' <small>parte que depende de outra pessoa</small></button>'+
       /* 15/10/2026: trazer para cá uma pendência que já existe (0064) */
-      (Acoes.candidatosFilhos(p).length ? '<button type="button" class="dep-link dep-vinc" id="d-vincular-filho">↳ Vincular pendência que já existe</button>' : ''); };
+      '<button type="button" class="dep-link dep-vinc" id="d-vincular-filho">↳ Vincular pendência que já existe</button>'; };
     if(!subs.length) return novo('Criar sub-item');
     return '<div class="depende" id="d-depende"><div class="dep-cab"><span>Sub-itens</span>'+
       (ab ? '<b>'+(subs.length-ab)+' de '+subs.length+' resolvidos</b>' : '<b class="ok">todos resolvidos</b>')+'</div>'+
@@ -4090,18 +4106,24 @@ var Acoes = {
      (pedido do dono: "abrem pendências diferentes para um assunto que tem
      relação"). Pelo ⋯ da que vai entrar ou pelo quadro Sub-itens da
      principal. As regras são as do banco (flow.vincular, 0064). */
+  /* 15/10/2026 (pedido do dono: "permita selecionar o item que eu quiser"):
+     a lista traz TODAS as pendências abertas que a pessoa vê; as que podem
+     ser vinculadas vêm primeiro. Escolher uma que não pode mostra o motivo. */
   candidatosPais: function(p){
-    return Acoes._candidatos(function(x){ RegrasBase.validarVincular(p, x, EU.id); });
+    return Acoes._candidatos(p, function(x){ RegrasBase.validarVincular(p, x, EU.id); });
   },
   candidatosFilhos: function(pai){
-    return Acoes._candidatos(function(x){ RegrasBase.validarVincular(x, pai, EU.id); });
+    return Acoes._candidatos(pai, function(x){ RegrasBase.validarVincular(x, pai, EU.id); });
   },
-  _candidatos: function(confere){
+  _candidatos: function(p, confere){
     if(!DB || !EU) return [];
+    var pode = function(x){ try { confere(x); return 1; } catch(e){ return 0; } };
     return DB.pendencias.filter(function(x){
-      if(x._futura) return false;
-      try { confere(x); return true; } catch(e){ return false; }
-    }).sort(function(a,b){ return new Date(b.criado_em) - new Date(a.criado_em); });
+      return !x._futura && !mesmoId(x.id, p.id) && ABERTOS.indexOf(x.status) >= 0 && Regras.podeVer(x, EU.id) &&
+        !mesmoId(x.pai_id, p.id) && !mesmoId(x.id, p.pai_id);
+    }).map(function(x){ return { x:x, ok:pode(x) }; })
+      .sort(function(a,b){ return (b.ok - a.ok) || (new Date(b.x.criado_em) - new Date(a.x.criado_em)); })
+      .map(function(c){ return c.x; });
   },
   vincular: function(p){
     return Acoes._escolherVinculo(p, Acoes.candidatosPais(p), 'Vincular a outra pendência',
@@ -4110,18 +4132,18 @@ var Acoes = {
   },
   vincularFilho: function(pai){
     return Acoes._escolherVinculo(pai, Acoes.candidatosFilhos(pai), 'Vincular pendência que já existe',
-      'A pendência escolhida vira sub-item da #'+pai.id+'. Aparecem só as que você abriu, da mesma obra.',
+      'A pendência escolhida vira sub-item da #'+pai.id+'.',
       function(x){ return { filho:x, pai:pai }; });
   },
   _escolherVinculo: function(p, lista, titulo, dica, par){
-    if(!lista.length){ aviso('Nenhuma pendência pode ser ligada a esta: precisa ser da mesma obra, aberta e com outra pessoa responsável.', 'erro'); return null; }
+    if(!lista.length){ aviso('Não há outra pendência aberta para vincular.', 'erro'); return null; }
     var linha = function(x){
       return '<button type="button" class="vinc-op" data-vinc="'+x.id+'"><span class="t">#'+x.id+' · '+esc(x.titulo)+'</span>'+
-        '<small>com '+esc(quemCurto(x.responsavel_id))+(x.sigiloso ? ' · sigilosa' : '')+'</small></button>';
+        '<small>com '+esc(quemCurto(x.responsavel_id))+' · '+esc(obraCurta(obra(x.obra_id)))+(x.sigiloso ? ' · sigilosa' : '')+'</small></button>';
     };
     var f = folha(titulo,
       '<div class="dica" style="margin:0 0 10px">'+esc(dica)+'</div>'+
-      (lista.length > 6 ? '<input type="search" id="vc-busca" placeholder="Número ou parte do título" autocomplete="off" style="margin-bottom:6px">' : '')+
+      '<input type="search" id="vc-busca" placeholder="Número ou parte do título" autocomplete="off" style="margin-bottom:6px">'+
       '<div class="vinc-lista" id="vc-lista">'+lista.map(linha).join('')+'</div>'+
       '<div class="dica vinc-aviso" id="vc-aviso" hidden></div>',
       '<button class="bt-pri" id="vc-ok" disabled>Vincular</button>');
@@ -4133,12 +4155,15 @@ var Acoes = {
       var x = pend(this.dataset.vinc); if(!x) return;
       sel = par(x);
       av.hidden = false;
+      try { RegrasBase.validarVincular(sel.filho, sel.pai, EU.id); }
+      catch(e){ sel = null; av.classList.add('erro'); av.textContent = e.message; ok.disabled = true; return; }
+      av.classList.remove('erro');
       av.innerHTML = 'Quem vê a #'+sel.pai.id+' passa a ver também a #'+sel.filho.id+', com a conversa e os anexos dela.'+
         (sel.pai.sigiloso && !sel.filho.sigiloso ? ' A #'+sel.filho.id+' passa a ser sigilosa.' : '');
       ok.disabled = false;
     });
     var busca = f.querySelector('#vc-busca');
-    if(busca) busca.addEventListener('input', function(){
+    busca.addEventListener('input', function(){
       var t = normalizar(busca.value).replace(/^#/, '');
       for(var k=0;k<ops.length;k++){
         var x = pend(ops[k].dataset.vinc);
@@ -5593,7 +5618,7 @@ var Painel = {
 
   /* abre a lista de uma linha clicada */
   abrirLista: function(titulo, subtitulo, lista){
-    lista = lista.slice().sort(ordenar);
+    lista = semSubRepetido(lista).sort(ordenar);   /* 15/10: sub-item nunca sozinho */
     var m = abrirModal(
       "<div class=\"modal-topo\"><button class=\"fechar\" aria-label=\"Voltar\">"+ICO.voltar+"</button><h2>"+esc(titulo)+
         "<div class=\"dica\" style=\"margin:0;font-weight:400\">"+esc(subtitulo)+"</div></h2></div>"+
