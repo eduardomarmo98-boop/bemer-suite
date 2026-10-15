@@ -865,7 +865,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.9</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.10</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -886,7 +886,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.9</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.10</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -903,7 +903,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.9</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.10</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1028,7 +1028,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.9';
+var APP_VERSAO = '2026.10.15.10';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1206,7 +1206,13 @@ function adminSistema(ator){
   var c = pessoa(ator); return c.papel === 'diretor' || c.papel === 'ti';
 }
 /* quem abriu a pendência, ou o administrador do sistema */
-function podeExcluir(p){ return !!(p && EU) && exclusaoLiberada() && (mesmoId(p.criado_por, EU.id) || souAdminSistema()); }
+/* 0069 (C3 da análise de segurança): sub-item aberto por outra pessoa trava a exclusão (o administrador continua podendo) */
+function podeExcluir(p){
+  if(!(p && EU) || !exclusaoLiberada()) return false;
+  if(souAdminSistema()) return true;
+  if(!mesmoId(p.criado_por, EU.id)) return false;
+  return !DB.pendencias.some(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id) && !mesmoId(x.criado_por, EU.id); });
+}
 
 /* Categoria: a lista é do admin do Flow; exige_sigilo = sempre sigilosa (TI). */
 var CATEGORIAS_PADRAO = [{ nome:'TI', exige_sigilo:true }, { nome:'Insumos', exige_sigilo:false }];
