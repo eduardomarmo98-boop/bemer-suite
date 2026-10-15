@@ -852,7 +852,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.7</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -873,7 +873,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.7</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -890,7 +890,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.7</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1015,7 +1015,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.6';
+var APP_VERSAO = '2026.10.15.7';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1211,6 +1211,7 @@ function subItens(p){
 }
 function subAbertos(p){ return subItens(p).filter(function(x){ return ABERTOS.indexOf(x.status) >= 0; }); }
 function podeSoltar(p){ try { RegrasBase.validarSoltar(p, EU.id); return true; } catch(e){ return false; } }
+function podeTornarPrincipal(p){ try { RegrasBase.validarTornarPrincipal(p, EU.id); return true; } catch(e){ return false; } }
 /* O que cada nível pode (Cadastros › Permissões do portal, 0026). Nulo =
    tabela não carregada: vale a regra de antes (Painel para quem não é
    colaborador). Diretor pode tudo. */
@@ -1608,6 +1609,31 @@ var Regras = {
     Regras._nota(pai.id, ator, eu+' vinculou a #'+p.id+' “'+p.titulo+'” como sub-item desta'+
       (filhos.length === 1 ? ' (com 1 sub-item dela)' : filhos.length ? ' (com '+filhos.length+' sub-itens dela)' : '')+'.');
     filhos.forEach(function(x){ Regras._nota(x.id, ator, eu+' vinculou a #'+p.id+' à #'+pai.id+': este sub-item agora é da #'+pai.id+'.'); });
+    return p;
+  },
+  /* 0068: o sub-item vira a principal; a antiga principal e os outros sub-itens ficam embaixo dele */
+  validarTornarPrincipal: function(p, ator){
+    if(p.pai_id == null) throw new Error('A #'+p.id+' já é a principal.');
+    var pai = pend(p.pai_id) || {}, adm = adminSistema(ator);
+    if(!adm && !mesmoId(ator, p.criado_por) && !mesmoId(ator, p.responsavel_id))
+      throw new Error('Só quem abriu ou recebeu a #'+p.id+' pode torná-la a principal.');
+    if(!adm && !mesmoId(ator, pai.criado_por) && !mesmoId(ator, pai.responsavel_id))
+      throw new Error('Você não abriu nem recebeu a #'+p.pai_id+', a principal de hoje: peça a quem abriu ou recebeu.');
+    if(ABERTOS.indexOf(p.status)<0) throw new Error('A pendência #'+p.id+' já está encerrada.');
+  },
+  tornarPrincipal: function(p, ator){
+    RegrasBase.validarTornarPrincipal(p, ator);
+    var eu = primeiro(pessoa(ator).nome), pai = pend(p.pai_id);
+    var irmaos = DB.pendencias.filter(function(x){ return x.pai_id != null && mesmoId(x.pai_id, pai.id) && !mesmoId(x.id, p.id); });
+    p.pai_id = null;
+    [pai].concat(irmaos).forEach(function(x){
+      x.pai_id = p.id;
+      x.categoria = p.categoria || x.categoria || null;
+      x.sigiloso = !!(x.sigiloso || p.sigiloso);
+    });
+    Regras._nota(p.id, ator, eu+' tornou esta pendência a principal (era sub-item da #'+pai.id+' “'+pai.titulo+'”).');
+    Regras._nota(pai.id, ator, eu+' tornou a #'+p.id+' “'+p.titulo+'” a principal: esta agora é sub-item dela.');
+    irmaos.forEach(function(x){ Regras._nota(x.id, ator, eu+' tornou a #'+p.id+' a principal: este sub-item agora é da #'+p.id+'.'); });
     return p;
   },
   validarSoltar: function(p, ator){
@@ -3176,6 +3202,10 @@ var Dados = {
     try { RegrasBase.soltar(p, EU.id); salvar(); return Promise.resolve(); }
     catch(e){ return Promise.reject(e); }
   },
+  tornarPrincipal: function(p){
+    try { RegrasBase.tornarPrincipal(p, EU.id); salvar(); return Promise.resolve(); }
+    catch(e){ return Promise.reject(e); }
+  },
   /* já aplicados na tela pelo "Desfazer": aqui só se grava */
   enviarAdiamento: function(){ salvar(); return Promise.resolve(); },
   enviarRedirecionamento: function(){ salvar(); return Promise.resolve(); },
@@ -3485,6 +3515,8 @@ var Detalhe = {
     /* 15/10/2026: vincular como sub-item de outra / soltar da principal (0064) */
     if(pp.aberta && p.pai_id == null && (pp.souCriador || pp.souResp || adminSistema(EU.id)) && podeNoFlow('criar'))
       it.push('<button data-acao="vincular">Vincular a outra pendência</button>');
+    /* 15/10/2026 (0068): inverte — este sub-item vira a principal */
+    if(pp.aberta && p.pai_id != null && podeTornarPrincipal(p)) it.push('<button data-acao="tornarPrincipal">Tornar esta a principal</button>');
     if(pp.aberta && p.pai_id != null && podeSoltar(p)) it.push('<button data-acao="soltar">Soltar da #'+esc(p.pai_id)+'</button>');
     it.push('<button data-menu-d="copiar">Copiar link</button>');
     it.push('<button data-acao="linha">Linha do tempo completa</button>');
@@ -4191,6 +4223,24 @@ var Acoes = {
         f.remove(); desenhar(); Detalhe.recarregarSeAberta(p.id);
         aviso('#'+sel.filho.id+' agora é sub-item da #'+sel.pai.id+'.', 'ok');
       }).catch(function(e){ ok.disabled = false; aviso(e.message||String(e),'erro'); });
+    });
+    return f;
+  },
+  tornarPrincipal: function(p){
+    var paiId = p.pai_id, pai = pend(paiId);
+    var outros = pai ? subItens(pai).filter(function(x){ return !mesmoId(x.id, p.id); }).length : 0;
+    var f = folha('Tornar a #'+p.id+' a principal?',
+      '<p class="dica" style="margin:0">A #'+paiId+' passa a ser sub-item da #'+p.id+
+      (outros === 1 ? ', junto com o outro sub-item dela' : outros ? ', junto com os outros '+outros+' sub-itens dela' : '')+
+      '. Conversa, anexos, prazos e quem acompanha não mudam.</p>',
+      '<button class="bt-sec so" id="d-tp-nao">Voltar</button><button class="bt-pri" id="d-tp-ok">Tornar principal</button>');
+    f.querySelector('#d-tp-nao').addEventListener('click', function(){ f.remove(); });
+    f.querySelector('#d-tp-ok').addEventListener('click', function(){
+      var b = this; b.disabled = true;
+      Dados.tornarPrincipal(p).then(function(){
+        f.remove(); desenhar(); Detalhe.recarregarSeAberta(p.id);
+        aviso('#'+p.id+' agora é a principal.', 'ok');
+      }).catch(function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
     });
     return f;
   },
@@ -7039,6 +7089,11 @@ Dados = {
   /* 15/10/2026: vincular como sub-item / soltar (0064) */
   vincular: function(p, pai){
     return Promise.resolve(sb.schema('flow').rpc('vincular', { p_id:p.id, p_pai:pai.id }))
+      .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
+      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
+  },
+  tornarPrincipal: function(p){
+    return Promise.resolve(sb.schema('flow').rpc('tornar_principal', { p_id:p.id }))
       .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
       .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
   },
