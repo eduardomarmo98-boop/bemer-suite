@@ -848,7 +848,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -869,7 +869,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -886,7 +886,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1011,7 +1011,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.2';
+var APP_VERSAO = '2026.10.15.3';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1572,32 +1572,39 @@ var Regras = {
      soltar (mesmas regras de flow.vincular / flow.soltar, 0064) */
   validarVincular: function(p, pai, ator){
     if(!pai || mesmoId(p.id, pai.id)) throw new Error('Escolha outra pendência.');
-    if(!mesmoId(ator, p.criado_por)) throw new Error('Só quem abriu a pendência #'+p.id+' pode vinculá-la a outra.');
-    if(!mesmoId(ator, pai.criado_por) && !mesmoId(ator, pai.responsavel_id))
+    /* 0066: quem abriu OU recebeu (e o administrador do sistema); os sub-itens vão junto */
+    var adm = adminSistema(ator);
+    if(!adm && !mesmoId(ator, p.criado_por) && !mesmoId(ator, p.responsavel_id))
+      throw new Error('Só quem abriu ou recebeu a #'+p.id+' pode vinculá-la a outra.');
+    if(!adm && !mesmoId(ator, pai.criado_por) && !mesmoId(ator, pai.responsavel_id))
       throw new Error('Você não abriu nem recebeu a #'+pai.id+': só dá para vincular a uma pendência sua.');
     if(ABERTOS.indexOf(p.status)<0) throw new Error('A pendência #'+p.id+' já está encerrada.');
     if(ABERTOS.indexOf(pai.status)<0) throw new Error('A pendência #'+pai.id+' já está encerrada.');
     if(p.pai_id != null) throw new Error('A #'+p.id+' já é sub-item da #'+p.pai_id+'. Solte antes de vincular a outra.');
     if(pai.pai_id != null) throw new Error('A #'+pai.id+' é sub-item da #'+pai.pai_id+': vincule na principal (#'+pai.pai_id+').');
-    if(DB.pendencias.some(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id); }))
-      throw new Error('A #'+p.id+' tem sub-itens: ela não pode virar sub-item de outra.');
     if(String(p.obra_id || '') !== String(pai.obra_id || ''))
       throw new Error('As duas pendências precisam ser da mesma obra.');
     if(mesmoId(p.responsavel_id, pai.responsavel_id))
       throw new Error('As duas estão com '+primeiro(pessoa(p.responsavel_id).nome)+': é pendência repetida. Cancele uma e siga na outra.');
     if(mesmoId(p.responsavel_id, pai.criado_por) && !mesmoId(ator, pai.criado_por))
       throw new Error(primeiro(pessoa(pai.criado_por).nome)+' abriu a pendência #'+pai.id+'. Não dá para mandar o sub-item para quem abriu: resolva pela conversa da #'+pai.id+'.');
-    if(p.sigiloso && !pai.sigiloso)
-      throw new Error('A #'+p.id+' é sigilosa e a #'+pai.id+' não: vinculada, mais gente passaria a vê-la.');
+    var filhos = DB.pendencias.filter(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id); });
+    if(!pai.sigiloso && (p.sigiloso || filhos.some(function(x){ return x.sigiloso; })))
+      throw new Error('A #'+p.id+' (ou um sub-item dela) é sigilosa e a #'+pai.id+' não: vinculada, mais gente passaria a vê-la.');
   },
   vincular: function(p, pai, ator){
     RegrasBase.validarVincular(p, pai, ator);
     var eu = primeiro(pessoa(ator).nome);
-    p.pai_id = pai.id;
-    p.categoria = pai.categoria || p.categoria || null;
-    p.sigiloso = !!(p.sigiloso || pai.sigiloso);
-    Regras._nota(p.id, ator, eu+' vinculou esta pendência como sub-item da #'+pai.id+' “'+pai.titulo+'”.');
-    Regras._nota(pai.id, ator, eu+' vinculou a #'+p.id+' “'+p.titulo+'” como sub-item desta.');
+    var filhos = DB.pendencias.filter(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id); });
+    [p].concat(filhos).forEach(function(x){
+      x.pai_id = pai.id;
+      x.categoria = pai.categoria || x.categoria || null;
+      x.sigiloso = !!(x.sigiloso || pai.sigiloso);
+    });
+    Regras._nota(p.id, ator, eu+' vinculou esta pendência como sub-item da #'+pai.id+' “'+pai.titulo+'”'+(filhos.length ? ', com os sub-itens dela' : '')+'.');
+    Regras._nota(pai.id, ator, eu+' vinculou a #'+p.id+' “'+p.titulo+'” como sub-item desta'+
+      (filhos.length === 1 ? ' (com 1 sub-item dela)' : filhos.length ? ' (com '+filhos.length+' sub-itens dela)' : '')+'.');
+    filhos.forEach(function(x){ Regras._nota(x.id, ator, eu+' vinculou a #'+p.id+' à #'+pai.id+': este sub-item agora é da #'+pai.id+'.'); });
     return p;
   },
   validarSoltar: function(p, ator){
@@ -3472,7 +3479,7 @@ var Detalhe = {
     /* "Prioridade e repetição" saiu em 07/10/2026 (o dono não usava; menos coisa na tela).
        Prioridade e recorrência continuam no banco; a repetição já gravada segue valendo. */
     /* 15/10/2026: vincular como sub-item de outra / soltar da principal (0064) */
-    if(pp.aberta && p.pai_id == null && pp.souCriador && !subItens(p).length && podeNoFlow('criar'))
+    if(pp.aberta && p.pai_id == null && (pp.souCriador || pp.souResp || adminSistema(EU.id)) && podeNoFlow('criar'))
       it.push('<button data-acao="vincular">Vincular a outra pendência</button>');
     if(pp.aberta && p.pai_id != null && podeSoltar(p)) it.push('<button data-acao="soltar">Soltar da #'+esc(p.pai_id)+'</button>');
     it.push('<button data-menu-d="copiar">Copiar link</button>');
@@ -4158,7 +4165,10 @@ var Acoes = {
       try { RegrasBase.validarVincular(sel.filho, sel.pai, EU.id); }
       catch(e){ sel = null; av.classList.add('erro'); av.textContent = e.message; ok.disabled = true; return; }
       av.classList.remove('erro');
+      var nf = subItens(sel.filho).length;
       av.innerHTML = 'Quem vê a #'+sel.pai.id+' passa a ver também a #'+sel.filho.id+', com a conversa e os anexos dela.'+
+        (nf === 1 ? ' O sub-item da #'+sel.filho.id+' vai junto e passa a ser da #'+sel.pai.id+'.'
+         : nf ? ' Os '+nf+' sub-itens da #'+sel.filho.id+' vão junto e passam a ser da #'+sel.pai.id+'.' : '')+
         (sel.pai.sigiloso && !sel.filho.sigiloso ? ' A #'+sel.filho.id+' passa a ser sigilosa.' : '');
       ok.disabled = false;
     });
