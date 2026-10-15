@@ -101,6 +101,8 @@
   .busca-lista input::-webkit-search-cancel-button{display:none}
   .busca-lista .fechar{width:40px;height:40px;font-size:22px;line-height:1;color:var(--tinta2);border-radius:10px;flex:0 0 auto}
   /* sub-itens ("Depende de…"), categoria e sigilo */
+  .selo-num{display:inline-block;vertical-align:1px;margin-right:6px;padding:0 7px;border-radius:9px;background:var(--linha);
+    color:var(--tinta);font-size:13px;font-weight:600;line-height:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
   .selo-cat{display:inline-flex;align-items:center;gap:3px;vertical-align:1px;margin-right:6px;padding:0 7px;border-radius:9px;
     background:var(--azul-bg);color:var(--azul);font-size:13px;font-weight:600;line-height:20px;white-space:nowrap}
   .selo-cat.sig{background:var(--neutro-bg);color:var(--tinta)}
@@ -850,7 +852,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -871,7 +873,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -888,7 +890,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1013,7 +1015,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.4';
+var APP_VERSAO = '2026.10.15.5';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2263,7 +2265,8 @@ function cartao(p){
     '<div class="it-txt">'+
       (falha ? '<div class="falha" title="'+esc(falha.msg)+'">Não foi enviado: '+esc(falha.oQue)+
          ' · <button class="retentar" data-retentar="'+p.id+'">tentar</button></div>' : '')+
-      '<h3>'+selos(p)+esc(p.titulo)+'</h3><div class="meta">'+linha2(p)+'</div></div>'+
+      /* 15/10/2026 (pedido do dono): o número da pendência à vista, na etiqueta */
+      '<h3><span class="selo-num">#'+esc(p.id)+'</span>'+selos(p)+esc(p.titulo)+'</h3><div class="meta">'+linha2(p)+'</div></div>'+
     '<div class="it-dir">'+(naoLida ? '<span class="nao-lida" title="Novidade"></span>' : '')+
       '<span class="data'+(dt.atr?' atr':'')+'">'+esc(dt.t)+'</span></div>'+
     '</div>'+cartaoSubs(p);
@@ -2290,8 +2293,8 @@ function cartaoSubs(p){
   return '<div class="subs" aria-label="Depende de">'+subs.map(function(x){
     var st = statusSub(x), feito = !aberta(x);
     return '<div class="card sub'+(feito?' feito b-cinza':' '+barraDe(x))+'" data-id="'+x.id+'" role="button" tabindex="0">'+
-      '<div class="it-txt"><h3><span class="seta" aria-hidden="true">↳</span>'+esc(x.titulo)+'</h3>'+
-      '<div class="meta">#'+x.id+' · '+esc(st.t)+'</div></div></div>';
+      '<div class="it-txt"><h3><span class="seta" aria-hidden="true">↳</span><span class="selo-num">#'+x.id+'</span>'+esc(x.titulo)+'</h3>'+
+      '<div class="meta">'+esc(st.t)+'</div></div></div>';
   }).join('')+'</div>';
 }
 function ligarCartoes(raiz){
