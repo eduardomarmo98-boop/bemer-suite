@@ -158,7 +158,7 @@
   .n-sig input{margin-top:4px;accent-color:var(--azul);width:18px;height:18px}
   .n-sig small{display:block;font-size:13px;color:var(--tinta2)}
   .confirma-num{font-size:18px;letter-spacing:2px;text-align:center}
-  .blocos-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .blocos-topo{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0, 1fr);gap:8px}
   .bloco-ins{margin-left:auto;background:#fff;box-shadow:inset 0 0 0 1.5px var(--azul-borda);font-weight:600}
   /* ---------------- insumos (10/10/2026) ---------------- */
   .ins-obra{display:flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600;color:var(--tinta2);max-width:100%;min-height:28px;text-align:left}
@@ -215,7 +215,13 @@
   @media (max-width:520px){
     .ins-ind{grid-template-columns:1fr 1fr}
   }
-  .bloco-obra{align-self:flex-start;border:none;background:#EEF2F9;color:var(--azul);border-radius:18px;padding:0 14px;min-height:36px;font:inherit;font-size:13px;cursor:pointer}
+  /* 15/10/2026: Obra · Categoria · Status do mesmo tamanho, lado a lado (rótulo em cima, escolha embaixo) */
+  .bloco-obra{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;align-items:center;column-gap:6px;text-align:left;
+    border:none;background:#EEF2F9;color:var(--azul);border-radius:12px;padding:6px 12px;min-height:48px;min-width:0;font:inherit;cursor:pointer}
+  .bloco-obra span{grid-column:1;font-size:13px;color:var(--tinta2);line-height:1.2}
+  .bloco-obra b{grid-column:1;font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .bloco-obra i{grid-column:2;grid-row:1 / span 2;font-style:normal;font-size:13px}
+  .bloco-obra.on{background:var(--azul-bg);box-shadow:inset 0 0 0 1.5px var(--azul)}
   .modulo-nome{font-size:18px;font-weight:700;color:var(--azul)}
   .icone-bm{background:url(data:image/png;base64,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) center/cover no-repeat}
   .seletor{display:flex;align-items:center;gap:6px;font-size:22px;font-weight:700;color:var(--azul);
@@ -859,7 +865,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.8</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.9</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -880,7 +886,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.8</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.9</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -897,7 +903,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.8</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.9</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1022,7 +1028,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.8';
+var APP_VERSAO = '2026.10.15.9';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1882,6 +1888,10 @@ var VISAO_NOME = {};
 VISOES.forEach(function(g){ g[1].forEach(function(v){ VISAO_NOME[v[0]] = v[1]; }); });
 var OBRA_F = '';                 // '' todas · '__sem' interno · id da obra
 var CAT_F = '';                  // 14/10/2026: '' todas · '__sem' sem categoria · nome da categoria
+var ST_F = '';                   // 15/10/2026: '' todos · 'aberto' · 'atrasada' · 'sem_prazo'
+var STATUS_F = [['', 'Todos', ''], ['aberto', 'Em aberto', 'com prazo, ainda não venceu'],
+                ['atrasada', 'Atrasadas', 'o prazo já passou'], ['sem_prazo', 'Sem prazo', 'ninguém assumiu prazo ainda']];
+function nomeStatusFiltro(){ return (STATUS_F.filter(function(o){ return o[0] === ST_F; })[0] || STATUS_F[0])[1]; }
 var RECOLHIDO_ABERTO = {};
 var DOZE_HORAS = 12*3600*1000;
 var prefLida = null;
@@ -1896,12 +1906,15 @@ function lerPreferencias(){
   OBRA_F = obraFiltravel(o) ? o : '';
   var c = Pref.ler('cat_'+EU.id);
   CAT_F = c === '__sem' || categoria(c) ? (c === '__sem' ? c : categoria(c).nome) : '';
+  var s = Pref.ler('st_'+EU.id);
+  ST_F = STATUS_F.some(function(o){ return o[0] === s; }) ? s : '';
 }
 function gravarPreferencias(){
   if(!EU) return;
   Pref.gravar('visao_'+EU.id, ABA+'|'+Date.now());
   Pref.gravar('obra_'+EU.id, OBRA_F);
   Pref.gravar('cat_'+EU.id, CAT_F);
+  Pref.gravar('st_'+EU.id, ST_F);
 }
 function trocarVisao(v){
   if(!VISAO_NOME[v]) return;
@@ -1927,15 +1940,31 @@ function porObra(l){
   /* 14/10/2026: e pela categoria (pedido do dono: "filtro de assunto") */
   if(CAT_F === '__sem') l = l.filter(function(p){ return !p.categoria; });
   else if(CAT_F) l = l.filter(function(p){ return normalizar(p.categoria||'') === normalizar(CAT_F); });
+  /* 15/10/2026: e pelo status (pedido do dono). Vale para as abertas; Resolvidas segue com as dela */
+  if(ST_F) l = l.filter(passaStatus);
   return l;
+}
+function passaStatus(p){
+  if(!ST_F || !aberta(p)) return true;
+  var s = situacao(p);
+  if(ST_F === 'aberto') return s === 'no_prazo' || s === 'vencendo';
+  return s === ST_F;
+}
+/* escolher num filtro (categoria, status): a lista com o atual marcado */
+function escolherFiltro(titulo, ops, atual, aoEscolher){
+  var f = folha(titulo, '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
+    ops.map(function(o){ return '<button type="button" data-filtro="'+esc(o[0])+'"'+(o[0]===atual?' style="font-weight:700;color:var(--azul)"':'')+'>'+
+      esc(o[1])+(o[2] ? ' <small style="font-weight:400;color:var(--tinta2)">· '+esc(o[2])+'</small>' : '')+(o[0]===atual?' ✓':'')+'</button>'; }).join('')+'</div>');
+  var bs = f.querySelectorAll('[data-filtro]');
+  for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){ aoEscolher(this.dataset.filtro); f.remove(); gravarPreferencias(); desenhar(); });
 }
 /* escolher a categoria: Todas, cada categoria cadastrada e "Sem categoria" */
 function escolherCategoria(){
   var ops = [['', 'Todas as categorias']].concat((DB.categorias||[]).map(function(c){ return [c.nome, c.nome]; }), [['__sem', 'Sem categoria']]);
-  var f = folha('Filtrar por categoria', '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
-    ops.map(function(o){ return '<button type="button" data-cat-f="'+esc(o[0])+'"'+(o[0]===CAT_F?' style="font-weight:700;color:var(--azul)"':'')+'>'+esc(o[1])+(o[0]===CAT_F?' ✓':'')+'</button>'; }).join('')+'</div>');
-  var bs = f.querySelectorAll('[data-cat-f]');
-  for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){ CAT_F = this.dataset.catF; f.remove(); gravarPreferencias(); desenhar(); });
+  escolherFiltro('Filtrar por categoria', ops, CAT_F, function(v){ CAT_F = v; });
+}
+function escolherStatus(){
+  escolherFiltro('Filtrar por status', STATUS_F, ST_F, function(v){ ST_F = v; });
 }
 function recortes(){
   var todas = visiveis();
@@ -2117,8 +2146,15 @@ function desenhar(){
 /* 09/10/2026 (pedido do dono): ao entrar, NENHUM bloco aberto — a pessoa toca para abrir. */
 var BLOCO_ABERTO = false;
 function blocosVisoes(R, dentro){
-  var h = '<div class="blocos"><div class="blocos-topo"><button type="button" class="bloco-obra" id="bloco-obra">Obra: <b>'+esc(OBRA_F ? nomeObraFiltro(true) : 'Todas as obras')+'</b> ▾</button>'+
-    ((DB.categorias||[]).length ? '<button type="button" class="bloco-obra" id="bloco-cat">Categoria: <b>'+esc(CAT_F === '__sem' ? 'Sem categoria' : CAT_F || 'Todas')+'</b> ▾</button>' : '')+
+  /* 15/10/2026: Obra · Categoria · Status lado a lado, do mesmo tamanho ("deixe o layout harmônico"):
+     rótulo pequeno em cima, a escolha embaixo; o que está filtrando fica marcado */
+  var chip = function(id, rot, val, on){
+    return '<button type="button" class="bloco-obra'+(on?' on':'')+'" id="'+id+'"><span>'+rot+'</span><b>'+esc(val)+'</b><i aria-hidden="true">▾</i></button>';
+  };
+  var h = '<div class="blocos"><div class="blocos-topo">'+
+    chip('bloco-obra', 'Obra', OBRA_F ? nomeObraFiltro(true) : 'Todas', !!OBRA_F)+
+    ((DB.categorias||[]).length ? chip('bloco-cat', 'Categoria', CAT_F === '__sem' ? 'Sem categoria' : CAT_F || 'Todas', !!CAT_F) : '')+
+    chip('bloco-st', 'Status', nomeStatusFiltro(), !!ST_F)+
     /* 10/10/2026: Insumos (a planilha Pauta e Ata da obra) — todo mundo consulta; quem tem a ação edita. Só com a chave ligada */
     '</div>';   /* 14/10/2026: Status Insumos subiu para a barra azul do topo */
   VISOES.forEach(function(g){ g[1].forEach(function(v){
@@ -2137,6 +2173,7 @@ function ligarBlocos(){
   });
   if($('bloco-obra')) $('bloco-obra').addEventListener('click', function(){ $('vis-obra').click(); });
   if($('bloco-cat')) $('bloco-cat').addEventListener('click', escolherCategoria);
+  if($('bloco-st')) $('bloco-st').addEventListener('click', escolherStatus);
   if($('bloco-insumos')) $('bloco-insumos').addEventListener('click', function(){ $('btn-insumos').click(); });
 }
 
@@ -2155,7 +2192,8 @@ function telaVazia(busca){
   if(busca) return '<div class="vazio"><b>Nada encontrado para “'+esc(busca)+'”.</b>'+
     '<p>Procure pelo título, pela pessoa, pela obra ou pelo número.</p></div>';
   var filtro = (OBRA_F ? '<button data-limpar-obra="1">Limpar filtro de obra</button>' : '')+
-    (CAT_F ? '<button data-limpar-cat="1">Limpar filtro de categoria</button>' : '');
+    (CAT_F ? '<button data-limpar-cat="1">Limpar filtro de categoria</button>' : '')+
+    (ST_F ? '<button data-limpar-st="1">Limpar filtro de status</button>' : '');
   if(ABA==='comigo') return '<div class="vazio"><b>Nada com você agora</b>'+
     '<p>Quando alguém te pedir algo, aparece aqui e no sino.</p>'+
     '<button data-ir-visao="abri">Ver o que eu abri</button>'+filtro+'</div>';
@@ -2350,6 +2388,8 @@ function ligarCartoes(raiz){
   for(var y=0;y<lo.length;y++) lo[y].addEventListener('click', function(){ filtrarObra(''); });
   var lc = raiz.querySelectorAll('[data-limpar-cat]');
   for(var z=0;z<lc.length;z++) lc[z].addEventListener('click', function(){ CAT_F = ''; gravarPreferencias(); desenhar(); });
+  var ls = raiz.querySelectorAll('[data-limpar-st]');
+  for(var zs=0;zs<ls.length;zs++) ls[zs].addEventListener('click', function(){ ST_F = ''; gravarPreferencias(); desenhar(); });
 }
 
 /* =====================================================================
