@@ -865,7 +865,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.10</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.11</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -886,7 +886,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.10</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.11</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -903,7 +903,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.15.10</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.15.11</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1028,7 +1028,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.15.10';
+var APP_VERSAO = '2026.10.15.11';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1206,12 +1206,14 @@ function adminSistema(ator){
   var c = pessoa(ator); return c.papel === 'diretor' || c.papel === 'ti';
 }
 /* quem abriu a pendência, ou o administrador do sistema */
-/* 0069 (C3 da análise de segurança): sub-item aberto por outra pessoa trava a exclusão (o administrador continua podendo) */
+/* 0069/0070: no período de teste exclui quem abriu OU recebeu; sub-item de que a pessoa não participa
+   (não abriu nem recebeu) trava a exclusão da família. O administrador continua podendo. */
+function participaDe(x){ return mesmoId(x.criado_por, EU.id) || mesmoId(x.responsavel_id, EU.id); }
 function podeExcluir(p){
   if(!(p && EU) || !exclusaoLiberada()) return false;
   if(souAdminSistema()) return true;
-  if(!mesmoId(p.criado_por, EU.id)) return false;
-  return !DB.pendencias.some(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id) && !mesmoId(x.criado_por, EU.id); });
+  if(!participaDe(p)) return false;
+  return !DB.pendencias.some(function(x){ return x.pai_id != null && mesmoId(x.pai_id, p.id) && !participaDe(x); });
 }
 
 /* Categoria: a lista é do admin do Flow; exige_sigilo = sempre sigilosa (TI). */
@@ -1887,7 +1889,9 @@ function textoBusca(p){
    ===================================================================== */
 var VISOES = [
   ['Minhas',   [['comigo','Comigo'],['abri','Abertas por mim'],['acompanho','Acompanho']]],
-  ['Da obra',  [['atrasadas','Atrasadas'],['todas','Todas abertas']]],
+  /* 15/10/2026: o bloco "Atrasadas" saiu (pedido do dono: repetia o filtro Status › Atrasadas).
+     Quem pede 'atrasadas' (Painel, link antigo) cai em Todas abertas com o filtro ligado. */
+  ['Da obra',  [['todas','Todas abertas']]],
   ['Histórico',[['resolvidas','Resolvidas'],['arquivadas','Arquivadas']]]
 ];
 var VISAO_NOME = {};
@@ -1923,6 +1927,7 @@ function gravarPreferencias(){
   Pref.gravar('st_'+EU.id, ST_F);
 }
 function trocarVisao(v){
+  if(v === 'atrasadas'){ ST_F = 'atrasada'; v = 'todas'; }
   if(!VISAO_NOME[v]) return;
   ABA = v; BLOCO_ABERTO = true; gravarPreferencias();   /* escolher a visão = abrir o bloco dela */
   Visoes.fechar();
@@ -3277,7 +3282,7 @@ var Dados = {
   /* excluir de vez: a pendência, os sub-itens e tudo o que é deles */
   excluir: function(p){
     if(!podeExcluir(p)) return Promise.reject(new Error(exclusaoLiberada()
-      ? 'Só quem abriu a pendência (ou o administrador do sistema) pode excluí-la.'
+      ? 'Só quem abriu ou recebeu a pendência (ou o administrador do sistema) pode excluí-la.'
       : 'A exclusão de pendências foi desligada. Cancele a pendência.'));
     var ids = {}; ids[String(p.id)] = 1;
     DB.pendencias.forEach(function(x){ if(x.pai_id != null && mesmoId(x.pai_id, p.id)) ids[String(x.id)] = 1; });
