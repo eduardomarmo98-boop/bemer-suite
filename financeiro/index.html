@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><link rel="icon" type="image/png" href="../marca/icon-192.png"><link rel="apple-touch-icon" href="../marca/apple-touch-icon.png">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; media-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; connect-src 'self' https://cupdrskggjmhbzdxiume.supabase.co wss://cupdrskggjmhbzdxiume.supabase.co https://viacep.com.br https://generativelanguage.googleapis.com https://hook.eu2.make.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; frame-src 'self' blob: data: https://cupdrskggjmhbzdxiume.supabase.co https://www.youtube-nocookie.com https://drive.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"><link rel="icon" type="image/png" href="../marca/icon-192.png"><link rel="apple-touch-icon" href="../marca/apple-touch-icon.png">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>BeMer</title>
@@ -16057,7 +16058,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.10.14.1';
+var APP_VERSION = '2026.10.15.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
