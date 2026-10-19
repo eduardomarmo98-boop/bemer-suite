@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.15.1';
+var APP_VERSION = '2026.10.19.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -627,7 +627,7 @@ let _folhaTemCadastros = false;
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -640,7 +640,9 @@ async function folhaLoad(force){
       sb.from('folha_turnos').select('*').order('nome'),
       /* documentos pessoais (folha-documentos-pessoais-2026-10-06.sql): pergunta
          se as colunas existem — sem o SQL, mandá-las faria o salvar inteiro falhar. */
-      sb.from('folha_funcionarios').select(FOLHA_DOCP_COLS.join(',')).limit(1)
+      sb.from('folha_funcionarios').select(FOLHA_DOCP_COLS.join(',')).limit(1),
+      /* regra da experiência (0072): sem o SQL, a ficha segue sem a regra */
+      sb.from('folha_config').select('*')
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[]; DB.folhaFuncs = fu.data||[]; DB.folhaDeps = dep.data||[]; DB.folhaDocs = doc.data||[]; DB.folhaAlt = alt.data||[];
@@ -648,6 +650,8 @@ async function folhaLoad(force){
     DB.folhaTurnos = (tur && !tur.error) ? (tur.data||[]) : [];
     _folhaTemCadastros = !!(sin && !sin.error && tur && !tur.error);
     _folhaTemDocsPessoais = !!(docp && !docp.error);
+    _folhaTemExpRegra = !!(cfg && !cfg.error);
+    DB.folhaCfg = _folhaTemExpRegra ? (cfg.data||[]) : [];
     _folha.loaded = true;
     if(!DB.folhaFuncs.length) _conferirSessao();   // módulo: vazio pode ser 2FA vencido
     return true;
@@ -690,6 +694,16 @@ async function renderFolhaDash(){
   const semDoc=ativos.filter(f=>DB.folhaDocs.filter(d=>d.funcionario_id===f.id).length===0);
   const custoFolha=ativos.reduce((s,f)=>s+(Number(f.salario_base)||0),0);
   const card=(icon,label,val,color)=>`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);flex:1;min-width:145px"><div style="font-size:12px;color:var(--muted)">${icon} ${label}</div><div style="font-size:24px;font-weight:800;color:${color||'var(--bm-blue)'}">${val}</div></div>`;
+  /* experiência (0072): qual regra vale e quem ficou sem as datas */
+  let expRegraHtml='';
+  if(_folhaTemExpRegra){
+    const pad=folhaExpRegraPadrao(), cfg=DB.folhaCfg.find(x=>x.chave==='experiencia_regra_padrao')||{};
+    const semDatas=ativos.filter(f=>f.data_admissao && !f.exp1_fim && !f.exp2_fim && f.exp_regra!=='sem' && (f.exp_regra || (f.tipo_contrato||'clt')==='clt')).length;
+    const btn=folhaEdita()?` <button class="btn btn-secondary btn-sm" onclick="folhaExpPadraoForm()">${pad?'Alterar':'Definir agora'}</button>`:'';
+    expRegraHtml = pad
+      ? `<div class="alert info" style="margin-bottom:14px;font-size:13px">⏳ <b>Regra da experiência (CLT):</b> ${escapeHtml(folhaExpRegraRot(pad))} · fonte: ${escapeHtml(cfg.fonte||'-')}${semDatas?` · <b>${semDatas}</b> ativo(s) sem as datas (sem admissão válida ou regra própria)`:''}${btn}</div>`
+      : `<div class="alert" style="margin-bottom:14px;font-size:13px">⚠️ <b>Regra padrão da experiência não definida.</b> ${semDatas} funcionário(s) ativo(s) sem as datas de fim do 1º e do 2º período — o sistema não presume 45+45 nem 30+60.${btn}</div>`;
+  }
   const lista=(titulo,arr,fmt)=>`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);flex:1;min-width:240px"><div style="font-weight:700;color:var(--bm-blue);margin-bottom:6px">${titulo} (${arr.length})</div>${arr.length?('<div style="font-size:13px;line-height:1.7">'+arr.slice(0,12).map(fmt).join('')+(arr.length>12?`<div style="color:var(--muted)">+${arr.length-12} mais…</div>`:'')+'</div>'):'<div style="color:var(--muted);font-size:13px">—</div>'}</div>`;
   main.innerHTML=`
     <div class="page-header"><div><div class="page-title">💰 Painel — Folha Interna</div><div class="page-sub">Quadro de funcionários da B&M · ${now.toLocaleDateString('pt-BR')}</div></div></div>
@@ -703,6 +717,7 @@ async function renderFolhaDash(){
       ${card('🚫','Sem documentos',semDoc.length,'#b91c1c')}
       ${card('💵','Salários base/mês',folhaMoney(custoFolha))}
     </div>
+    ${expRegraHtml}
     <div style="display:flex;gap:12px;flex-wrap:wrap">
       ${lista('⏳ Experiência vencendo (30d)', expVenc, f=>`<div>• ${escapeHtml(f.nome)} — ${['exp1_fim','exp2_fim'].filter(k=>f[k]).map(k=>folhaData(f[k])).join(' / ')}</div>`)}
       ${lista('🎂 Aniversariantes do mês', aniv, f=>`<div>• ${escapeHtml(f.nome)} — ${f.nascimento?new Date(f.nascimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</div>`)}
@@ -873,13 +888,22 @@ function folhaFuncForm(id){
       <div class="grid-3">
         <div class="form-group"><label>Cargo</label><input id="fi_cargo" value="${escapeHtml(g('cargo',''))}"></div>
         <div class="form-group"><label>Função</label><input id="fi_funcao" value="${escapeHtml(g('funcao',''))}"></div>
-        <div class="form-group"><label>Tipo de contrato</label><select id="fi_tipo">${selTipo}</select></div>
+        <div class="form-group"><label>Tipo de contrato</label><select id="fi_tipo" onchange="folhaCalcExp()">${selTipo}</select></div>
       </div>
       <div class="grid-3">
         <div class="form-group"><label>Admissão</label><input id="fi_adm" type="date" value="${g('data_admissao','')||''}" onchange="folhaCalcExp()"></div>
-        <div class="form-group"><label>Fim 1º experiência <span style="color:#888;font-weight:400">(45 dias)</span></label><input id="fi_exp1" type="date" value="${g('exp1_fim','')||''}"></div>
-        <div class="form-group"><label>Fim 2º experiência <span style="color:#888;font-weight:400">(+45 = 90 total)</span></label><input id="fi_exp2" type="date" value="${g('exp2_fim','')||''}"></div>
+        ${_folhaTemExpRegra?`<div class="form-group"><label>Regra da experiência</label><select id="fi_exp_regra" onchange="folhaCalcExp()">
+          <option value="">Padrão da empresa${folhaExpRegraPadrao()?' ('+escapeHtml(folhaExpRegraRot(folhaExpRegraPadrao()))+')':' (não definida)'}</option>
+          ${FOLHA_EXP_REGRAS.concat(g('exp_regra','')&&!FOLHA_EXP_REGRAS.some(x=>x[0]===g('exp_regra',''))?[[g('exp_regra',''),g('exp_regra','')+' dias']]:[]).map(x=>`<option value="${escapeHtml(x[0])}" ${g('exp_regra','')===x[0]?'selected':''}>${escapeHtml(x[1])}</option>`).join('')}
+        </select><input type="hidden" id="fi_exp_manual" value="${g('exp_manual',false)?'1':'0'}"></div>`:'<div class="form-group"></div>'}
+        <div class="form-group"></div>
       </div>
+      <div class="grid-3">
+        <div class="form-group"><label>Fim 1º período de experiência</label><input id="fi_exp1" type="date" value="${g('exp1_fim','')||''}" onchange="folhaExpDigitou()"></div>
+        <div class="form-group"><label>Fim 2º período (prorrogação)</label><input id="fi_exp2" type="date" value="${g('exp2_fim','')||''}" onchange="folhaExpDigitou()"></div>
+        <div class="form-group"></div>
+      </div>
+      ${_folhaTemExpRegra?'<div id="fi_exp_status" style="font-size:12px;color:var(--muted);margin:-6px 0 12px"></div>':''}
       <div class="grid-3">
         <div class="form-group"><label>Salário base (R$)</label><input id="fi_sal" type="number" step="0.01" min="0" value="${Number(g('salario_base',0))||0}"></div>
         <div class="form-group"><label>Turno</label><select id="fi_turno_id">${_optCad(DB.folhaTurnos, g('turno_id',null), g('turno',''), folhaTurnoRotulo)}</select></div>
@@ -906,6 +930,7 @@ function folhaFuncForm(id){
      soLeitura, 'lg');
   folhaTab('pessoal'); folhaDepsRender();
   folhaDocpTravar(soLeitura);
+  if(_folhaTemExpRegra){ if(!soLeitura && !_folhaExpManual() && !$('fi_exp1').value) folhaCalcExp(); else _folhaExpStatus(); }
 }
 
 async function folhaFuncSave(id){
@@ -950,6 +975,10 @@ async function folhaFuncSave(id){
     payload.sindicato = sd?((sd.sigla||sd.nome||'')):'';
   }
   if(_docp) Object.assign(payload, _docp);   // só com o SQL dos documentos pessoais rodado
+  /* experiência (0072): regra do contrato e se as datas foram ajustadas à mão */
+  if(_folhaTemExpRegra){ payload.exp_regra = val('fi_exp_regra') || null; payload.exp_manual = _folhaExpManual(); }
+  const _expErr = folhaExpValidar(payload.data_admissao, payload.exp1_fim, payload.exp2_fim);
+  if(_expErr.length){ toast(_expErr.join(' · '),'err'); folhaTab('contratual'); return false; }
   toast('Salvando...');
   let funcId=id; const alteracoes=[];
   if(id){
@@ -1164,7 +1193,7 @@ ${bloco('Endereço', [c('Logradouro',[f.rua,f.numero].filter(Boolean).join(', ')
   c('Cidade/UF',barra(f.cidade,f.estado)), c('CEP',f.cep)])}
 ${bloco('Contrato', [c('Empresa',f.empresa), c('Centro de custo',folhaCCNome(f.centro_custo_id)), c('Departamento',f.departamento),
   c('Cargo',f.cargo), c('Função',f.funcao), c('Tipo de contrato',FOLHA_TIPO_CONTRATO[f.tipo_contrato]||f.tipo_contrato),
-  c('Admissão',dt(f.data_admissao)), c('Fim 1ª experiência',dt(f.exp1_fim)), c('Fim 2ª experiência',dt(f.exp2_fim)),
+  c('Admissão',dt(f.data_admissao)), c('Regra da experiência', f.exp_regra ? folhaExpRegraRot(f.exp_regra) : (folhaExpRegraEfetiva(f.tipo_contrato,'') ? 'Padrão ('+folhaExpRegraRot(folhaExpRegraPadrao())+')' : '-')), c('Fim 1ª experiência',dt(f.exp1_fim)+(f.exp_manual?' (ajustada à mão)':'')), c('Fim 2ª experiência',dt(f.exp2_fim)),
   c('Salário base',folhaMoney(f.salario_base)), c('Turno',f.turno), c('Sindicato',f.sindicato),
   c('Forma de pagamento',f.tipo_pagamento), c('Banco',f.banco), c('Agência / conta',[f.agencia,f.conta].filter(Boolean).join(' / ')),
   c('Benefícios',ben.join(', '),true)])}
@@ -1718,14 +1747,123 @@ function _optCad(lista, idAtual, legado, rotulo){
   if(!idAtual && legado) opts.push('<option value="" selected>'+escapeHtml(legado)+' (texto antigo — escolha na lista)</option>');
   return opts.join('');
 }
-/* Experiência 45 + 45 (limite legal são 90 dias somados).
-   O 1º período TERMINA no 45º dia contado a partir da admissão, por isso +44. */
+/* ============================================================================
+   EXPERIÊNCIA — calculada da admissão (19/10/2026, 0072)
+   ----------------------------------------------------------------------------
+   Antes: 45+45 fixo, só na tela ao mudar a Admissão (e na importação). Na
+   produção 141 de 151 fichas estavam sem as datas.
+   Agora a REGRA vem do contrato (exp_regra: "45+45", "30+60", "90", "sem") ou,
+   vazia, da regra padrão da empresa (folha_config, definida pelo DP com a
+   fonte) — esta só para CLT. O BANCO calcula (gatilho folha_exp_trg); a tela
+   repete a mesma conta só para mostrar antes de salvar.
+     fim 1º = admissão + D1 − 1 (o dia da admissão conta) · fim 2º = fim 1º + D2
+   Datas digitadas à mão (contrato diferente) → exp_manual: o banco não mexe.
+   Limite: D1 + D2 ≤ 90 e uma prorrogação (CLT art. 445, parágrafo único, e 451).
+   ============================================================================ */
+let _folhaTemExpRegra = false;
+const FOLHA_EXP_REGRAS = [['45+45','45 + 45 dias'],['30+60','30 + 60 dias'],['60+30','60 + 30 dias'],['30+30','30 + 30 dias'],['90','90 dias (período único)'],['sem','Sem experiência']];
+function folhaExpDias(regra){
+  if(!regra || regra==='sem') return null;
+  const m=/^(\d{1,2})(?:\+(\d{1,2}))?$/.exec(String(regra).trim()); if(!m) return null;
+  const d1=Number(m[1]), d2=m[2]==null?0:Number(m[2]);
+  if(d1<1 || d1+d2>90 || (m[2]!=null && d2<1)) return null;
+  return {d1, d2};
+}
+function folhaExpRegraValida(r){ return r==='sem' || !!folhaExpDias(r); }
+function folhaExpRegraPadrao(){
+  const c=DB.folhaCfg.find(x=>x.chave==='experiencia_regra_padrao');
+  const v=c && c.valor; return (v==null || v==='') ? '' : String(v);
+}
+function folhaExpRegraRot(r){ const o=FOLHA_EXP_REGRAS.find(x=>x[0]===r); return o?o[1]:(r||''); }
+/* regra que vale para a ficha: a do contrato; vazia → padrão (só CLT) */
+function folhaExpRegraEfetiva(tipo, regra){
+  if(regra) return regra;
+  return (tipo||'clt')==='clt' ? folhaExpRegraPadrao() : '';
+}
+/* {e1, e2} ('AAAA-MM-DD' ou '') · null = sem regra/admissão (não mexe) */
+function folhaExpCalc(adm, regra){
+  if(!adm || !regra) return null;
+  if(regra==='sem') return {e1:'', e2:''};
+  const d=folhaExpDias(regra); if(!d) return null;
+  const e1=plusDays(d.d1-1, adm);
+  return {e1, e2: d.d2>0 ? plusDays(d.d2, e1) : ''};
+}
+function _folhaExpManual(){ const h=$('fi_exp_manual'); return !!(h && h.value==='1'); }
+function _folhaExpStatus(){
+  const box=$('fi_exp_status'); if(!box) return;
+  const adm=$('fi_adm')?.value||'', tipo=$('fi_tipo')?.value||'clt', regraSel=$('fi_exp_regra')?.value||'';
+  const ef=folhaExpRegraEfetiva(tipo, regraSel);
+  let txt;
+  if(_folhaExpManual()) txt='✎ Datas ajustadas à mão (contrato diferente) — o sistema não recalcula. '+(folhaEdita()?'<a href="#" onclick="folhaExpRecalcular();return false">Voltar a calcular pela regra</a>':'');
+  else if(!ef) txt = (tipo||'clt')==='clt'
+      ? '⚠️ Regra padrão da empresa ainda não definida (Painel › Regra da experiência) — escolha a regra deste contrato.'
+      : 'Sem experiência por padrão para '+escapeHtml(FOLHA_TIPO_CONTRATO[tipo]||tipo)+' — escolha uma regra se o contrato tiver.';
+  else if(!adm) txt='Informe a admissão para calcular ('+escapeHtml(folhaExpRegraRot(ef))+').';
+  else txt='Calculado pela regra '+escapeHtml(folhaExpRegraRot(ef))+(regraSel?' do contrato':' padrão da empresa')+'. Para um contrato diferente, altere as datas à mão.';
+  box.innerHTML=txt;
+}
+/* admissão / regra / tipo mudou → recalcula (se não for à mão) */
 function folhaCalcExp(){
-  const adm = document.getElementById('fi_adm');
-  const e1 = document.getElementById('fi_exp1'), e2 = document.getElementById('fi_exp2');
-  if(!adm || !adm.value || !e1 || !e2) return;
-  e1.value = plusDays(44, adm.value);
-  e2.value = plusDays(45, e1.value);
+  if(!_folhaExpManual()){
+    const adm=$('fi_adm'), e1=$('fi_exp1'), e2=$('fi_exp2');
+    if(adm && e1 && e2){
+      const r=folhaExpCalc(adm.value, folhaExpRegraEfetiva($('fi_tipo')?.value, $('fi_exp_regra')?.value||''));
+      if(r){ e1.value=r.e1; e2.value=r.e2; }
+    }
+  }
+  _folhaExpStatus();
+}
+/* a pessoa mexeu numa data → vira "à mão" (só se ficou diferente do cálculo) */
+function folhaExpDigitou(){
+  const h=$('fi_exp_manual'); if(!h) return;
+  const r=folhaExpCalc($('fi_adm')?.value, folhaExpRegraEfetiva($('fi_tipo')?.value, $('fi_exp_regra')?.value||''));
+  const igual = r && r.e1===($('fi_exp1').value||'') && r.e2===($('fi_exp2').value||'');
+  h.value = igual ? '0' : '1';
+  _folhaExpStatus();
+}
+function folhaExpRecalcular(){ const h=$('fi_exp_manual'); if(h) h.value='0'; folhaCalcExp(); }
+/* confere antes de gravar: ordem das datas e o limite de 90 dias */
+function folhaExpValidar(adm, e1, e2){
+  const erros=[];
+  if(e1 && adm && e1<adm) erros.push('Fim da 1ª experiência antes da admissão');
+  if(e2 && !e1) erros.push('Fim da 2ª experiência sem a 1ª');
+  if(e2 && e1 && e2<=e1) erros.push('Fim da 2ª experiência tem de ser depois da 1ª');
+  const fim=e2||e1;
+  if(adm && fim && (new Date(fim+'T00:00:00')-new Date(adm+'T00:00:00'))/86400000+1>90) erros.push('Experiência passa de 90 dias (CLT art. 445, parágrafo único)');
+  return erros;
+}
+
+/* regra padrão da empresa: o DP define, com a fonte (contrato modelo, convenção…) */
+function folhaExpPadraoForm(){
+  if(!folhaEdita()){ toast('Seu perfil é somente leitura — esta ação é do Departamento Pessoal.','warn'); return; }
+  if(!_folhaTemExpRegra){ toast('Rode a 0072_folha_experiencia.sql no Supabase e recarregue.','err'); return; }
+  const c=DB.folhaCfg.find(x=>x.chave==='experiencia_regra_padrao')||{};
+  const atual=folhaExpRegraPadrao();
+  const lista=FOLHA_EXP_REGRAS.filter(x=>x[0]!=='sem');
+  const outra = atual && !lista.some(x=>x[0]===atual);
+  showModal('Regra padrão da experiência (CLT)', `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Vale para os funcionários <b>CLT</b> cuja ficha não diz outra regra. Quem segue o padrão, não foi ajustado à mão e está sem datas (ou foi admitido há até 90 dias) é recalculado ao salvar. Experiência já encerrada não muda.
+      Limite: 90 dias somados e uma prorrogação (CLT art. 445, parágrafo único, e art. 451).</div>
+    <div class="grid-2">
+      <div class="form-group"><label>Regra</label><select id="fep_regra" onchange="$('fep_outra_box').style.display=this.value==='outra'?'block':'none'">
+        <option value="">— não definida —</option>${lista.map(x=>`<option value="${x[0]}" ${atual===x[0]?'selected':''}>${x[1]}</option>`).join('')}<option value="outra" ${outra?'selected':''}>Outra…</option></select></div>
+      <div class="form-group" id="fep_outra_box" style="display:${outra?'block':'none'}"><label>Outra (dias, ex.: 40+50)</label><input id="fep_outra" value="${outra?escapeHtml(atual):''}"></div>
+    </div>
+    <div class="form-group"><label>Fonte da regra *</label><input id="fep_fonte" value="${escapeHtml(c.fonte||'')}" placeholder="ex.: contrato de experiência modelo do DP, rev. 2026 / convenção SINTRACON 2026"></div>
+    ${c.atualizado_por_nome?`<div style="font-size:12px;color:var(--muted)">Última alteração: ${escapeHtml(c.atualizado_por_nome)} em ${new Date(c.atualizado_em).toLocaleString('pt-BR')}</div>`:''}
+  `, async function(){
+    let r=$('fep_regra').value; if(r==='outra') r=String($('fep_outra').value||'').replace(/\s/g,'');
+    const fonte=String($('fep_fonte').value||'').trim();
+    if(r && !folhaExpRegraValida(r)){ toast('Regra inválida. Use dias como 45+45 ou 90 (máximo 90 somados).','err'); return false; }
+    if(r && !fonte){ toast('Informe a fonte da regra.','err'); return false; }
+    const {data,error}=await sb.from('folha_config').update({valor: r||null, fonte}).eq('chave','experiencia_regra_padrao').select('id');
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    if(!(data||[]).length){ toast('Nada foi gravado (sem permissão ou 2FA do dia).','err'); return false; }
+    await folhaLoad(true);
+    toast(r?'Regra padrão: '+folhaExpRegraRot(r)+'. Fichas recalculadas.':'Regra padrão removida.');
+    if(currentPage==='folha_dash') renderFolhaDash(); else if(currentPage==='folha_func') folhaFuncFilter();
+    return true;
+  }, [], false, '', 'Salvar regra');
 }
 
 async function renderFolhaSind(){
@@ -2180,8 +2318,9 @@ const FOLHA_IMP_CAMPOS = [
   ['Função','funcao','texto',false,'',['Funcao'], ''],
   ['Tipo de contrato','tipo_contrato','contrato',false,'CLT',['Contrato'], 'CLT, Estágio, Aprendiz, PJ ou Temporário. Vazio = CLT.'],
   ['Admissão','data_admissao','data',false,'10/01/2024',['Admissao','Data de admissão'], 'DD/MM/AAAA.'],
-  ['Fim 1ª experiência','exp1_fim','data',false,'',['Fim 1º experiência','Fim 1a experiência','Experiência 1'], 'Vazio com Admissão = calcula 45 dias.'],
-  ['Fim 2ª experiência','exp2_fim','data',false,'',['Fim 2º experiência','Fim 2a experiência','Experiência 2'], 'Vazio com Admissão = calcula 90 dias.'],
+  ['Regra da experiência','exp_regra','exp_regra',false,'',['Regra experiência','Experiência','Contrato de experiência'], 'Dias do 1º e do 2º período, ex.: 45+45, 30+60, 90 (período único) ou "Sem". Vazio = regra padrão da empresa (só CLT).'],
+  ['Fim 1ª experiência','exp1_fim','data',false,'',['Fim 1º experiência','Fim 1a experiência','Experiência 1'], 'Vazio = calculado pela regra a partir da Admissão. Preenchido = fica como está (contrato diferente).'],
+  ['Fim 2ª experiência','exp2_fim','data',false,'',['Fim 2º experiência','Fim 2a experiência','Experiência 2'], 'Vazio = calculado pela regra. Total máximo de 90 dias (CLT art. 445).'],
   ['Salário base','salario_base','valor',false,'2.500,00',['Salário','Salario','Salario base'], 'Em reais: 2500 ou 2.500,00.'],
   ['Turno','__turno','texto',false,'',[], 'Nome do turno cadastrado na aba Turnos.'],
   ['Sindicato','__sind','texto',false,'',[], 'Sigla ou nome do sindicato cadastrado.'],
@@ -2285,6 +2424,9 @@ function _impCelula(tipo, bruto, rot){
   const s=String(bruto).trim(), n=_impNorm(bruto);
   switch(tipo){
     case 'texto': return {v:s};
+    case 'exp_regra': { if(/^(sem|nao|nenhuma|nao tem|n a)$/.test(n)) return {v:'sem'};
+      const r=s.replace(/\s*(dias)?\s*$/i,'').replace(/\s*[+\/x]\s*/i,'+').replace(/\s/g,'');
+      return folhaExpRegraValida(r) ? {v:r} : {erro:rot+' inválida ('+s+') — use 45+45, 30+60, 90 ou Sem (máximo 90 dias)'}; }
     case 'cpf': { if(!folhaCpfValido(bruto)) return {erro:rot+' inválido ('+s+')'}; return {v:folhaCpfFmt(bruto)}; }
     case 'pis': { const d=_soDig(bruto); return folhaPisValido(d) ? {v:d} : {v:d||s, aviso:rot+' com dígito que não confere ('+s+') — gravado assim mesmo'}; }
     case 'data': { const d=folhaImportData(bruto); return d===undefined ? {erro:rot+': data inválida ('+s+') — use DD/MM/AAAA'} : {v:d}; }
@@ -2409,7 +2551,16 @@ async function folhaImportRun(){
       if(d.data_demissao && d.data_admissao && d.data_demissao<d.data_admissao) L.erros.push('Demissão antes da admissão');
       if(d.exp1_fim && d.data_admissao && d.exp1_fim<d.data_admissao) L.erros.push('Fim da 1ª experiência antes da admissão');
       if(d.exp2_fim && d.exp1_fim && d.exp2_fim<d.exp1_fim) L.erros.push('Fim da 2ª experiência antes da 1ª');
-      if(d.data_admissao && !d.exp1_fim && !d.exp2_fim && !d.data_demissao && (d.tipo_contrato||'clt')==='clt'){ d.exp1_fim=plusDays(44,d.data_admissao); d.exp2_fim=plusDays(45,d.exp1_fim); }
+      /* experiência (0072): o BANCO calcula pela regra. Data que veio na planilha e é
+         diferente do cálculo = contrato diferente → fica "à mão". */
+      { const ex=existentes[_soDig(d.cpf)]||{}, adm=d.data_admissao||ex.data_admissao||'';
+        const ef=folhaExpRegraEfetiva(d.tipo_contrato||ex.tipo_contrato||'clt', d.exp_regra||ex.exp_regra||'');
+        if(d.exp1_fim || d.exp2_fim){
+          const r=folhaExpCalc(adm, ef);
+          L.expManual = !(r && r.e1===(d.exp1_fim||'') && r.e2===(d.exp2_fim||''));
+          folhaExpValidar(adm, d.exp1_fim||ex.exp1_fim||'', d.exp2_fim||(d.exp1_fim?'':ex.exp2_fim)||'').forEach(e=>{ if(!L.erros.includes(e)) L.erros.push(e); });
+        } else if(adm && !ef && (d.tipo_contrato||ex.tipo_contrato||'clt')==='clt' && !(ex.exp1_fim)) L.avisos.push('Experiência não calculada: regra padrão da empresa ainda não definida (Painel)');
+      }
       if(d.__cc){ const c=ccPorNome[_impNorm(d.__cc)]; if(c) L.cc=c; else { L.ccNovo=d.__cc; L.avisos.push('Centro de custo novo: "'+d.__cc+'" (será criado)'); } }
       if(d.__turno){ const t=turnoPorNome[_impNorm(d.__turno)]; if(t) L.turno=t; else L.avisos.push('Turno "'+d.__turno+'" não está cadastrado — fica só como texto'); }
       if(d.__sind){ const s=sindPorNome[_impNorm(d.__sind)]; if(s) L.sind=s; else L.avisos.push('Sindicato "'+d.__sind+'" não está cadastrado — fica só como texto'); }
@@ -2526,6 +2677,7 @@ async function folhaImportGravar(){
     if(L.cc) p.centro_custo_id=L.cc.id; else if(L.ccNovo && ccCriado[_impNorm(L.ccNovo)]) p.centro_custo_id=ccCriado[_impNorm(L.ccNovo)];
     if(d.__turno!==undefined){ p.turno = L.turno ? (L.turno.nome||'') : d.__turno; if(_folhaTemCadastros) p.turno_id = L.turno ? L.turno.id : null; }
     if(d.__sind!==undefined){ p.sindicato = L.sind ? (L.sind.sigla||L.sind.nome||'') : d.__sind; if(_folhaTemCadastros) p.sindicato_id = L.sind ? L.sind.id : null; }
+    if(!_folhaTemExpRegra) delete p.exp_regra; else if(L.expManual) p.exp_manual=true;
     if(completo){ if(!p.tipo_contrato) p.tipo_contrato='clt'; p.ativo=!p.data_demissao; p.criado_em=agora; }
     else if(p.data_demissao) p.ativo=false;
     p.atualizado_em=agora;
@@ -2713,7 +2865,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
