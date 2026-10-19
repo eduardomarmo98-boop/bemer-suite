@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.19.1';
+var APP_VERSION = '2026.10.19.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -624,6 +624,7 @@ function folhaDeslFaltando(f){
    manda `sindicato_id`/`turno_id` no upsert — mandar coluna que não existe faria
    TODO salvamento de funcionário falhar (mesma armadilha do foto_ajuste). */
 let _folhaTemCadastros = false;
+let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
@@ -645,7 +646,12 @@ async function folhaLoad(force){
       sb.from('folha_config').select('*')
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
-    DB.folhaCC = cc.data||[]; DB.folhaFuncs = fu.data||[]; DB.folhaDeps = dep.data||[]; DB.folhaDocs = doc.data||[]; DB.folhaAlt = alt.data||[];
+    DB.folhaCC = cc.data||[];
+    /* 0073: ficha excluída (lixeira) não entra em NADA — listas, painel, relatórios,
+       benefícios, importação. Fica só em DB.folhaExcluidos (para restaurar). */
+    const _todas = fu.data||[];
+    _folhaTemExclusao = !!(_todas.length && ('excluido_em' in _todas[0]));
+    DB.folhaFuncs = _todas.filter(f=>!f.excluido_em); DB.folhaExcluidos = _todas.filter(f=>f.excluido_em); DB.folhaDeps = dep.data||[]; DB.folhaDocs = doc.data||[]; DB.folhaAlt = alt.data||[];
     DB.folhaSind = (sin && !sin.error) ? (sin.data||[]) : [];
     DB.folhaTurnos = (tur && !tur.error) ? (tur.data||[]) : [];
     _folhaTemCadastros = !!(sin && !sin.error && tur && !tur.error);
@@ -737,6 +743,7 @@ async function renderFolhaFunc(){
     <div class="page-header">
       <div><div class="page-title">👥 Funcionários (Folha Interna)</div><div class="page-sub">Cadastro de DP dos funcionários da B&M</div></div>
       ${folhaEdita()?`<div style="display:flex;gap:8px">${PODE.importar?'<button class="btn btn-secondary" onclick="folhaImport()">⬆️ Importar planilha</button>':''}<button class="btn btn-primary" onclick="folhaFuncForm()">+ Novo funcionário</button></div>`:''}
+      ${(_folhaTemExclusao && DB.folhaExcluidos.length)?`<button class="btn btn-secondary btn-sm" onclick="folhaLixeira()" title="Fichas excluídas (duplicadas ou por engano) — podem ser restauradas">🗑️ Excluídos (${DB.folhaExcluidos.length})</button>`:''}
     </div>
     <div class="card" style="margin-bottom:12px">
       <div class="grid-3" style="align-items:end">
@@ -785,6 +792,7 @@ function folhaFuncFilter(){
         <button class="btn btn-secondary btn-sm" onclick="folhaFuncForm(${f.id})">${folhaEdita()?'Editar':'Ver ficha'}</button>
         <button class="btn btn-secondary btn-sm" title="Histórico de alterações" onclick="folhaHist(${f.id})">🕘</button>
         <button class="btn btn-secondary btn-sm" title="Enviar cadastro para o SESMT" onclick="folhaParaSesmt(${f.id})">→ SESMT</button>
+        ${(_folhaTemExclusao && folhaEdita())?`<button class="btn btn-danger btn-sm" title="Excluir (duplicado ou por engano)" onclick="folhaExcluir(${f.id})">🗑️</button>`:''}
         ${f.ativo===false?`<button class="btn btn-success btn-sm" title="Reativar" onclick="folhaReativar(${f.id})">♻️</button>`:`<button class="btn btn-secondary btn-sm" title="Arquivar (desligar)" onclick="folhaArquivar(${f.id})">🗄️</button>`}
       </td>
     </tr>`;
@@ -1242,6 +1250,57 @@ async function folhaArquivar(id){
     }, 250);
   }
   folhaFuncFilter();
+}
+/* ============================================================================
+   EXCLUIR (19/10/2026, 0073) — pedido do DP: a duplicada da importação "fica
+   ainda pro sistema como se tivesse dois cadastros". Excluir tira a ficha de
+   TUDO, mas não apaga: vai para "Excluídos" com quem, quando e o motivo, e pode
+   ser restaurada. Quem grava é o banco (folha_excluir / folha_restaurar).
+   ============================================================================ */
+function folhaExcluir(id){
+  const f=DB.folhaFuncs.find(x=>x.id===id); if(!f) return;
+  const c=_soDig(f.cpf);
+  const outras=DB.folhaFuncs.filter(x=>x.id!==id && c.length===11 && _soDig(x.cpf)===c);
+  const fica=outras.find(x=>x.ativo!==false) || outras[0] || null;
+  const nd=DB.folhaDocs.filter(d=>d.funcionario_id===id).length;
+  showModal('Excluir cadastro — '+(f.nome||''), `
+    <div class="alert info" style="font-size:12px;line-height:1.5">A ficha sai das listas, do painel, dos relatórios e da importação. <b>Não é apagada</b>: fica em "Excluídos", com o seu nome, a data e o motivo, e pode ser restaurada.</div>
+    ${fica?`<div class="alert" style="font-size:13px">Mesmo CPF da ficha <b>#${fica.id}</b> (${escapeHtml(fica.nome||'')}, ${fica.ativo===false?'arquivada':'ativa'}, admissão ${folhaData(fica.data_admissao)}). Esta será marcada como duplicada dela.</div>`:''}
+    ${nd?`<div class="alert" style="font-size:13px;background:#fef3c7;border:1px solid #f59e0b">Esta ficha tem <b>${nd} documento(s)</b>. Eles ficam guardados com ela.</div>`:''}
+    <div class="form-group"><label>Motivo *</label><select id="fex_motivo" onchange="$('fex_outro_box').style.display=this.value==='outro'?'block':'none'">
+      ${fica?'<option>Cadastro duplicado</option>':''}<option>Cadastro feito por engano</option><option value="outro">Outro…</option></select></div>
+    <div class="form-group" id="fex_outro_box" style="display:none"><label>Qual?</label><input id="fex_outro" maxlength="200"></div>
+  `, async function(){
+    let m=$('fex_motivo').value; if(m==='outro') m=String($('fex_outro').value||'').trim();
+    if(!m){ toast('Informe o motivo.','err'); return false; }
+    const dup = (m==='Cadastro duplicado' && fica) ? fica.id : null;
+    const {error}=await sb.rpc('folha_excluir',{p_id:id, p_motivo:m, p_duplicado_de:dup});
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true);
+    toast((f.nome||'Ficha')+' excluída (pode ser restaurada em Excluídos).');
+    if(currentPage==='folha_func') renderFolhaFunc(); else if(currentPage==='folha_dash') renderFolhaDash();
+    return true;
+  }, [], false, '', 'Excluir');
+}
+function folhaLixeira(){
+  const L=DB.folhaExcluidos.slice().sort((a,b)=>String(b.excluido_em).localeCompare(String(a.excluido_em)));
+  showModal('Excluídos — '+L.length+' ficha(s)', `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Não aparecem em nada do sistema. Restaurar devolve a ficha como estava (ativa ou arquivada).</div>
+    <div style="overflow:auto;max-height:60vh"><table><thead><tr><th>#</th><th>Nome</th><th>Admissão</th><th>Motivo</th><th>Excluída por</th><th></th></tr></thead><tbody>
+    ${L.map(f=>`<tr><td>${f.id}</td><td><b>${escapeHtml(f.nome||'')}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(f.cpf||'')}</div></td><td>${folhaData(f.data_admissao)}</td>
+      <td style="font-size:12px">${escapeHtml(f.excluido_motivo||'')}</td><td style="font-size:12px">${escapeHtml(f.excluido_por_nome||'')}<div style="color:var(--muted)">${f.excluido_em?new Date(f.excluido_em).toLocaleDateString('pt-BR'):''}</div></td>
+      <td>${folhaEdita()?`<button class="btn btn-secondary btn-sm" onclick="folhaRestaurar(${f.id})">↩️ Restaurar</button>`:''}</td></tr>`).join('')}
+    </tbody></table></div>`, null, [], true, 'lg');
+}
+async function folhaRestaurar(id){
+  const f=DB.folhaExcluidos.find(x=>x.id===id); if(!f) return;
+  if(!confirm('Restaurar a ficha de '+(f.nome||'')+'?')) return;
+  const {error}=await sb.rpc('folha_restaurar',{p_id:id});
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  await folhaLoad(true);
+  toast((f.nome||'Ficha')+' restaurada.');
+  if(DB.folhaExcluidos.length) folhaLixeira(); else closeModal();
+  if(currentPage==='folha_func') renderFolhaFunc();
 }
 async function folhaReativar(id){
   const f=DB.folhaFuncs.find(x=>x.id===id); if(!f) return;
@@ -1778,6 +1837,7 @@ function folhaExpRegraRot(r){ const o=FOLHA_EXP_REGRAS.find(x=>x[0]===r); return
 /* regra que vale para a ficha: a do contrato; vazia → padrão (só CLT) */
 function folhaExpRegraEfetiva(tipo, regra){
   if(regra) return regra;
+  if(!_folhaTemExpRegra) return (tipo||'clt')==='clt' ? '45+45' : '';   // banco sem a 0072: comportamento de antes
   return (tipo||'clt')==='clt' ? folhaExpRegraPadrao() : '';
 }
 /* {e1, e2} ('AAAA-MM-DD' ou '') · null = sem regra/admissão (não mexe) */
@@ -2528,7 +2588,10 @@ async function folhaImportRun(){
     const mF=_impMapa(cabec(wsF), FOLHA_IMP_CAMPOS), mD=wsD?_impMapa(cabec(wsD), FOLHA_IMP_DEP):{mapa:{},sobrando:[]};
     if(!mF.mapa.nome){ diz(''); toast('Não achei a coluna "Nome" na aba de funcionários.','err'); return false; }
     const atualiza=!!($('fim_atualiza')&&$('fim_atualiza').checked);
-    const existentes={}; DB.folhaFuncs.forEach(f=>{ const c=_soDig(f.cpf); if(c.length===11) existentes[c]=f; });
+    /* mesmo CPF em duas fichas (uma ativa, outra arquivada): vale a ATIVA — antes
+       valia a última da lista e o "atualizar" podia gravar na arquivada */
+    const existentes={}; DB.folhaFuncs.forEach(f=>{ const c=_soDig(f.cpf); if(c.length!==11) return;
+      const ja=existentes[c]; if(!ja || (ja.ativo===false && f.ativo!==false) || (ja.ativo===f.ativo && f.id>ja.id)) existentes[c]=f; });
     const ccPorNome={}; DB.folhaCC.forEach(c=>ccPorNome[_impNorm(c.nome)]=c);
     const turnoPorNome={}; DB.folhaTurnos.forEach(t=>turnoPorNome[_impNorm(t.nome)]=t);
     const sindPorNome={}; DB.folhaSind.forEach(s=>{ if(s.sigla) sindPorNome[_impNorm(s.sigla)]=s; sindPorNome[_impNorm(s.nome)]=s; sindPorNome[_impNorm(folhaSindRotulo(s))]=s; });
@@ -2559,6 +2622,9 @@ async function folhaImportRun(){
           const r=folhaExpCalc(adm, ef);
           L.expManual = !(r && r.e1===(d.exp1_fim||'') && r.e2===(d.exp2_fim||''));
           folhaExpValidar(adm, d.exp1_fim||ex.exp1_fim||'', d.exp2_fim||(d.exp1_fim?'':ex.exp2_fim)||'').forEach(e=>{ if(!L.erros.includes(e)) L.erros.push(e); });
+        } else if(!_folhaTemExpRegra){
+          /* banco sem a 0072 (sem gatilho): como antes, 45+45 aqui mesmo */
+          if(d.data_admissao && !d.data_demissao && (d.tipo_contrato||'clt')==='clt'){ const r=folhaExpCalc(d.data_admissao,'45+45'); d.exp1_fim=r.e1; d.exp2_fim=r.e2; }
         } else if(adm && !ef && (d.tipo_contrato||ex.tipo_contrato||'clt')==='clt' && !(ex.exp1_fim)) L.avisos.push('Experiência não calculada: regra padrão da empresa ainda não definida (Painel)');
       }
       if(d.__cc){ const c=ccPorNome[_impNorm(d.__cc)]; if(c) L.cc=c; else { L.ccNovo=d.__cc; L.avisos.push('Centro de custo novo: "'+d.__cc+'" (será criado)'); } }
@@ -2865,7 +2931,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|Excluir|Restaurar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
