@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.19.2';
+var APP_VERSION = '2026.10.19.3';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -628,7 +628,7 @@ let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -643,7 +643,9 @@ async function folhaLoad(force){
          se as colunas existem — sem o SQL, mandá-las faria o salvar inteiro falhar. */
       sb.from('folha_funcionarios').select(FOLHA_DOCP_COLS.join(',')).limit(1),
       /* regra da experiência (0072): sem o SQL, a ficha segue sem a regra */
-      sb.from('folha_config').select('*')
+      sb.from('folha_config').select('*'),
+      /* E1 (0074): "não é duplicado" marcado pelo DP */
+      sb.from('folha_dup_dispensas').select('*')
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[];
@@ -658,6 +660,8 @@ async function folhaLoad(force){
     _folhaTemDocsPessoais = !!(docp && !docp.error);
     _folhaTemExpRegra = !!(cfg && !cfg.error);
     DB.folhaCfg = _folhaTemExpRegra ? (cfg.data||[]) : [];
+    _folhaTemVinculos = !!(dsp && !dsp.error);
+    DB.folhaDupDisp = _folhaTemVinculos ? (dsp.data||[]) : [];
     _folha.loaded = true;
     if(!DB.folhaFuncs.length) _conferirSessao();   // módulo: vazio pode ser 2FA vencido
     return true;
@@ -751,7 +755,9 @@ async function renderFolhaFunc(){
         <div class="form-group" style="margin:0"><label>Centro de custo</label><select id="folha_fcc" onchange="folhaFuncFilter()"><option value="">Todos</option>${DB.folhaCC.map(c=>`<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('')}</select></div>
         <div class="form-group" style="margin:0"><label>Cargo</label><select id="folha_fcargo" onchange="folhaFuncFilter()"><option value="">Todos</option>${cargos.map(c=>`<option>${escapeHtml(c)}</option>`).join('')}</select></div>
       </div>
-      <label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px"><input type="checkbox" id="folha_finativos" style="width:auto" onchange="folhaFuncFilter()"> incluir arquivados/inativos</label>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px;flex-wrap:wrap">Situação:
+        ${[['ativos','Ativos'],['desligados','Desligados'],['todos','Ativos e desligados']].map(o=>`<label style="display:flex;gap:4px;align-items:center;margin-right:8px;font-weight:500"><input type="radio" name="folha_fsit" value="${o[0]}" style="width:auto" ${(_folha.sit||'ativos')===o[0]?'checked':''} onchange="_folha.sit=this.value;folhaFuncFilter()"> ${o[1]} (${folhaContaSit(o[0])})</label>`).join('')}
+        <span style="color:var(--muted)">· Excluídos (duplicados/engano) ficam fora — botão "Excluídos".</span></div>
     </div>
     <div class="card"><table>
       <thead><tr><th>Nome</th><th>Cargo</th><th>Centro custo</th><th>Admissão</th><th>Salário</th><th>Docs</th><th>Situação</th><th></th></tr></thead>
@@ -763,9 +769,7 @@ function folhaFuncFilter(){
   const q=(document.getElementById('folha_busca')?.value||'').toLowerCase().trim();
   const fcc=document.getElementById('folha_fcc')?.value||'';
   const fcargo=document.getElementById('folha_fcargo')?.value||'';
-  const inc=!!(document.getElementById('folha_finativos')&&document.getElementById('folha_finativos').checked);
-  let list=DB.folhaFuncs.slice();
-  if(!inc) list=list.filter(f=>f.ativo!==false);
+  let list=folhaListaSit(_folha.sit||'ativos');
   if(fcc) list=list.filter(f=>String(f.centro_custo_id||'')===String(fcc));
   if(fcargo) list=list.filter(f=>f.cargo===fcargo);
   if(q) list=list.filter(f=>[f.nome,f.cpf,f.matricula,f.cargo,folhaCCNome(f.centro_custo_id)].some(v=>(v||'').toLowerCase().includes(q)));
@@ -793,7 +797,7 @@ function folhaFuncFilter(){
         <button class="btn btn-secondary btn-sm" title="Histórico de alterações" onclick="folhaHist(${f.id})">🕘</button>
         <button class="btn btn-secondary btn-sm" title="Enviar cadastro para o SESMT" onclick="folhaParaSesmt(${f.id})">→ SESMT</button>
         ${(_folhaTemExclusao && folhaEdita())?`<button class="btn btn-danger btn-sm" title="Excluir (duplicado ou por engano)" onclick="folhaExcluir(${f.id})">🗑️</button>`:''}
-        ${f.ativo===false?`<button class="btn btn-success btn-sm" title="Reativar" onclick="folhaReativar(${f.id})">♻️</button>`:`<button class="btn btn-secondary btn-sm" title="Arquivar (desligar)" onclick="folhaArquivar(${f.id})">🗄️</button>`}
+        ${f.ativo===false?`${(_folhaTemVinculos && f.data_demissao)?`<button class="btn btn-success btn-sm" title="Readmitir (contrato novo; este vínculo fica com a demissão)" onclick="folhaReadmitir(${f.id})">🔁 Readmitir</button>`:''}<button class="btn btn-secondary btn-sm" title="Desfazer desligamento (lançado por engano)" onclick="folhaReativar(${f.id})">♻️</button>`:`<button class="btn btn-secondary btn-sm" title="Arquivar (desligar)" onclick="folhaArquivar(${f.id})">🗄️</button>`}
       </td>
     </tr>`;
   }).join('');
@@ -888,6 +892,7 @@ function folhaFuncForm(id){
       </div>
     </div>
     <div class="folha-tabpane" id="ftp_contratual" style="display:none">
+      ${f?folhaVinculosHtml(f):""}
       <div class="grid-3">
         <div class="form-group"><label>Empresa</label><select id="fi_empresa"><option value="">-- Selecione --</option>${DB.empresas.slice().sort((a,b)=>(a.razao||'').localeCompare(b.razao||'')).map(x=>`<option ${g('empresa','')===x.razao?'selected':''}>${escapeHtml(x.razao)}</option>`).join('')}${(g('empresa','')&&!DB.empresas.some(x=>x.razao===g('empresa','')))?`<option selected>${escapeHtml(g('empresa',''))}</option>`:''}</select></div>
         <div class="form-group"><label>Centro de custo</label><select id="fi_cc"><option value="">--</option>${ccOpts}</select></div>
@@ -1278,7 +1283,7 @@ function folhaExcluir(id){
     if(error){ toast('Erro: '+error.message,'err'); return false; }
     await folhaLoad(true);
     toast((f.nome||'Ficha')+' excluída (pode ser restaurada em Excluídos).');
-    if(currentPage==='folha_func') renderFolhaFunc(); else if(currentPage==='folha_dash') renderFolhaDash();
+    if(currentPage==='folha_func') renderFolhaFunc(); else if(currentPage==='folha_dash') renderFolhaDash(); else if(currentPage==='folha_qualidade') renderFolhaQualidade();
     return true;
   }, [], false, '', 'Excluir');
 }
@@ -1302,11 +1307,178 @@ async function folhaRestaurar(id){
   if(DB.folhaExcluidos.length) folhaLixeira(); else closeModal();
   if(currentPage==='folha_func') renderFolhaFunc();
 }
+/* ============================================================================
+   PESSOA, VÍNCULO E READMISSÃO (E1, 0074) — cada ficha é um VÍNCULO; o CPF é a
+   pessoa (pessoa_id, posto pelo banco). Uma pessoa, um vínculo ativo.
+   Readmitir abre vínculo novo e o antigo fica com a demissão. "Reativar" ficou
+   só para desfazer um desligamento lançado por engano.
+   ============================================================================ */
+let _folhaTemVinculos = false;
+function folhaListaSit(sit){
+  if(sit==='desligados') return DB.folhaFuncs.filter(f=>f.ativo===false);
+  if(sit==='todos') return DB.folhaFuncs.slice();
+  return DB.folhaFuncs.filter(f=>f.ativo!==false);
+}
+function folhaContaSit(sit){ return folhaListaSit(sit).length; }
+/* vínculos da mesma pessoa (inclui o próprio), do mais novo ao mais antigo */
+function folhaVinculos(f){
+  if(!f || !f.pessoa_id) return f ? [f] : [];
+  return DB.folhaFuncs.filter(x=>x.pessoa_id===f.pessoa_id).sort((a,b)=>String(b.data_admissao||'').localeCompare(String(a.data_admissao||''))||b.id-a.id);
+}
+function folhaVinculosHtml(f){
+  const v=folhaVinculos(f); if(v.length<2) return '';
+  return '<div class="alert info" style="font-size:12px;margin-bottom:10px"><b>Vínculos desta pessoa ('+v.length+'):</b> '+v.map(x=>
+    (x.id===f.id?'<b>':'')+'#'+x.id+' · '+folhaData(x.data_admissao)+' a '+(x.ativo===false?folhaData(x.data_demissao):'hoje')+(x.ativo===false?' (desligado)':' (ativo)')+(x.id===f.id?' — esta</b>':'')
+  ).join(' &nbsp;|&nbsp; ')+'</div>';
+}
+function folhaReadmitir(id){
+  const f=DB.folhaFuncs.find(x=>x.id===id); if(!f) return;
+  if(f.ativo!==false || !f.data_demissao){ toast('Só se readmite quem está desligado (com data de demissão).','warn'); return; }
+  const ativo=folhaVinculos(f).find(x=>x.ativo!==false);
+  if(ativo){ toast('Esta pessoa já tem vínculo ativo (#'+ativo.id+').','warn'); return; }
+  showModal('Readmitir — '+(f.nome||''), `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Abre um <b>vínculo novo</b> com os dados desta ficha (pessoais, contratuais e dependentes). Este vínculo (#${f.id}, demissão ${folhaData(f.data_demissao)}) fica como está. Depois, confira na ficha nova cargo, salário e centro de custo.</div>
+    <div class="grid-2">
+      <div class="form-group"><label>Nova admissão *</label><input id="frd_adm" type="date" min="${plusDays(1,f.data_demissao)}"></div>
+      <div class="form-group"><label>Observação</label><input id="frd_motivo" maxlength="200" placeholder="ex.: recontratado para a obra X"></div>
+    </div>`, async function(){
+    const adm=$('frd_adm').value;
+    if(!adm){ toast('Informe a nova admissão.','err'); return false; }
+    if(adm<=f.data_demissao){ toast('A nova admissão tem de ser depois da demissão ('+folhaData(f.data_demissao)+').','err'); return false; }
+    const {data,error}=await sb.rpc('folha_readmitir',{p_id:id, p_admissao:adm, p_motivo:$('frd_motivo').value||''});
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true);
+    toast((f.nome||'')+' readmitido — vínculo #'+data+'.');
+    if(currentPage==='folha_func') renderFolhaFunc();
+    setTimeout(()=>folhaFuncForm(Number(data)), 300);
+    return true;
+  }, [], false, '', 'Readmitir');
+}
 async function folhaReativar(id){
   const f=DB.folhaFuncs.find(x=>x.id===id); if(!f) return;
+  if(!confirm('Desfazer o desligamento de '+f.nome+'?\nUse só se o desligamento foi lançado por engano — a data de demissão é apagada.\nPara um contrato novo, use Readmitir.')) return;
   const {error}=await sb.from('folha_funcionarios').update({ativo:true, data_demissao:null, atualizado_em:new Date().toISOString()}).eq('id',id);
   if(error){ toast('Erro: '+error.message,'err'); return; }
   f.ativo=true; f.data_demissao=null; toast(f.nome+' reativado'); folhaFuncFilter();
+}
+
+/* ============================================================================
+   QUALIDADE DA BASE (E1, 19/10/2026)
+   ----------------------------------------------------------------------------
+   1. Quadro: vínculos ativos, pessoas, desligados, excluídos.
+   2. Possíveis duplicidades — NADA é excluído sozinho; o DP decide:
+      · mesmo CPF com períodos que se sobrepõem (readmissão de verdade não se
+        sobrepõe: o novo começa depois da demissão do antigo);
+      · mesmo nome + nascimento com CPF diferente (CPF digitado errado).
+      "Não é duplicado" grava em folha_dup_dispensas e o par some do painel.
+   3. Dados que faltam, pelo que cada falta trava: experiência, férias, custos.
+   ============================================================================ */
+function _folhaPeriodo(f){ return [f.data_admissao||'0000-00-00', f.ativo===false ? (f.data_demissao||'9999-12-31') : '9999-12-31']; }
+function folhaSobrepoe(a, b){
+  if(!a.data_admissao || !b.data_admissao || a.data_admissao===b.data_admissao) return true;
+  const pa=_folhaPeriodo(a), pb=_folhaPeriodo(b);
+  return pa[0]<=pb[1] && pb[0]<=pa[1];
+}
+function folhaDupDispensado(a, b){
+  const x=Math.min(a,b), y=Math.max(a,b);
+  return DB.folhaDupDisp.some(d=>d.ficha_a===x && d.ficha_b===y);
+}
+/* [{tipo, motivo, fichas:[f,f…]}] */
+function folhaDuplicidades(){
+  const out=[], vistos=new Set();
+  const porPessoa={};
+  DB.folhaFuncs.forEach(f=>{ const k=f.pessoa_id || ('cpf:'+_soDig(f.cpf)); if(_soDig(f.cpf).length!==11) return; (porPessoa[k]=porPessoa[k]||[]).push(f); });
+  Object.values(porPessoa).forEach(g=>{
+    if(g.length<2) return;
+    for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++){
+      const a=g[i], b=g[j];
+      if(!folhaSobrepoe(a,b) || folhaDupDispensado(a.id,b.id)) continue;
+      const k=Math.min(a.id,b.id)+'-'+Math.max(a.id,b.id); if(vistos.has(k)) continue; vistos.add(k);
+      out.push({tipo:'cpf', motivo: a.data_admissao===b.data_admissao ? 'Mesmo CPF e mesma admissão' : 'Mesmo CPF com períodos que se sobrepõem', fichas:[a,b]});
+    }
+  });
+  const porNome={};
+  DB.folhaFuncs.forEach(f=>{ if(!f.nome || !f.nascimento) return; const k=_normTxt(f.nome)+'|'+f.nascimento; (porNome[k]=porNome[k]||[]).push(f); });
+  Object.values(porNome).forEach(g=>{
+    for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++){
+      const a=g[i], b=g[j];
+      if(_soDig(a.cpf)===_soDig(b.cpf) && _soDig(a.cpf).length===11) continue;   // mesmo CPF: já tratado acima
+      if(folhaDupDispensado(a.id,b.id)) continue;
+      const k=Math.min(a.id,b.id)+'-'+Math.max(a.id,b.id); if(vistos.has(k)) continue; vistos.add(k);
+      out.push({tipo:'nome', motivo:'Mesmo nome e nascimento, CPF diferente', fichas:[a,b]});
+    }
+  });
+  return out;
+}
+/* readmissões (mesma pessoa, sem sobreposição) — só informativo */
+function folhaReadmissoes(){
+  const porPessoa={};
+  DB.folhaFuncs.forEach(f=>{ if(f.pessoa_id) (porPessoa[f.pessoa_id]=porPessoa[f.pessoa_id]||[]).push(f); });
+  return Object.values(porPessoa).filter(g=>g.length>1 && g.every((a,i)=>g.every((b,j)=>i===j || !folhaSobrepoe(a,b))));
+}
+const FOLHA_FALTAS = [
+  ['experiencia','Experiência', [
+    ['CLT sem admissão', f=>(f.tipo_contrato||'clt')==='clt' && !f.data_admissao],
+    ['CLT sem as datas da experiência (sem regra)', f=>_folhaTemExpRegra && (f.tipo_contrato||'clt')==='clt' && f.data_admissao && !f.exp1_fim && f.exp_regra!=='sem' && !folhaExpRegraEfetiva(f.tipo_contrato, f.exp_regra||'')]
+  ]],
+  ['ferias','Férias', [
+    ['Sem admissão', f=>!f.data_admissao],
+    ['Sem tipo de contrato', f=>!f.tipo_contrato],
+    ['Sem sindicato (convenção)', f=>_folhaTemCadastros && !f.sindicato_id]
+  ]],
+  ['custos','Custos', [
+    ['Sem centro de custo (obra)', f=>!f.centro_custo_id],
+    ['Salário-base zerado', f=>!(Number(f.salario_base)>0)],
+    ['Sem cargo', f=>!String(f.cargo||'').trim()]
+  ]]
+];
+async function renderFolhaQualidade(){
+  if(!folhaPode()){ $('main').innerHTML='<div class="empty">Sem permissão.</div>'; return; }
+  const ok=await folhaLoad(); if(!ok){ $('main').innerHTML='<div class="empty">Folha Interna indisponível.</div>'; return; }
+  const ativos=DB.folhaFuncs.filter(f=>f.ativo!==false);
+  const pessoasAtivas=new Set(ativos.map(f=>f.pessoa_id||('f'+f.id))).size;
+  const dups=folhaDuplicidades(), readm=folhaReadmissoes();
+  const card=(label,val,cor,dica)=>`<div title="${escapeHtml(dica||'')}" style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);flex:1;min-width:140px"><div style="font-size:12px;color:var(--muted)">${label}</div><div style="font-size:22px;font-weight:800;color:${cor||'var(--bm-blue)'}">${val}</div></div>`;
+  const nomeF=f=>`<a href="#" onclick="folhaFuncForm(${f.id});return false"><b>${escapeHtml(f.nome||'(sem nome)')}</b></a> <span style="color:var(--muted);font-size:12px">#${f.id} · ${escapeHtml(f.cpf||'sem CPF')} · adm. ${folhaData(f.data_admissao)} · ${f.ativo===false?'desligado '+folhaData(f.data_demissao):'ativo'}</span>`;
+  const linhaDup=(d,i)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px">
+      <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:4px">${escapeHtml(d.motivo)}</div>
+      ${d.fichas.map(f=>`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:3px 0">${nomeF(f)}${(folhaEdita()&&_folhaTemExclusao)?`<button class="btn btn-danger btn-sm" onclick="folhaExcluir(${f.id})">🗑️ Excluir esta</button>`:''}</div>`).join('')}
+      ${folhaEdita()?`<button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="folhaDupDispensar(${d.fichas[0].id},${d.fichas[1].id})">Não é duplicado</button>`:''}
+    </div>`;
+  const faltas=FOLHA_FALTAS.map(([k,titulo,regras])=>{
+    const blocos=regras.map(([rot,fn])=>({rot, lista:ativos.filter(fn)})).filter(b=>b.lista.length);
+    const total=new Set(blocos.flatMap(b=>b.lista.map(f=>f.id))).size;
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);flex:1;min-width:260px">
+      <div style="font-weight:700;color:var(--bm-blue);margin-bottom:6px">${titulo} — ${total?total+' ativo(s) com falta':'nada faltando'}</div>
+      ${blocos.map(b=>`<details style="margin-bottom:4px"><summary style="cursor:pointer;font-size:13px">${escapeHtml(b.rot)}: <b>${b.lista.length}</b></summary>
+        <div style="font-size:13px;line-height:1.8;padding-left:12px">${b.lista.slice().sort((a,c)=>(a.nome||'').localeCompare(c.nome||'')).map(f=>`<div><a href="#" onclick="folhaFuncForm(${f.id});return false">${escapeHtml(f.nome||'')}</a></div>`).join('')}</div></details>`).join('')||'<div style="color:var(--muted);font-size:13px">—</div>'}
+    </div>`;
+  }).join('');
+  $('main').innerHTML=`
+    <div class="page-header"><div><div class="page-title">🧹 Qualidade da base</div><div class="page-sub">Duplicidades, readmissões e dados que faltam — nada é corrigido sozinho</div></div></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      ${card('Vínculos ativos (quadro)', ativos.length, null, 'Fichas ativas; excluídas não contam')}
+      ${card('Pessoas ativas', pessoasAtivas, null, 'Por CPF')}
+      ${card('Desligados', DB.folhaFuncs.length-ativos.length, '#b91c1c')}
+      ${card('Excluídos (lixeira)', DB.folhaExcluidos.length, 'var(--muted)')}
+      ${card('Possíveis duplicidades', dups.length, dups.length?'#b45309':'#16a34a')}
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-weight:700;color:var(--bm-blue);margin-bottom:8px">⚠️ Possíveis duplicidades (${dups.length})</div>
+      ${dups.length?dups.map(linhaDup).join(''):'<div style="color:var(--muted);font-size:13px">Nenhuma.</div>'}
+      ${readm.length?`<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px">🔁 Readmissões (mesma pessoa, períodos separados): <b>${readm.length}</b></summary>
+        <div style="padding-left:12px;font-size:13px">${readm.map(g=>'<div style="margin:6px 0">'+g.map(nomeF).join('<br>')+'</div>').join('')}</div></details>`:''}
+    </div>
+    <div style="font-weight:700;color:var(--bm-blue);margin:4px 0 8px">Dados que faltam (só ativos)</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">${faltas}</div>`;
+}
+async function folhaDupDispensar(a, b){
+  if(!folhaEdita()) return;
+  const motivo=prompt('Por que não é duplicado? (ex.: são pessoas diferentes, readmissão)');
+  if(motivo===null) return;
+  const {error}=await sb.from('folha_dup_dispensas').insert({ficha_a:Math.min(a,b), ficha_b:Math.max(a,b), motivo:String(motivo).trim().slice(0,200), por:session.id, por_nome:session.nome||''});
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  await folhaLoad(true); toast('Marcado como não duplicado.'); renderFolhaQualidade();
 }
 
 /* ============================================================================
@@ -2635,6 +2807,7 @@ async function folhaImportRun(){
       if(cpf && vistos[cpf]) L.erros.push('CPF repetido na planilha (linha '+vistos[cpf]+')');
       else if(cpf) vistos[cpf]=L.n;
       L.existente = cpf ? existentes[cpf] : null;
+      if(L.existente && L.existente.ativo===false) L.avisos.push('CPF de um vínculo DESLIGADO (#'+L.existente.id+') — para contrato novo, use Readmitir na lista');
       /* documentos pessoais: Excel come o zero da esquerda de número digitado como número */
       [['titulo_eleitor',12],['cnh_numero',11]].forEach(function(z){
         const h=mF.mapa[z[0]]; if(d[z[0]] && h && typeof row[h]==='number' && d[z[0]].length<z[1]) d[z[0]]=d[z[0]].padStart(z[1],'0');
@@ -2839,9 +3012,9 @@ async function folhaImportRelatorioExcel(){
 const FOLHA_ACAO_ROT = {abriu_modulo:'Abriu a Folha', abriu_tela:'Abriu a tela', abriu_funcionario:'Abriu a ficha',
   abriu_documento:'Abriu documento', abriu_historico:'Abriu o histórico', exportou:'Exportou', imprimiu:'Imprimiu',
   incluiu:'Incluiu', alterou:'Alterou', excluiu:'Excluiu'};
-const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
+const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
   folha_cc:'Centros de custo', folha_sind:'Sindicatos', folha_turnos:'Turnos', folha_acessos:'Acessos', folha_docs:'Documentos'};
-const FOLHA_TAB_ROT = {folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
+const FOLHA_TAB_ROT = {folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
   folha_alteracoes:'Histórico', folha_beneficios:'Benefício', folha_centros_custo:'Centro de custo',
   folha_sindicatos:'Sindicato', folha_turnos:'Turno'};
 let _acs = {linhas:[], busca:'', acao:'', dias:30, erro:''};
@@ -2931,7 +3104,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|Excluir|Restaurar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|Excluir|Restaurar|Readmitir|DupDispensar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
@@ -2972,13 +3145,13 @@ document.addEventListener('input', function(ev){
    ============================================================================ */
 function abas(){
   const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],
-             ['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
+             ['folha_qualidade','Qualidade da base'],['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
   if(PODE.acessos) a.push(['folha_acessos','Acessos']);
   return a;
 }
 const _TELAS = {folha_dash:()=>renderFolhaDash(), folha_func:()=>renderFolhaFunc(), folha_benef:()=>renderFolhaBenef(),
   folha_rel:()=>renderFolhaRel(), folha_cc:()=>renderFolhaCC(), folha_sind:()=>renderFolhaSind(),
-  folha_turnos:()=>renderFolhaTurnos(), folha_acessos:()=>renderFolhaAcessos()};
+  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_acessos:()=>renderFolhaAcessos()};
 function go(page){
   if(!abas().some(a=>a[0]===page)) page='folha_dash';
   const mudou = currentPage !== page;
