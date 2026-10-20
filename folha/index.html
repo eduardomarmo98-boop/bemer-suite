@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.20.4';
+var APP_VERSION = '2026.10.20.5';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -2441,6 +2441,7 @@ async function cusLerSci(){
   $('csi_st').textContent='Lendo o PDF…';
   try{
     await libPdfJs();
+    try{ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){}
     const buf=await arq.arrayBuffer(); const hash=await _cusHash(buf.slice(0));
     const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise; const pags=[];
     for(let p=1;p<=doc.numPages;p++){ const pg=await doc.getPage(p); const tc=await pg.getTextContent();
