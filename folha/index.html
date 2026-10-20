@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.19.3';
+var APP_VERSION = '2026.10.20.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -609,6 +609,7 @@ const FOLHA_DOC_TIPOS = {rg:'RG',cpf:'CPF',comprovante_residencia:'Comprovante d
   desl_trct:'Desligamento · TRCT assinado + comprovante de pagamento',
   desl_fgts:'Desligamento · Demonstrativo do trabalhador (FGTS rescisório)',
   desl_extrato:'Desligamento · Extrato analítico do trabalhador',
+  exp_aval_1:'Experiência · Avaliação do 1º período', exp_aval_2:'Experiência · Avaliação do 2º período',
   outros:'Outros'};
 
 /* Os seis acima, na ordem em que o DP confere. Fonte única: a lista de
@@ -628,7 +629,7 @@ let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -645,7 +646,9 @@ async function folhaLoad(force){
       /* regra da experiência (0072): sem o SQL, a ficha segue sem a regra */
       sb.from('folha_config').select('*'),
       /* E1 (0074): "não é duplicado" marcado pelo DP */
-      sb.from('folha_dup_dispensas').select('*')
+      sb.from('folha_dup_dispensas').select('*'),
+      /* E2 (0075): acompanhamento da experiência */
+      sb.from('folha_experiencia_acomp').select('*')
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[];
@@ -662,6 +665,8 @@ async function folhaLoad(force){
     DB.folhaCfg = _folhaTemExpRegra ? (cfg.data||[]) : [];
     _folhaTemVinculos = !!(dsp && !dsp.error);
     DB.folhaDupDisp = _folhaTemVinculos ? (dsp.data||[]) : [];
+    _folhaTemExpAcomp = !!(eac && !eac.error);
+    DB.folhaExpAcomp = _folhaTemExpAcomp ? (eac.data||[]) : [];
     _folha.loaded = true;
     if(!DB.folhaFuncs.length) _conferirSessao();   // módulo: vazio pode ser 2FA vencido
     return true;
@@ -677,7 +682,8 @@ function folhaAlertas(f){
   if(f.ativo===false) return [];
   const out=[]; const today=new Date(); today.setHours(0,0,0,0); const in30=new Date(today.getTime()+30*86400000);
   [['exp1_fim','1ª experiência'],['exp2_fim','2ª experiência']].forEach(function(t){
-    if(f[t[0]]){ const d=new Date(f[t[0]]+'T00:00:00'); if(d>=today && d<=in30) out.push(t[1]+' vence '+folhaData(f[t[0]])); }
+    const _ac = _folhaTemExpAcomp ? folhaExpAcomp(f.id, t[0]==='exp1_fim'?1:2) : null;
+    if(f[t[0]] && !(_ac && _ac.decisao)){ const d=new Date(f[t[0]]+'T00:00:00'); if(d>=today && d<=in30) out.push(t[1]+' vence '+folhaData(f[t[0]])); }
   });
   DB.folhaDocs.filter(d=>d.funcionario_id===f.id && d.validade).forEach(function(d){
     const dv=new Date(d.validade+'T00:00:00'); const nome=FOLHA_DOC_TIPOS[d.tipo]||d.tipo;
@@ -722,14 +728,15 @@ async function renderFolhaDash(){
       ${card('➕','Admitidos no mês',adm,'#16a34a')}
       ${card('➖','Demitidos no mês',dem,'#b91c1c')}
       ${card('🎂','Aniversariantes',aniv.length,'var(--bm-orange-txt,#B45309)')}
-      ${card('⏳','Experiência vencendo',expVenc.length,'#b45309')}
+      ${_folhaTemExpAcomp ? card('⏳','Experiência a decidir',folhaExpAtencao().length,'#b45309') : card('⏳','Experiência vencendo',expVenc.length,'#b45309')}
       ${card('📄','Docs a vencer/vencidos',docVenc.length,'#b45309')}
       ${card('🚫','Sem documentos',semDoc.length,'#b91c1c')}
       ${card('💵','Salários base/mês',folhaMoney(custoFolha))}
     </div>
     ${expRegraHtml}
     <div style="display:flex;gap:12px;flex-wrap:wrap">
-      ${lista('⏳ Experiência vencendo (30d)', expVenc, f=>`<div>• ${escapeHtml(f.nome)} — ${['exp1_fim','exp2_fim'].filter(k=>f[k]).map(k=>folhaData(f[k])).join(' / ')}</div>`)}
+      ${_folhaTemExpAcomp ? lista('⏳ Experiência a decidir', folhaExpAtencao(), i=>`<div>• <a href="#" onclick="go('folha_exp');return false">${escapeHtml(i.f.nome)}</a> — ${i.periodo}º, ${folhaData(i.fim)} · <span style="color:${i.sit.cod==='vencido'?'#b91c1c':'#b45309'}">${escapeHtml(i.sit.rot)}</span></div>`) : ''}
+      ${_folhaTemExpAcomp ? '' : lista('⏳ Experiência vencendo (30d)', expVenc, f=>`<div>• ${escapeHtml(f.nome)} — ${['exp1_fim','exp2_fim'].filter(k=>f[k]).map(k=>folhaData(f[k])).join(' / ')}</div>`)}
       ${lista('🎂 Aniversariantes do mês', aniv, f=>`<div>• ${escapeHtml(f.nome)} — ${f.nascimento?new Date(f.nascimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</div>`)}
       ${lista('🚫 Sem documentos', semDoc, f=>`<div>• ${escapeHtml(f.nome)}</div>`)}
     </div>
@@ -1482,6 +1489,143 @@ async function folhaDupDispensar(a, b){
 }
 
 /* ============================================================================
+   EXPERIÊNCIA — ACOMPANHAMENTO (E2, 20/10/2026, 0075)
+   ----------------------------------------------------------------------------
+   Cada período (1º e 2º) tem responsável, aviso, avaliação e decisão
+   (folha_experiencia_acomp). O SISTEMA NÃO PRORROGA, NÃO EFETIVA E NÃO
+   DESLIGA: registra a decisão e mostra o que o DP precisa fazer na ficha.
+   Situação de cada período (calculada aqui, sempre a partir de hoje):
+     decidido · vencido sem decisão · avisar (faltam ≤ aviso dias) · no prazo
+   Aviso = o do período, senão o padrão (folha_config experiencia_aviso_dias).
+   ============================================================================ */
+let _folhaTemExpAcomp = false;
+let _expTela = {filtro:'decidir', resp:''};
+const FOLHA_EXP_AVAL = {aprovado:'Aprovado', reprovado:'Reprovado', com_ressalvas:'Com ressalvas'};
+const FOLHA_EXP_DECISAO = {prorrogar:'Prorrogar para o 2º período', efetivar:'Efetivar (contrato por prazo indeterminado)', desligar:'Desligar ao fim do período'};
+const FOLHA_EXP_FAZER = {prorrogar:'Nada a fazer na ficha: o 2º período já está nas datas.', efetivar:'Nada a fazer na ficha: a experiência termina e o contrato segue.', desligar:'Faça o desligamento na lista (🗄️ Arquivar) na data certa.'};
+function folhaExpAvisoPadrao(){
+  const c=DB.folhaCfg.find(x=>x.chave==='experiencia_aviso_dias');
+  const n=Number(c && c.valor); return n>0 ? n : 10;
+}
+function folhaExpAcomp(fid, p){ return DB.folhaExpAcomp.find(a=>a.funcionario_id===fid && a.periodo===p) || null; }
+function _diasAte(d){ const a=new Date(hoje()+'T00:00:00'), b=new Date(d+'T00:00:00'); return Math.round((b-a)/86400000); }
+/* [{f, periodo, fim, dias, acomp, aviso, sit:{cod, rot, cls}}] dos ativos em experiência */
+function folhaExpItens(){
+  const out=[];
+  DB.folhaFuncs.filter(f=>f.ativo!==false && f.exp1_fim).forEach(function(f){
+    const a1=folhaExpAcomp(f.id,1);
+    const per=[[1,f.exp1_fim,a1]];
+    if(f.exp2_fim && !(a1 && (a1.decisao==='efetivar'||a1.decisao==='desligar')) && ((a1 && a1.decisao==='prorrogar') || hoje()>f.exp1_fim))
+      per.push([2,f.exp2_fim,folhaExpAcomp(f.id,2)]);
+    per.forEach(function([p,fim,ac]){
+      const dias=_diasAte(fim), aviso=(ac && ac.aviso_dias) || folhaExpAvisoPadrao();
+      let sit;
+      if(ac && ac.decisao) sit={cod:'decidido', rot:'Decidido: '+(FOLHA_EXP_DECISAO[ac.decisao]||ac.decisao).split(' (')[0], cls:'ok'};
+      else if(dias<0) sit={cod:'vencido', rot:'Vencido há '+(-dias)+' dia(s) sem decisão', cls:'crit'};
+      else if(dias<=aviso) sit={cod:'avisar', rot:'Decidir: faltam '+dias+' dia(s)', cls:'warn'};
+      else sit={cod:'prazo', rot:'No prazo ('+dias+' dias)', cls:'info'};
+      /* período 1 antigo e já decidido / vencido há mais de 60 dias sem 2º: sai da lista "a decidir" */
+      out.push({f, periodo:p, fim, dias, acomp:ac, aviso, sit});
+    });
+  });
+  return out.sort((a,b)=>a.fim.localeCompare(b.fim));
+}
+function folhaExpAtencao(){ return folhaExpItens().filter(i=>i.sit.cod==='vencido' || i.sit.cod==='avisar'); }
+
+let _expPessoas = null;
+async function _expCarregarPessoas(){
+  if(_expPessoas) return _expPessoas;
+  const r=await sb.schema('core').from('pessoas').select('id,nome').eq('tipo','colaborador').eq('ativo',true).order('nome');
+  _expPessoas = (r && !r.error) ? (r.data||[]) : [];
+  return _expPessoas;
+}
+
+async function renderFolhaExp(){
+  if(!folhaPode()){ $('main').innerHTML='<div class="empty">Sem permissão.</div>'; return; }
+  const ok=await folhaLoad(); if(!ok){ $('main').innerHTML='<div class="empty">Folha Interna indisponível.</div>'; return; }
+  if(!_folhaTemExpAcomp){ $('main').innerHTML='<div class="empty">Rode a <b>0075_folha_experiencia_acomp.sql</b> no Supabase e recarregue.</div>'; return; }
+  const todos=folhaExpItens();
+  const ct=c=>todos.filter(i=>i.sit.cod===c).length;
+  const resps=[...new Map(todos.filter(i=>i.acomp && i.acomp.responsavel_id).map(i=>[i.acomp.responsavel_id, i.acomp.responsavel_nome])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
+  let lista=todos;
+  if(_expTela.filtro==='decidir') lista=lista.filter(i=>i.sit.cod!=='decidido');
+  else if(_expTela.filtro!=='todos') lista=lista.filter(i=>i.sit.cod===_expTela.filtro);
+  if(_expTela.resp==='sem') lista=lista.filter(i=>!(i.acomp && i.acomp.responsavel_id));
+  else if(_expTela.resp) lista=lista.filter(i=>i.acomp && i.acomp.responsavel_id===_expTela.resp);
+  const card=(label,val,cor)=>`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);flex:1;min-width:140px"><div style="font-size:12px;color:var(--muted)">${label}</div><div style="font-size:22px;font-weight:800;color:${cor||'var(--bm-blue)'}">${val}</div></div>`;
+  const nDocs=(fid,p)=>DB.folhaDocs.filter(d=>d.funcionario_id===fid && d.tipo==='exp_aval_'+p).length;
+  $('main').innerHTML=`
+    <div class="page-header"><div><div class="page-title">⏳ Experiência</div><div class="page-sub">Regra padrão: ${escapeHtml(folhaExpRegraRot(folhaExpRegraPadrao())||'não definida')} · aviso ${folhaExpAvisoPadrao()} dias antes · o sistema não prorroga, não efetiva e não desliga sozinho</div></div>
+      ${folhaEdita()?'<button class="btn btn-secondary btn-sm" onclick="folhaExpPadraoForm()">⚙️ Regra e aviso</button>':''}</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      ${card('Vencidos sem decisão', ct('vencido'), ct('vencido')?'#b91c1c':'#16a34a')}
+      ${card('Decidir agora (no aviso)', ct('avisar'), ct('avisar')?'#b45309':'#16a34a')}
+      ${card('No prazo', ct('prazo'))}
+      ${card('Decididos', ct('decidido'), '#16a34a')}
+    </div>
+    <div class="card" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+      <div class="form-group" style="margin:0"><label>Mostrar</label><select onchange="_expTela.filtro=this.value;renderFolhaExp()">
+        ${[['decidir','A decidir'],['vencido','Vencidos sem decisão'],['avisar','Decidir agora'],['prazo','No prazo'],['decidido','Decididos'],['todos','Todos']].map(o=>`<option value="${o[0]}" ${_expTela.filtro===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+      <div class="form-group" style="margin:0"><label>Responsável</label><select onchange="_expTela.resp=this.value;renderFolhaExp()">
+        <option value="">Todos</option><option value="sem" ${_expTela.resp==='sem'?'selected':''}>Sem responsável</option>${resps.map(r=>`<option value="${r[0]}" ${_expTela.resp===r[0]?'selected':''}>${escapeHtml(r[1])}</option>`).join('')}</select></div>
+    </div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Período</th><th>Fim</th><th>Situação</th><th>Responsável</th><th>Avaliação</th><th>Decisão</th><th></th></tr></thead><tbody>
+    ${lista.map(i=>{ const a=i.acomp||{}; const nd=nDocs(i.f.id,i.periodo); return `<tr>
+      <td><b>${escapeHtml(i.f.nome||'')}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(i.f.cargo||'')} · ${escapeHtml(folhaCCNome(i.f.centro_custo_id)||'')} · adm. ${folhaData(i.f.data_admissao)}</div></td>
+      <td>${i.periodo}º</td><td>${folhaData(i.fim)}</td>
+      <td><span class="status ${i.sit.cls}">${escapeHtml(i.sit.rot)}</span></td>
+      <td>${escapeHtml(a.responsavel_nome||'—')}</td>
+      <td>${a.avaliacao?escapeHtml(FOLHA_EXP_AVAL[a.avaliacao]||a.avaliacao):'—'}${nd?` <span title="documentos da avaliação">📎${nd}</span>`:''}</td>
+      <td style="font-size:12px">${a.decisao?escapeHtml((FOLHA_EXP_DECISAO[a.decisao]||a.decisao).split(' (')[0])+'<div style="color:var(--muted)">'+folhaData(a.decisao_em)+' · '+escapeHtml(a.decidido_por_nome||'')+'</div>':'—'}</td>
+      <td style="white-space:nowrap">${folhaEdita()?`<button class="btn btn-primary btn-sm" onclick="folhaExpAcompForm(${i.f.id},${i.periodo})">Registrar</button> <button class="btn btn-secondary btn-sm" title="Anexar a avaliação assinada" onclick="folhaAddDoc(${i.f.id},'exp_aval_${i.periodo}')">📎</button>`:''}</td>
+    </tr>`; }).join('') || '<tr><td colspan="8" class="empty">Nada aqui.</td></tr>'}
+    </tbody></table></div>`;
+}
+
+async function folhaExpAcompForm(fid, p){
+  if(!folhaEdita()){ toast('Seu perfil é somente leitura — esta ação é do Departamento Pessoal.','warn'); return; }
+  const f=DB.folhaFuncs.find(x=>x.id===fid); if(!f) return;
+  const a=folhaExpAcomp(fid,p)||{};
+  const pessoas=await _expCarregarPessoas();
+  const fim = p===1 ? f.exp1_fim : f.exp2_fim;
+  const decOpts=Object.keys(FOLHA_EXP_DECISAO).filter(k=>!(k==='prorrogar' && (p===2 || !f.exp2_fim)));
+  showModal('Experiência — '+(f.nome||'')+' · '+p+'º período (fim '+folhaData(fim)+')', `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Registrar a decisão <b>não muda a ficha</b>: o sistema não prorroga, não efetiva e não desliga sozinho. ${p===1&&f.exp2_fim?'O 2º período previsto termina em <b>'+folhaData(f.exp2_fim)+'</b>.':''}</div>
+    <div class="grid-2">
+      <div class="form-group"><label>Responsável pela avaliação</label><select id="fea_resp"><option value="">—</option>${pessoas.map(x=>`<option value="${x.id}" ${a.responsavel_id===x.id?'selected':''}>${escapeHtml(x.nome||'')}</option>`).join('')}${(a.responsavel_id&&!pessoas.some(x=>x.id===a.responsavel_id))?`<option value="${a.responsavel_id}" selected>${escapeHtml(a.responsavel_nome||'(sem acesso)')}</option>`:''}</select></div>
+      <div class="form-group"><label>Avisar quantos dias antes</label><input id="fea_aviso" type="number" min="1" max="60" placeholder="padrão: ${folhaExpAvisoPadrao()}" value="${a.aviso_dias||''}"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>Avaliação</label><select id="fea_aval"><option value="">— ainda não avaliado —</option>${Object.keys(FOLHA_EXP_AVAL).map(k=>`<option value="${k}" ${a.avaliacao===k?'selected':''}>${FOLHA_EXP_AVAL[k]}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Data da avaliação</label><input id="fea_aval_em" type="date" value="${a.avaliado_em||''}"></div>
+    </div>
+    <div class="form-group"><label>Comentário da avaliação</label><textarea id="fea_aval_txt" rows="2" maxlength="1000">${escapeHtml(a.avaliacao_texto||'')}</textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label>Decisão</label><select id="fea_dec" onchange="$('fea_fazer').textContent=(FOLHA_EXP_FAZER[this.value]||'')"><option value="">— sem decisão —</option>${decOpts.map(k=>`<option value="${k}" ${a.decisao===k?'selected':''}>${FOLHA_EXP_DECISAO[k]}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Data da decisão</label><input id="fea_dec_em" type="date" value="${a.decisao_em||''}"></div>
+    </div>
+    <div id="fea_fazer" style="font-size:12px;color:#92400e;margin:-6px 0 10px">${escapeHtml(FOLHA_EXP_FAZER[a.decisao]||'')}</div>
+    <div class="form-group"><label>Observação</label><input id="fea_obs" maxlength="300" value="${escapeHtml(a.obs||'')}"></div>
+    <div style="font-size:12px;color:var(--muted)">Documento da avaliação: botão 📎 na lista (tipo "${escapeHtml(FOLHA_DOC_TIPOS['exp_aval_'+p])}").</div>
+  `, async function(){
+    const dec=$('fea_dec').value||null; let decEm=$('fea_dec_em').value||null;
+    if(dec && !decEm) decEm=hoje();
+    const aviso=$('fea_aviso').value ? parseInt($('fea_aviso').value,10) : null;
+    if(aviso!=null && !(aviso>=1 && aviso<=60)){ toast('Aviso: de 1 a 60 dias.','err'); return false; }
+    const payload={responsavel_id:$('fea_resp').value||null, aviso_dias:aviso, avaliacao:$('fea_aval').value||null,
+      avaliado_em:$('fea_aval_em').value||null, avaliacao_texto:$('fea_aval_txt').value.trim(), decisao:dec, decisao_em:dec?decEm:null, obs:$('fea_obs').value.trim()};
+    const q = a.id ? sb.from('folha_experiencia_acomp').update(payload).eq('id',a.id)
+                   : sb.from('folha_experiencia_acomp').insert(Object.assign({funcionario_id:fid, periodo:p}, payload));
+    const {error}=await q;
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true);
+    toast('Registrado.'+(dec&&FOLHA_EXP_FAZER[dec]?' '+FOLHA_EXP_FAZER[dec]:''), dec==='desligar'?'warn':'');
+    if(currentPage==='folha_exp') renderFolhaExp(); else if(currentPage==='folha_dash') renderFolhaDash();
+    return true;
+  }, [], false, 'lg', 'Salvar');
+}
+
+/* ============================================================================
    CEP -> ENDERECO  (v.131)
    Digitar rua, bairro e cidade a mao em 100 fichas gera erro de grafia que
    depois quebra relatorio e busca. O ViaCEP e publico, sem cadastro e sem
@@ -2073,7 +2217,7 @@ function folhaExpPadraoForm(){
   const atual=folhaExpRegraPadrao();
   const lista=FOLHA_EXP_REGRAS.filter(x=>x[0]!=='sem');
   const outra = atual && !lista.some(x=>x[0]===atual);
-  showModal('Regra padrão da experiência (CLT)', `
+  showModal('Experiência: regra padrão (CLT) e aviso', `
     <div class="alert info" style="font-size:12px;line-height:1.5">Vale para os funcionários <b>CLT</b> cuja ficha não diz outra regra. Quem segue o padrão, não foi ajustado à mão e está sem datas (ou foi admitido há até 90 dias) é recalculado ao salvar. Experiência já encerrada não muda.
       Limite: 90 dias somados e uma prorrogação (CLT art. 445, parágrafo único, e art. 451).</div>
     <div class="grid-2">
@@ -2082,6 +2226,7 @@ function folhaExpPadraoForm(){
       <div class="form-group" id="fep_outra_box" style="display:${outra?'block':'none'}"><label>Outra (dias, ex.: 40+50)</label><input id="fep_outra" value="${outra?escapeHtml(atual):''}"></div>
     </div>
     <div class="form-group"><label>Fonte da regra *</label><input id="fep_fonte" value="${escapeHtml(c.fonte||'')}" placeholder="ex.: contrato de experiência modelo do DP, rev. 2026 / convenção SINTRACON 2026"></div>
+    ${_folhaTemExpAcomp?`<div class="form-group"><label>Avisar quantos dias antes do fim de cada período (padrão)</label><input id="fep_aviso" type="number" min="1" max="60" value="${folhaExpAvisoPadrao()}"></div>`:''}
     ${c.atualizado_por_nome?`<div style="font-size:12px;color:var(--muted)">Última alteração: ${escapeHtml(c.atualizado_por_nome)} em ${new Date(c.atualizado_em).toLocaleString('pt-BR')}</div>`:''}
   `, async function(){
     let r=$('fep_regra').value; if(r==='outra') r=String($('fep_outra').value||'').replace(/\s/g,'');
@@ -2091,11 +2236,19 @@ function folhaExpPadraoForm(){
     const {data,error}=await sb.from('folha_config').update({valor: r||null, fonte}).eq('chave','experiencia_regra_padrao').select('id');
     if(error){ toast('Erro: '+error.message,'err'); return false; }
     if(!(data||[]).length){ toast('Nada foi gravado (sem permissão ou 2FA do dia).','err'); return false; }
+    if(_folhaTemExpAcomp && $('fep_aviso')){
+      const av=parseInt($('fep_aviso').value,10);
+      if(av!==folhaExpAvisoPadrao()){
+        if(!(av>=1 && av<=60)){ toast('Aviso: de 1 a 60 dias.','err'); return false; }
+        const r2=await sb.from('folha_config').update({valor: av}).eq('chave','experiencia_aviso_dias');
+        if(r2.error){ toast('Erro no aviso: '+r2.error.message,'err'); return false; }
+      }
+    }
     await folhaLoad(true);
     toast(r?'Regra padrão: '+folhaExpRegraRot(r)+'. Fichas recalculadas.':'Regra padrão removida.');
-    if(currentPage==='folha_dash') renderFolhaDash(); else if(currentPage==='folha_func') folhaFuncFilter();
+    if(currentPage==='folha_dash') renderFolhaDash(); else if(currentPage==='folha_func') folhaFuncFilter(); else if(currentPage==='folha_exp') renderFolhaExp();
     return true;
-  }, [], false, '', 'Salvar regra');
+  }, [], false, '', 'Salvar');
 }
 
 async function renderFolhaSind(){
@@ -2381,6 +2534,10 @@ function folhaRelBuild(tipo, de, ate){
       .map(f=>[new Date(f.nascimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), f.nome||'', f.cargo||'']);
     return {titulo:'Aniversariantes do mês', colunas:['Data','Nome','Cargo'], linhas:linhas};
   }
+  if(tipo==='experiencia' && _folhaTemExpAcomp){
+    const linhas=folhaExpItens().filter(i=>i.sit.cod!=='decidido' || (i.acomp && i.acomp.decisao_em && i.acomp.decisao_em>=plusDays(-60))).map(i=>[folhaData(i.fim), i.f.nome||'', i.periodo+'º período', i.f.cargo||'', i.sit.rot, (i.acomp&&i.acomp.responsavel_nome)||'', i.acomp&&i.acomp.decisao?(FOLHA_EXP_DECISAO[i.acomp.decisao]||'').split(' (')[0]:'']);
+    return {titulo:'Experiência — a decidir e decididos (60 dias)', colunas:['Fim','Nome','Período','Cargo','Situação','Responsável','Decisão'], linhas:linhas};
+  }
   if(tipo==='experiencia'){
     const today=new Date(); today.setHours(0,0,0,0); const lim=new Date(today.getTime()+60*86400000); const linhas=[];
     ativos.forEach(f=>['exp1_fim','exp2_fim'].forEach(function(k){ if(f[k]){ const d=new Date(f[k]+'T00:00:00'); if(d>=today&&d<=lim) linhas.push([folhaData(f[k]), f.nome||'', k==='exp1_fim'?'1º período':'2º período', f.cargo||'']); } }));
@@ -2424,7 +2581,7 @@ async function renderFolhaRel(){
   const main=document.getElementById('main'); const ok=await folhaLoad();
   if(!ok){ main.innerHTML='<div class="empty">Rode a <b>migration-folha-interna.sql</b> no Supabase e recarregue.</div>'; return; }
   const now=new Date(), ym1=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
-  const reps=[['relacao','Relação de funcionários'],['custo_cc','Custo por centro de custo'],['custo_cargo','Custo por cargo'],['admitidos','Admitidos no período'],['demitidos','Demitidos no período'],['aniversariantes','Aniversariantes do mês'],['experiencia','Experiência vencendo (60d)'],['docs_vencendo','Documentos vencendo (60d)'],['cadastro','Cadastro completo (todas as colunas — Excel)']];
+  const reps=[['relacao','Relação de funcionários'],['custo_cc','Custo por centro de custo'],['custo_cargo','Custo por cargo'],['admitidos','Admitidos no período'],['demitidos','Demitidos no período'],['aniversariantes','Aniversariantes do mês'],['experiencia','Experiência (situação e decisões)'],['docs_vencendo','Documentos vencendo (60d)'],['cadastro','Cadastro completo (todas as colunas — Excel)']];
   main.innerHTML=`
     <div class="page-header"><div><div class="page-title">📑 Relatórios — Folha Interna</div><div class="page-sub">Gere e exporte em PDF ou Excel</div></div></div>
     <div class="card" style="margin-bottom:12px">
@@ -3012,9 +3169,9 @@ async function folhaImportRelatorioExcel(){
 const FOLHA_ACAO_ROT = {abriu_modulo:'Abriu a Folha', abriu_tela:'Abriu a tela', abriu_funcionario:'Abriu a ficha',
   abriu_documento:'Abriu documento', abriu_historico:'Abriu o histórico', exportou:'Exportou', imprimiu:'Imprimiu',
   incluiu:'Incluiu', alterou:'Alterou', excluiu:'Excluiu'};
-const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
+const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
   folha_cc:'Centros de custo', folha_sind:'Sindicatos', folha_turnos:'Turnos', folha_acessos:'Acessos', folha_docs:'Documentos'};
-const FOLHA_TAB_ROT = {folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
+const FOLHA_TAB_ROT = {folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
   folha_alteracoes:'Histórico', folha_beneficios:'Benefício', folha_centros_custo:'Centro de custo',
   folha_sindicatos:'Sindicato', folha_turnos:'Turno'};
 let _acs = {linhas:[], busca:'', acao:'', dias:30, erro:''};
@@ -3104,7 +3261,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|Excluir|Restaurar|Readmitir|DupDispensar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
@@ -3144,14 +3301,14 @@ document.addEventListener('input', function(ev){
    NAVEGAÇÃO — abas no lugar do menu FOLHA INTERNA do Docs
    ============================================================================ */
 function abas(){
-  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],
+  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],
              ['folha_qualidade','Qualidade da base'],['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
   if(PODE.acessos) a.push(['folha_acessos','Acessos']);
   return a;
 }
 const _TELAS = {folha_dash:()=>renderFolhaDash(), folha_func:()=>renderFolhaFunc(), folha_benef:()=>renderFolhaBenef(),
   folha_rel:()=>renderFolhaRel(), folha_cc:()=>renderFolhaCC(), folha_sind:()=>renderFolhaSind(),
-  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_acessos:()=>renderFolhaAcessos()};
+  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_acessos:()=>renderFolhaAcessos()};
 function go(page){
   if(!abas().some(a=>a[0]===page)) page='folha_dash';
   const mudou = currentPage !== page;
