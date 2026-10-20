@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.20.2';
+var APP_VERSION = '2026.10.20.3';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[], ferSaldos:[], ferProgs:[], ferAjustes:[], folhaRegras:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[], ferSaldos:[], ferProgs:[], ferAjustes:[], folhaRegras:[], vigencias:[], comps:[], compEventos:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -629,7 +629,7 @@ let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg, vig, cps, cev] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -653,7 +653,11 @@ async function folhaLoad(force){
       _selTudo(()=>sb.from('folha_ferias_saldos').select('*').order('periodo_id')),
       _selTudo(()=>sb.from('folha_ferias_programacoes').select('*').order('id')),
       _selTudo(()=>sb.from('folha_ferias_ajustes').select('*').order('id')),
-      sb.from('folha_regras').select('*')
+      sb.from('folha_regras').select('*'),
+      /* E4 (0077): vigências e competências */
+      _selTudo(()=>sb.from('folha_vigencias').select('*').order('id')),
+      sb.from('folha_competencias').select('*'),
+      _selTudo(()=>sb.from('folha_competencia_eventos').select('*').order('id'))
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[];
@@ -675,6 +679,9 @@ async function folhaLoad(force){
     _folhaTemFerias = !!(fsa && !fsa.error && fpr && !fpr.error && frg && !frg.error);
     DB.ferSaldos = _folhaTemFerias ? (fsa.data||[]) : []; DB.ferProgs = _folhaTemFerias ? (fpr.data||[]) : [];
     DB.ferAjustes = (_folhaTemFerias && faj && !faj.error) ? (faj.data||[]) : []; DB.folhaRegras = _folhaTemFerias ? (frg.data||[]) : [];
+    _folhaTemVigencias = !!(vig && !vig.error && cps && !cps.error);
+    DB.vigencias = _folhaTemVigencias ? (vig.data||[]) : []; DB.comps = _folhaTemVigencias ? (cps.data||[]) : [];
+    DB.compEventos = (_folhaTemVigencias && cev && !cev.error) ? (cev.data||[]) : [];
     _folha.loaded = true;
     if(!DB.folhaFuncs.length) _conferirSessao();   // módulo: vazio pode ser 2FA vencido
     return true;
@@ -944,6 +951,7 @@ function folhaFuncForm(id){
         <div class="form-group"><label>Agência / Conta</label><div style="display:flex;gap:6px"><input id="fi_ag" style="width:42%" value="${escapeHtml(g('agencia',''))}"><input id="fi_conta" value="${escapeHtml(g('conta',''))}"></div></div>
       </div>
       ${id?`<div class="form-group"><label>Motivo da alteração <span style="color:var(--muted);font-size:11px">(registrado no histórico se salário/cargo/centro/turno mudarem)</span></label><input id="fi_motivo" placeholder="ex: promoção, dissídio, transferência..."></div>`:''}
+      ${(id && _folhaTemVigencias)?`<div class="form-group"><label>Salário, cargo ou centro de custo valem a partir de <span style="color:var(--muted);font-size:11px">(vazio = hoje; mês fechado não aceita)</span></label><input id="fi_vig_desde" type="date"></div>${vigHistHtml(f)}`:''}
     </div>
     <div class="folha-tabpane" id="ftp_beneficios" style="display:none">
       <div class="grid-3">
@@ -1004,6 +1012,8 @@ async function folhaFuncSave(id){
     payload.sindicato = sd?((sd.sigla||sd.nome||'')):'';
   }
   if(_docp) Object.assign(payload, _docp);   // só com o SQL dos documentos pessoais rodado
+  /* vigência (0077): a partir de quando vale a mudança de salário/cargo/centro */
+  if(_folhaTemVigencias && id){ const vd=val('fi_vig_desde'); if(vd){ const fc=DB.comps.filter(c=>c.status==='fechada' && c.competencia>=vd.slice(0,7)).map(c=>c.competencia).sort().pop(); if(fc){ toast('Competência '+fopagCompLabel(fc)+' fechada: use uma data depois dela ou reabra a competência.','err'); folhaTab('contratual'); return false; } payload.vigencia_desde=vd; } }
   /* experiência (0072): regra do contrato e se as datas foram ajustadas à mão */
   if(_folhaTemExpRegra){ payload.exp_regra = val('fi_exp_regra') || null; payload.exp_manual = _folhaExpManual(); }
   const _expErr = folhaExpValidar(payload.data_admissao, payload.exp1_fim, payload.exp2_fim);
@@ -1992,6 +2002,121 @@ function ferDesdeForm(){
 }
 
 /* ============================================================================
+   VIGÊNCIAS E COMPETÊNCIAS (E4, 20/10/2026, 0077)
+   ----------------------------------------------------------------------------
+   · Salário, cargo e centro de custo têm vigência (folha_vigencias). A ficha
+     manda "vale a partir de" (vigencia_desde); o banco abre a vigência nova e
+     fecha a anterior na véspera.
+   · Competência: aberta → em conferência → fechada (foto de cada vínculo) ·
+     reabrir com justificativa. Mês fechado é travado no banco e os relatórios
+     dele leem a FOTO — mudar o salário hoje não muda o mês fechado.
+   ============================================================================ */
+let _folhaTemVigencias = false;
+const COMP_STATUS = {aberta:'Aberta', em_conferencia:'Em conferência', fechada:'Fechada'};
+const COMP_COR = {aberta:'#64748b', em_conferencia:'#b45309', fechada:'#16a34a'};
+const _fotosCache = {};   // 'YYYY-MM' -> {versao, linhas}
+function compStatus(c){ const r=DB.comps.find(x=>x.competencia===c); return r ? r.status : 'aberta'; }
+function compFimMes(c){ const [y,m]=c.split('-').map(Number); return c+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0'); }
+/* valor vigente de um campo numa data (null se não houver) */
+function vigNa(fid, campo, data){
+  const v=DB.vigencias.filter(x=>x.funcionario_id===fid && x.campo===campo && x.inicio<=data && (!x.fim || x.fim>=data))[0];
+  if(!v) return undefined;
+  return campo==='salario' ? Number(v.valor_num)||0 : campo==='cargo' ? (v.valor_txt||'') : v.centro_custo_id;
+}
+/* vínculos do mês com os valores do último dia de cada um no mês (prévia de mês aberto) */
+function compLinhas(c){
+  const ini=c+'-01', fim=compFimMes(c);
+  return DB.folhaFuncs.filter(f=>f.data_admissao && f.data_admissao<=fim && (!f.data_demissao || f.data_demissao>=ini) && (f.ativo!==false || f.data_demissao))
+    .map(f=>{ const ate=(f.data_demissao && f.data_demissao<fim)?f.data_demissao:fim;
+      const sal=vigNa(f.id,'salario',ate), cargo=vigNa(f.id,'cargo',ate), cc=vigNa(f.id,'centro_custo',ate);
+      return {funcionario_id:f.id, nome:f.nome, salario: sal===undefined?(Number(f.salario_base)||0):sal, cargo: cargo===undefined?(f.cargo||''):cargo, centro_custo_id: cc===undefined?f.centro_custo_id:cc}; });
+}
+async function compFotos(c){
+  const r=DB.comps.find(x=>x.competencia===c); if(!r || !r.versao_foto) return null;
+  const k=c+'#'+r.versao_foto; if(_fotosCache[k]) return _fotosCache[k];
+  const q=await _selTudo(()=>sb.from('folha_competencia_fotos').select('*').eq('competencia',c).eq('versao',r.versao_foto).order('nome'));
+  if(q.error) return null;
+  return (_fotosCache[k]={versao:r.versao_foto, linhas:q.data||[]});
+}
+function vigHistHtml(f){
+  if(!_folhaTemVigencias || !f) return '';
+  const L=DB.vigencias.filter(v=>v.funcionario_id===f.id).sort((a,b)=>a.campo.localeCompare(b.campo)||b.inicio.localeCompare(a.inicio));
+  if(!L.length) return '';
+  const val=v=>v.campo==='salario'?folhaMoney(v.valor_num):v.campo==='cargo'?(v.valor_txt||'(vazio)'):(folhaCCNome(v.centro_custo_id)||'(nenhum)');
+  const rot={salario:'Salário', cargo:'Cargo', centro_custo:'Centro de custo'};
+  return `<details style="margin:4px 0 12px"><summary style="cursor:pointer;font-size:13px;font-weight:600">🕘 Vigências (salário, cargo, centro de custo) — ${L.length}</summary>
+    <table style="font-size:12px;margin-top:6px"><thead><tr><th>Campo</th><th>Valor</th><th>De</th><th>Até</th><th>Origem</th></tr></thead><tbody>
+    ${L.map(v=>`<tr><td>${rot[v.campo]}</td><td>${escapeHtml(val(v))}</td><td>${folhaData(v.inicio)}</td><td>${v.fim?folhaData(v.fim):'atual'}</td><td>${escapeHtml(v.origem)}${v.motivo?' · '+escapeHtml(v.motivo):''}</td></tr>`).join('')}
+    </tbody></table></details>`;
+}
+
+async function renderFolhaComp(){
+  if(!folhaPode()){ $('main').innerHTML='<div class="empty">Sem permissão.</div>'; return; }
+  const ok=await folhaLoad(); if(!ok){ $('main').innerHTML='<div class="empty">Folha Interna indisponível.</div>'; return; }
+  if(!_folhaTemVigencias){ $('main').innerHTML='<div class="empty">Rode a <b>0077_folha_vigencias_competencias.sql</b> no Supabase e recarregue.</div>'; return; }
+  const meses=[]; const d=new Date(); d.setDate(1);
+  for(let i=0;i<12;i++){ meses.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()-1); }
+  DB.comps.forEach(c=>{ if(!meses.includes(c.competencia)) meses.push(c.competencia); });
+  meses.sort().reverse();
+  const linha=c=>{ const st=compStatus(c), r=DB.comps.find(x=>x.competencia===c)||{};
+    const ev=DB.compEventos.filter(e=>e.competencia===c).sort((a,b)=>String(b.em).localeCompare(String(a.em)))[0];
+    const bt=[];
+    if(st==='aberta' && folhaEdita()) bt.push(`<button class="btn btn-secondary btn-sm" onclick="compMudar('${c}','em_conferencia')">Iniciar conferência</button>`);
+    if(st==='em_conferencia' && folhaEdita()) bt.push(`<button class="btn btn-secondary btn-sm" onclick="compMudar('${c}','aberta')">Voltar a abrir</button>`);
+    if(st==='em_conferencia' && PODE.fechar) bt.push(`<button class="btn btn-primary btn-sm" onclick="compFecharForm('${c}')">Fechar…</button>`);
+    if(st==='fechada' && PODE.reabrir) bt.push(`<button class="btn btn-danger btn-sm" onclick="compReabrir('${c}')">Reabrir…</button>`);
+    if(st==='fechada') bt.push(`<button class="btn btn-secondary btn-sm" onclick="compVerFoto('${c}')">Ver fechamento</button>`);
+    return `<tr><td><b>${fopagCompLabel(c)}</b></td><td><span style="color:${COMP_COR[st]};font-weight:700">${COMP_STATUS[st]}</span>${r.versao_foto>1?` <span style="font-size:11px;color:var(--muted)">(fechamento ${r.versao_foto})</span>`:''}</td>
+      <td style="font-size:12px">${ev?escapeHtml(ev.por_nome||'')+' · '+new Date(ev.em).toLocaleString('pt-BR')+(ev.justificativa?'<div style="color:#92400e">'+escapeHtml(ev.justificativa)+'</div>':''):'—'}</td>
+      <td style="white-space:nowrap">${bt.join(' ')}</td></tr>`; };
+  $('main').innerHTML=`
+    <div class="page-header"><div><div class="page-title">🗓️ Competências</div><div class="page-sub">Aberta → em conferência → fechada. Fechar guarda a foto do mês (salário, cargo e obra de cada um); depois disso o mês não muda. Reabrir só com permissão e justificativa.</div></div></div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Competência</th><th>Situação</th><th>Último passo</th><th></th></tr></thead><tbody>${meses.map(linha).join('')}</tbody></table></div>`;
+}
+async function compMudar(c, para, just){
+  const {data,error}=await sb.rpc('folha_competencia_mudar',{p_comp:c, p_para:para, p_justificativa:just||''});
+  if(error){ toast('Erro: '+error.message,'err'); return false; }
+  await folhaLoad(true);
+  toast(fopagCompLabel(c)+': '+COMP_STATUS[para]+(data && data.vinculos!=null?' — '+data.vinculos+' vínculo(s), salários '+folhaMoney(data.salarios):''));
+  if(currentPage==='folha_comp') renderFolhaComp();
+  return true;
+}
+async function compFecharForm(c){
+  if(!PODE.fechar){ toast('Fechar competência não está liberado para o seu perfil.','warn'); return; }
+  const L=compLinhas(c); const tot=L.reduce((s,x)=>s+x.salario,0);
+  const semCC=L.filter(x=>!x.centro_custo_id).length, semSal=L.filter(x=>!(x.salario>0)).length;
+  const ini=c+'-01', fim=compFimMes(c);
+  const transf=new Set(DB.vigencias.filter(v=>v.campo==='centro_custo' && v.inicio>ini && v.inicio<=fim).map(v=>v.funcionario_id)).size;
+  const b=await sb.from('folha_beneficios').select('vale_cafe,va_vr,vale_transporte,passagem').eq('competencia',c);
+  const totB=(b.data||[]).reduce((s,r)=>s+BENEF_CAMPOS.reduce((a,k)=>a+(Number(r[k])||0),0),0);
+  showModal('Fechar '+fopagCompLabel(c), `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Ao fechar, o sistema guarda a foto do mês. Depois disso, salário, cargo, obra e benefícios de ${fopagCompLabel(c)} não mudam — só reabrindo, com justificativa.</div>
+    <table style="font-size:13px"><tbody>
+      <tr><td>Vínculos no mês</td><td style="text-align:right"><b>${L.length}</b></td></tr>
+      <tr><td>Soma dos salários-base</td><td style="text-align:right"><b>${folhaMoney(tot)}</b></td></tr>
+      <tr><td>Benefícios lançados (${(b.data||[]).length} linha(s))</td><td style="text-align:right"><b>${folhaMoney(totB)}</b></td></tr>
+      <tr><td>Transferências de obra no mês</td><td style="text-align:right">${transf}</td></tr>
+      <tr><td>Sem centro de custo</td><td style="text-align:right;color:${semCC?'#b91c1c':'inherit'}">${semCC}</td></tr>
+      <tr><td>Salário zerado</td><td style="text-align:right;color:${semSal?'#b91c1c':'inherit'}">${semSal}</td></tr>
+    </tbody></table>`, ()=>compMudar(c,'fechada'), [], false, '', 'Fechar competência');
+}
+async function compReabrir(c){
+  if(!PODE.reabrir){ toast('Reabrir não está liberado para o seu perfil.','warn'); return; }
+  const j=prompt('Reabrir '+fopagCompLabel(c)+'. Justificativa (fica registrada):');
+  if(j===null) return; if(!j.trim()){ toast('Informe a justificativa.','err'); return; }
+  await compMudar(c,'aberta',j.trim());
+}
+async function compVerFoto(c){
+  const F=await compFotos(c); if(!F){ toast('Não consegui ler o fechamento.','err'); return; }
+  const tot=F.linhas.reduce((s,x)=>s+(Number(x.salario)||0),0);
+  const cc=x=>(x.centros||[]).length>1 ? x.centros.map(k=>escapeHtml(folhaCCNome(k.centro_custo_id)||'(nenhum)')+' '+k.dias+'d').join(' + ') : escapeHtml(folhaCCNome(x.centro_custo_id)||'');
+  showModal('Fechamento de '+fopagCompLabel(c)+' (versão '+F.versao+')', `
+    <div style="overflow:auto;max-height:60vh"><table style="font-size:12px"><thead><tr><th>Nome</th><th>Cargo</th><th>Obra(s) no mês</th><th style="text-align:right">Dias</th><th style="text-align:right">Salário-base</th></tr></thead><tbody>
+    ${F.linhas.map(x=>`<tr><td>${escapeHtml(x.nome)}</td><td>${escapeHtml(x.cargo||'')}</td><td>${cc(x)}</td><td style="text-align:right">${x.dias_no_mes}</td><td style="text-align:right">${folhaMoney(x.salario)}</td></tr>`).join('')}
+    </tbody><tfoot><tr><td colspan="4"><b>TOTAL (${F.linhas.length})</b></td><td style="text-align:right"><b>${folhaMoney(tot)}</b></td></tr></tfoot></table></div>`, null, [], true, 'lg');
+}
+
+/* ============================================================================
    CEP -> ENDERECO  (v.131)
    Digitar rua, bairro e cidade a mao em 100 fichas gera erro de grafia que
    depois quebra relatorio e busca. O ViaCEP e publico, sem cadastro e sem
@@ -2328,6 +2453,7 @@ function benefDesenhar(){
 
   const nPend = benefDiferencas().length;
   document.getElementById('main').innerHTML =
+    ((_folhaTemVigencias && compStatus(comp)==='fechada') ? '<div class="alert" style="margin-bottom:10px">🔒 '+fopagCompLabel(comp)+' está <b>fechada</b>: os benefícios não mudam (o banco recusa). Para corrigir, reabra em Competências.</div>' : '') +
     '<div class="page-header"><div><div class="page-title">🎟️ Benefícios</div>' +
       '<div class="page-sub">'+fopagCompLabel(comp)+' · '+lista.length+' de '+benefAtivos().length+' pessoa(s) · a <b>Liberação</b> é a soma das quatro colunas, calculada pelo sistema</div></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
@@ -2877,9 +3003,20 @@ async function folhaCCDel(id){
 function folhaLib(url){ return _efmLoad(url); }
 
 /* ---- montagem de relatórios: retorna {titulo, colunas, linhas} ---- */
-function folhaRelBuild(tipo, de, ate){
+function folhaRelBuild(tipo, de, ate, comp){
   const ativos=DB.folhaFuncs.filter(f=>f.ativo!==false);
   const tc=(f)=>FOLHA_TIPO_CONTRATO[f.tipo_contrato]||f.tipo_contrato||'';
+  if((tipo==='custo_cc' || tipo==='custo_cargo') && comp && _folhaTemVigencias){
+    const porCargo=tipo==='custo_cargo', st=compStatus(comp);
+    const F = st==='fechada' ? _fotosCache[comp+'#'+((DB.comps.find(x=>x.competencia===comp)||{}).versao_foto)] : null;
+    const base = F ? F.linhas.map(x=>({cargo:x.cargo, centro_custo_id:x.centro_custo_id, salario:Number(x.salario)||0})) : compLinhas(comp);
+    const grupos={}; base.forEach(x=>{ const k=porCargo?(x.cargo||'(sem cargo)'):(folhaCCNome(x.centro_custo_id)||'(sem centro)'); grupos[k]=grupos[k]||{n:0,tot:0}; grupos[k].n++; grupos[k].tot+=x.salario; });
+    const linhas=Object.keys(grupos).sort().map(k=>[k, String(grupos[k].n), folhaMoney(grupos[k].tot)]);
+    const tot=Object.values(grupos).reduce((a,g)=>a+g.tot,0);
+    linhas.push(['TOTAL', String(base.length), folhaMoney(tot)]);
+    const fonte = F ? 'fechamento versão '+F.versao : (st==='fechada' ? 'carregando o fechamento…' : 'prévia do mês '+COMP_STATUS[st].toLowerCase()+', pelas vigências');
+    return {titulo:(porCargo?'Custo por cargo':'Custo por centro de custo')+' — '+fopagCompLabel(comp)+' (salário-base; '+fonte+')', colunas:[porCargo?'Cargo':'Centro de custo','Funcionários','Salário-base'], linhas:linhas};
+  }
   if(tipo==='custo_cc' || tipo==='custo_cargo'){
     const porCargo=tipo==='custo_cargo';
     const grupos={}; ativos.forEach(function(f){ const k=(porCargo?(f.cargo||'(sem cargo)'):(folhaCCNome(f.centro_custo_id)||'(sem centro)')); grupos[k]=grupos[k]||{n:0,tot:0}; grupos[k].n++; grupos[k].tot+=Number(f.salario_base)||0; });
@@ -2954,6 +3091,7 @@ async function renderFolhaRel(){
       <div class="grid-3" style="align-items:end">
         <div class="form-group" style="margin:0"><label>Relatório</label><select id="fr_tipo" onchange="folhaRelShow()">${reps.map(r=>`<option value="${r[0]}">${r[1]}</option>`).join('')}</select></div>
         <div class="form-group" style="margin:0"><label>De (admitidos/demitidos)</label><input id="fr_de" type="date" value="${ym1}" onchange="folhaRelShow()"></div>
+        ${_folhaTemVigencias?'<div class="form-group" style="margin:0"><label>Competência (custos; vazio = hoje)</label><input id="fr_comp" type="month" onchange="folhaRelShow()"></div>':''}
         <div class="form-group" style="margin:0"><label>Até (admitidos/demitidos)</label><input id="fr_ate" type="date" value="${hoje()}" onchange="folhaRelShow()"></div>
       </div>
       ${PODE.exportar?'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-secondary" id="fr_btn_pdf" onclick="folhaRelPdf()">📄 PDF</button><button class="btn btn-secondary" onclick="folhaRelExcel()">📊 Excel</button></div>':'<div style="font-size:12px;color:var(--muted);margin-top:10px">Exportar (PDF/Excel) não está liberado para o seu perfil.</div>'}
@@ -2964,7 +3102,12 @@ async function renderFolhaRel(){
 function folhaRelShow(){
   const tipo=document.getElementById('fr_tipo')?.value||'relacao';
   const de=document.getElementById('fr_de')?.value||''; const ate=document.getElementById('fr_ate')?.value||'';
-  const rep=folhaRelBuild(tipo, de, ate); _folha.lastRep=rep;
+  const comp=document.getElementById('fr_comp')?.value||'';
+  if(comp && _folhaTemVigencias && compStatus(comp)==='fechada' && (tipo==='custo_cc'||tipo==='custo_cargo')){
+    const r=DB.comps.find(x=>x.competencia===comp);
+    if(r && !_fotosCache[comp+'#'+r.versao_foto]){ compFotos(comp).then(()=>folhaRelShow()); }
+  }
+  const rep=folhaRelBuild(tipo, de, ate, comp); _folha.lastRep=rep;
   const bp=document.getElementById('fr_btn_pdf');   // dezenas de colunas não cabem numa folha A4
   if(bp){ bp.disabled = rep.colunas.length>FOLHA_PDF_MAXCOL; bp.title = bp.disabled ? 'Colunas demais para PDF — use o Excel (ou "Imprimir ficha" na ficha de cada funcionário)' : ''; }
   const prev=document.getElementById('fr_preview'); if(!prev) return;
@@ -3535,9 +3678,9 @@ async function folhaImportRelatorioExcel(){
 const FOLHA_ACAO_ROT = {abriu_modulo:'Abriu a Folha', abriu_tela:'Abriu a tela', abriu_funcionario:'Abriu a ficha',
   abriu_documento:'Abriu documento', abriu_historico:'Abriu o histórico', exportou:'Exportou', imprimiu:'Imprimiu',
   incluiu:'Incluiu', alterou:'Alterou', excluiu:'Excluiu'};
-const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_ferias:'Férias', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
+const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_ferias:'Férias', folha_comp:'Competências', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
   folha_cc:'Centros de custo', folha_sind:'Sindicatos', folha_turnos:'Turnos', folha_acessos:'Acessos', folha_docs:'Documentos'};
-const FOLHA_TAB_ROT = {folha_ferias_programacoes:'Férias (programação)', folha_ferias_ajustes:'Férias (ajuste de saldo)', folha_ferias_periodos:'Férias (período)', folha_regras:'Regra trabalhista', folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
+const FOLHA_TAB_ROT = {folha_vigencias:'Vigência (salário/cargo/obra)', folha_competencia_eventos:'Competência', folha_ferias_programacoes:'Férias (programação)', folha_ferias_ajustes:'Férias (ajuste de saldo)', folha_ferias_periodos:'Férias (período)', folha_regras:'Regra trabalhista', folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
   folha_alteracoes:'Histórico', folha_beneficios:'Benefício', folha_centros_custo:'Centro de custo',
   folha_sindicatos:'Sindicato', folha_turnos:'Turno'};
 let _acs = {linhas:[], busca:'', acao:'', dias:30, erro:''};
@@ -3627,7 +3770,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^comp(Mudar|FecharForm|Reabrir)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
@@ -3667,14 +3810,14 @@ document.addEventListener('input', function(ev){
    NAVEGAÇÃO — abas no lugar do menu FOLHA INTERNA do Docs
    ============================================================================ */
 function abas(){
-  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],
+  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],['folha_comp','Competências'],
              ['folha_qualidade','Qualidade da base'],['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
   if(PODE.acessos) a.push(['folha_acessos','Acessos']);
   return a;
 }
 const _TELAS = {folha_dash:()=>renderFolhaDash(), folha_func:()=>renderFolhaFunc(), folha_benef:()=>renderFolhaBenef(),
   folha_rel:()=>renderFolhaRel(), folha_cc:()=>renderFolhaCC(), folha_sind:()=>renderFolhaSind(),
-  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_ferias:()=>renderFolhaFerias(), folha_acessos:()=>renderFolhaAcessos()};
+  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_ferias:()=>renderFolhaFerias(), folha_comp:()=>renderFolhaComp(), folha_acessos:()=>renderFolhaAcessos()};
 function go(page){
   if(!abas().some(a=>a[0]===page)) page='folha_dash';
   const mudou = currentPage !== page;
@@ -3724,7 +3867,7 @@ async function iniciar(){
     const fa = await sb.schema('core').rpc('folha_minhas_acoes').then(x=>x, ()=>({error:1}));
     if(!fa.error && fa.data && typeof fa.data === 'object'){
       const a = fa.data;
-      PODE = { ver: !!(a.ver || a.editar), edita: !!a.editar, importar: !!(a.importar && a.editar), exportar: !!a.exportar, acessos: !!a.acessos };
+      PODE = { ver: !!(a.ver || a.editar), edita: !!a.editar, importar: !!(a.importar && a.editar), exportar: !!a.exportar, acessos: !!a.acessos, fechar: !!a.fechar, reabrir: !!a.reabrir };
     } else {
       /* banco ainda sem a 0052: as funções de antes (caixas do Docs) */
       const [v1, v2] = await Promise.all([
