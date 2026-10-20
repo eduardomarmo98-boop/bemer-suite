@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.20.1';
+var APP_VERSION = '2026.10.20.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[], ferSaldos:[], ferProgs:[], ferAjustes:[], folhaRegras:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -629,7 +629,7 @@ let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -648,7 +648,12 @@ async function folhaLoad(force){
       /* E1 (0074): "não é duplicado" marcado pelo DP */
       sb.from('folha_dup_dispensas').select('*'),
       /* E2 (0075): acompanhamento da experiência */
-      sb.from('folha_experiencia_acomp').select('*')
+      sb.from('folha_experiencia_acomp').select('*'),
+      /* E3 (0076): férias CLT */
+      _selTudo(()=>sb.from('folha_ferias_saldos').select('*').order('periodo_id')),
+      _selTudo(()=>sb.from('folha_ferias_programacoes').select('*').order('id')),
+      _selTudo(()=>sb.from('folha_ferias_ajustes').select('*').order('id')),
+      sb.from('folha_regras').select('*')
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[];
@@ -667,6 +672,9 @@ async function folhaLoad(force){
     DB.folhaDupDisp = _folhaTemVinculos ? (dsp.data||[]) : [];
     _folhaTemExpAcomp = !!(eac && !eac.error);
     DB.folhaExpAcomp = _folhaTemExpAcomp ? (eac.data||[]) : [];
+    _folhaTemFerias = !!(fsa && !fsa.error && fpr && !fpr.error && frg && !frg.error);
+    DB.ferSaldos = _folhaTemFerias ? (fsa.data||[]) : []; DB.ferProgs = _folhaTemFerias ? (fpr.data||[]) : [];
+    DB.ferAjustes = (_folhaTemFerias && faj && !faj.error) ? (faj.data||[]) : []; DB.folhaRegras = _folhaTemFerias ? (frg.data||[]) : [];
     _folha.loaded = true;
     if(!DB.folhaFuncs.length) _conferirSessao();   // módulo: vazio pode ser 2FA vencido
     return true;
@@ -729,6 +737,7 @@ async function renderFolhaDash(){
       ${card('➖','Demitidos no mês',dem,'#b91c1c')}
       ${card('🎂','Aniversariantes',aniv.length,'var(--bm-orange-txt,#B45309)')}
       ${_folhaTemExpAcomp ? card('⏳','Experiência a decidir',folhaExpAtencao().length,'#b45309') : card('⏳','Experiência vencendo',expVenc.length,'#b45309')}
+      ${_folhaTemFerias ? (()=>{ const a=ferAlertas(); return card('🏖️','Férias: concessivo vencido/60d', a.vencido.length+a.vencendo.length, a.vencido.length?'#b91c1c':'#b45309'); })() : ''}
       ${card('📄','Docs a vencer/vencidos',docVenc.length,'#b45309')}
       ${card('🚫','Sem documentos',semDoc.length,'#b91c1c')}
       ${card('💵','Salários base/mês',folhaMoney(custoFolha))}
@@ -740,7 +749,7 @@ async function renderFolhaDash(){
       ${lista('🎂 Aniversariantes do mês', aniv, f=>`<div>• ${escapeHtml(f.nome)} — ${f.nascimento?new Date(f.nascimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</div>`)}
       ${lista('🚫 Sem documentos', semDoc, f=>`<div>• ${escapeHtml(f.nome)}</div>`)}
     </div>
-    <div class="alert info" style="margin-top:14px;font-size:12px">Este é o painel da <b>Fase 1</b> (cadastro). Folha de pagamento, férias e rescisão entram nas próximas fases.</div>`;
+`;
 }
 
 /* ---- LISTA DE FUNCIONÁRIOS ---- */
@@ -1623,6 +1632,363 @@ async function folhaExpAcompForm(fid, p){
     if(currentPage==='folha_exp') renderFolhaExp(); else if(currentPage==='folha_dash') renderFolhaDash();
     return true;
   }, [], false, 'lg', 'Salvar');
+}
+
+/* ============================================================================
+   FÉRIAS CLT (E3, 20/10/2026, 0076)
+   ----------------------------------------------------------------------------
+   O banco faz as contas e as conferências (folha_ferias_*):
+     · saldo = direito + ajustes − (gozo + abono) não cancelados → cancelar
+       devolve o saldo sozinho;
+     · bloqueia sempre: só CLT ativo, aquisitivo completo, saldo, sobreposição,
+       fluxo na ordem, cancelar com motivo;
+     · regras com fonte (folha_regras): só AVISAM até o DP validar; validadas e
+       marcadas "bloqueia", impedem gravar.
+   A tela chama folha_ferias_conferir() para mostrar os avisos ANTES de gravar.
+   PJ não entra aqui (controle próprio, depois).
+   ============================================================================ */
+let _folhaTemFerias = false;
+let _fer = {aba:'saldos', obra:'', busca:'', status:'abertas', mes:'', gerado:false};
+const FER_STATUS = {programada:'Programada', aprovada:'Aprovada', enviada_contabilidade:'Enviada à contabilidade', paga:'Paga', realizada:'Realizada', cancelada:'Cancelada'};
+const FER_STATUS_COR = {programada:'#64748b', aprovada:'#2563eb', enviada_contabilidade:'#7c3aed', paga:'#16a34a', realizada:'#0f766e', cancelada:'#b91c1c'};
+const FER_PROXIMO = {programada:['aprovada','Aprovar'], aprovada:['enviada_contabilidade','Enviar à contabilidade'], enviada_contabilidade:['paga','Registrar pagamento'], paga:['realizada','Marcar realizada']};
+function ferFunc(id){ return DB.folhaFuncs.find(f=>f.id===id); }
+function ferPeriodosDe(fid){ return DB.ferSaldos.filter(s=>s.funcionario_id===fid).sort((a,b)=>a.aquisitivo_inicio.localeCompare(b.aquisitivo_inicio)); }
+function ferProgsDe(fid){ return DB.ferProgs.filter(g=>g.funcionario_id===fid).sort((a,b)=>a.inicio.localeCompare(b.inicio)); }
+function ferNum(n){ const x=Number(n)||0; return (Math.round(x*10)/10).toLocaleString('pt-BR'); }
+/* situação de um período (para alerta) */
+function ferSitPeriodo(s){
+  const hj=hoje(), saldo=Number(s.saldo)||0;
+  if(s.aquisitivo_fim>=hj) return {cod:'aquisicao', rot:'Em aquisição (até '+folhaData(s.aquisitivo_fim)+')', cls:'info'};
+  if(saldo<=0) return {cod:'quitado', rot:'Sem saldo', cls:'ok'};
+  const d=_diasAte(s.concessivo_fim);
+  if(d<0) return {cod:'vencido', rot:'Concessivo vencido há '+(-d)+' dia(s) — '+ferNum(saldo)+' dia(s) em aberto', cls:'crit'};
+  if(d<=60) return {cod:'vencendo', rot:'Concessivo vence em '+d+' dia(s) — '+ferNum(saldo)+' dia(s) em aberto', cls:'warn'};
+  return {cod:'aberto', rot:ferNum(saldo)+' dia(s) a gozar até '+folhaData(s.concessivo_fim), cls:'info'};
+}
+function ferAlertas(){
+  const out={vencido:[], vencendo:[], semConferir:[], semPagar:[], semAprovar:[]};
+  const ativos=new Set(DB.folhaFuncs.filter(f=>f.ativo!==false).map(f=>f.id));
+  DB.ferSaldos.forEach(s=>{ if(!ativos.has(s.funcionario_id)) return; const st=ferSitPeriodo(s);
+    if(st.cod==='vencido') out.vencido.push(s); else if(st.cod==='vencendo') out.vencendo.push(s);
+    if(!s.conferido_em && st.cod!=='aquisicao') out.semConferir.push(s); });
+  DB.ferProgs.forEach(g=>{ const d=_diasAte(g.inicio);
+    if(['programada'].includes(g.status) && d<=35) out.semAprovar.push(g);
+    if(['aprovada','enviada_contabilidade'].includes(g.status) && d<=5) out.semPagar.push(g); });
+  return out;
+}
+
+async function renderFolhaFerias(){
+  if(!folhaPode()){ $('main').innerHTML='<div class="empty">Sem permissão.</div>'; return; }
+  const ok=await folhaLoad(); if(!ok){ $('main').innerHTML='<div class="empty">Folha Interna indisponível.</div>'; return; }
+  if(!_folhaTemFerias){ $('main').innerHTML='<div class="empty">Rode a <b>0076_folha_ferias.sql</b> no Supabase e recarregue.</div>'; return; }
+  if(folhaEdita() && !_fer.gerado){
+    _fer.gerado=true;
+    const r=await sb.rpc('folha_ferias_gerar',{p_funcionario:null});
+    if(!r.error && r.data>0) await folhaLoad(true);
+  }
+  const al=ferAlertas();
+  const card=(label,val,cor,onc)=>`<div ${onc?`onclick="${onc}" style="cursor:pointer;`:'style="'}background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);flex:1;min-width:140px"><div style="font-size:12px;color:var(--muted)">${label}</div><div style="font-size:22px;font-weight:800;color:${cor||'var(--bm-blue)'}">${val}</div></div>`;
+  const abaBtn=(k,l)=>`<button class="btn btn-sm ${_fer.aba===k?'btn-primary':'btn-secondary'}" onclick="_fer.aba='${k}';renderFolhaFerias()">${l}</button>`;
+  const desde=(DB.folhaCfg.find(x=>x.chave==='ferias_controle_desde')||{}).valor;
+  $('main').innerHTML=`
+    <div class="page-header"><div><div class="page-title">🏖️ Férias (CLT)</div><div class="page-sub">Controle desde ${folhaData(desde)} · saldo sempre calculado · regras com fonte (só bloqueiam depois de validadas pelo DP) · PJ fica fora</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${folhaEdita()?'<button class="btn btn-secondary btn-sm" onclick="ferCargaForm()">⬆️ Carga de saldos</button>':''}</div></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      ${card('Concessivo vencido (com saldo)', al.vencido.length, al.vencido.length?'#b91c1c':'#16a34a')}
+      ${card('Concessivo vence em 60 dias', al.vencendo.length, al.vencendo.length?'#b45309':'#16a34a')}
+      ${card('Programadas a aprovar (≤35 dias)', al.semAprovar.length, al.semAprovar.length?'#b45309':'#16a34a', "_fer.aba='programacoes';_fer.status='programada';renderFolhaFerias()")}
+      ${card('Sem pagamento (≤5 dias do início)', al.semPagar.length, al.semPagar.length?'#b91c1c':'#16a34a', "_fer.aba='programacoes';_fer.status='abertas';renderFolhaFerias()")}
+      ${card('Períodos sem saldo conferido', al.semConferir.length, al.semConferir.length?'#b45309':'#16a34a')}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${abaBtn('saldos','Saldos')}${abaBtn('programacoes','Programações')}${abaBtn('calendario','Calendário por obra')}${abaBtn('regras','Regras')}</div>
+    <div id="fer_corpo"></div>`;
+  ({saldos:ferSaldosHtml, programacoes:ferProgsHtml, calendario:ferCalHtml, regras:ferRegrasHtml}[_fer.aba]||ferSaldosHtml)();
+}
+function _ferFiltroObra(){
+  return `<div class="form-group" style="margin:0"><label>Obra (centro de custo)</label><select onchange="_fer.obra=this.value;renderFolhaFerias()"><option value="">Todas</option>${DB.folhaCC.map(c=>`<option value="${c.id}" ${String(_fer.obra)===String(c.id)?'selected':''}>${escapeHtml(c.nome)}</option>`).join('')}</select></div>`;
+}
+function _ferFuncsFiltrados(){
+  const q=_normTxt(_fer.busca||'');
+  return DB.folhaFuncs.filter(f=>f.ativo!==false && (f.tipo_contrato||'clt')==='clt'
+    && (!_fer.obra || String(f.centro_custo_id)===String(_fer.obra))
+    && (!q || _normTxt(f.nome).includes(q))).sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+}
+function ferSaldosHtml(){
+  const fs_=_ferFuncsFiltrados();
+  const linhas=[];
+  fs_.forEach(f=>{
+    const ps=ferPeriodosDe(f.id);
+    if(!ps.length){ linhas.push(`<tr><td><b>${escapeHtml(f.nome)}</b></td><td colspan="7" style="color:var(--muted);font-size:12px">${f.data_admissao?'Nenhum período dentro do controle':'Sem admissão — complete a ficha'}</td><td></td></tr>`); return; }
+    ps.forEach((s,i)=>{ const st=ferSitPeriodo(s); linhas.push(`<tr>
+      <td>${i===0?`<b>${escapeHtml(f.nome)}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(folhaCCNome(f.centro_custo_id)||'')} · adm. ${folhaData(f.data_admissao)}</div>`:''}</td>
+      <td style="white-space:nowrap">${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)}</td>
+      <td>${folhaData(s.concessivo_fim)}</td>
+      <td style="text-align:right">${ferNum(s.dias_direito)}</td><td style="text-align:right">${Number(s.ajustes)?ferNum(s.ajustes):''}</td>
+      <td style="text-align:right">${ferNum(Number(s.gozo_programado)+Number(s.abono))}</td>
+      <td style="text-align:right;font-weight:800">${ferNum(s.saldo)}</td>
+      <td><span class="status ${st.cls}" style="font-size:11px">${escapeHtml(st.rot)}</span>${s.conferido_em?'':(st.cod!=='aquisicao'?' <span title="saldo ainda não conferido pelo DP" style="font-size:11px;color:#b45309">não conferido</span>':'')}</td>
+      <td style="white-space:nowrap">${folhaEdita()?`${(st.cod!=='aquisicao' && Number(s.saldo)>0)?`<button class="btn btn-primary btn-sm" onclick="ferProgForm(${s.periodo_id})">Programar</button> `:''}<button class="btn btn-secondary btn-sm" title="Carga de saldo conferido / ajuste" onclick="ferAjusteForm(${s.periodo_id})">±</button> `:''}<button class="btn btn-secondary btn-sm" title="Histórico do período" onclick="ferHist(${s.periodo_id})">🕘</button></td>
+    </tr>`); });
+  });
+  $('fer_corpo').innerHTML=`
+    <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
+      <div class="form-group" style="margin:0;flex:1;min-width:180px"><label>Buscar</label><input value="${escapeHtml(_fer.busca||'')}" onchange="_fer.busca=this.value;renderFolhaFerias()" placeholder="nome"></div></div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Aquisitivo</th><th>Concessivo até</th><th style="text-align:right">Direito</th><th style="text-align:right">Ajustes</th><th style="text-align:right">Programado</th><th style="text-align:right">Saldo</th><th>Situação</th><th></th></tr></thead>
+    <tbody>${linhas.join('')||'<tr><td colspan="9" class="empty">Nenhum funcionário CLT ativo.</td></tr>'}</tbody></table></div>`;
+}
+function ferProgsHtml(){
+  const fsIds=new Set(_ferFuncsFiltrados().map(f=>f.id));
+  let L=DB.ferProgs.filter(g=>fsIds.has(g.funcionario_id) || (!_fer.obra && !_fer.busca));
+  if(_fer.status==='abertas') L=L.filter(g=>!['realizada','cancelada'].includes(g.status));
+  else if(_fer.status) L=L.filter(g=>g.status===_fer.status);
+  L.sort((a,b)=>a.inicio.localeCompare(b.inicio));
+  $('fer_corpo').innerHTML=`
+    <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
+      <div class="form-group" style="margin:0"><label>Situação</label><select onchange="_fer.status=this.value;renderFolhaFerias()">
+        ${[['abertas','Em andamento'],['','Todas']].concat(Object.entries(FER_STATUS)).map(o=>`<option value="${o[0]}" ${_fer.status===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div></div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Início</th><th>Fim</th><th style="text-align:right">Dias</th><th style="text-align:right">Abono</th><th>Situação</th><th>Avisos</th><th></th></tr></thead><tbody>
+    ${L.map(g=>{ const f=ferFunc(g.funcionario_id)||{}; const px=FER_PROXIMO[g.status]; return `<tr>
+      <td><b>${escapeHtml(f.nome||'#'+g.funcionario_id)}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(folhaCCNome(f.centro_custo_id)||'')}</div></td>
+      <td>${folhaData(g.inicio)}</td><td>${folhaData(g.fim)}</td><td style="text-align:right">${g.dias}</td><td style="text-align:right">${g.abono_dias||''}</td>
+      <td><span style="color:${FER_STATUS_COR[g.status]};font-weight:700;font-size:12px">${FER_STATUS[g.status]}</span>${g.status==='cancelada'?`<div style="font-size:11px;color:var(--muted)">${escapeHtml(g.cancelado_motivo||'')}</div>`:''}${g.pago_em?`<div style="font-size:11px;color:var(--muted)">pago ${folhaData(g.pago_em)}</div>`:''}</td>
+      <td style="font-size:11px;color:#92400e;max-width:260px">${escapeHtml(g.avisos||'')}</td>
+      <td style="white-space:nowrap">${folhaEdita()&&px?`<button class="btn btn-primary btn-sm" onclick="ferPasso(${g.id},'${px[0]}')">${px[1]}</button> `:''}${folhaEdita()&&!['realizada','cancelada'].includes(g.status)?`<button class="btn btn-danger btn-sm" onclick="ferCancelar(${g.id})">Cancelar</button>`:''}</td>
+    </tr>`; }).join('')||'<tr><td colspan="8" class="empty">Nenhuma programação.</td></tr>'}
+    </tbody></table></div>`;
+}
+function ferCalHtml(){
+  if(!_fer.mes){ _fer.mes=hoje().slice(0,7); }
+  const [y,m]=_fer.mes.split('-').map(Number); const ndias=new Date(y,m,0).getDate();
+  const ini=_fer.mes+'-01', fim=_fer.mes+'-'+String(ndias).padStart(2,'0');
+  const fsIds=new Set(_ferFuncsFiltrados().map(f=>f.id));
+  const progs=DB.ferProgs.filter(g=>g.status!=='cancelada' && g.inicio<=fim && g.fim>=ini && fsIds.has(g.funcionario_id));
+  const porObra={};
+  progs.forEach(g=>{ const f=ferFunc(g.funcionario_id); if(!f) return; const k=folhaCCNome(f.centro_custo_id)||'(sem obra)'; (porObra[k]=porObra[k]||{}); (porObra[k][f.id]=porObra[k][f.id]||{f, gs:[]}).gs.push(g); });
+  const dows=['D','S','T','Q','Q','S','S'];
+  const cab=Array.from({length:ndias},(_,i)=>{ const d=new Date(y,m-1,i+1); return `<th style="padding:2px;font-size:10px;text-align:center;${[0,6].includes(d.getDay())?'background:#f1f5f9':''}">${i+1}<br>${dows[d.getDay()]}</th>`; }).join('');
+  const linhas=Object.keys(porObra).sort().map(obra=>`<tr><td colspan="${ndias+1}" style="background:#eef2ff;font-weight:700;color:var(--bm-blue)">${escapeHtml(obra)} — ${Object.keys(porObra[obra]).length} em férias no mês</td></tr>`+
+    Object.values(porObra[obra]).sort((a,b)=>(a.f.nome||'').localeCompare(b.f.nome||'')).map(({f,gs})=>`<tr><td style="white-space:nowrap;font-size:12px">${escapeHtml(f.nome)}</td>${Array.from({length:ndias},(_,i)=>{
+      const dt=_fer.mes+'-'+String(i+1).padStart(2,'0'); const g=gs.find(x=>x.inicio<=dt && x.fim>=dt);
+      return `<td title="${g?escapeHtml(FER_STATUS[g.status]+' · '+folhaData(g.inicio)+' a '+folhaData(g.fim)):''}" style="padding:0;height:20px;${g?'background:'+FER_STATUS_COR[g.status]:''}"></td>`; }).join('')}</tr>`).join('')).join('');
+  $('fer_corpo').innerHTML=`
+    <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
+      <div class="form-group" style="margin:0"><label>Mês</label><input type="month" value="${_fer.mes}" onchange="_fer.mes=this.value;renderFolhaFerias()"></div>
+      <div style="font-size:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.keys(FER_STATUS).filter(k=>k!=='cancelada').map(k=>`<span><span style="display:inline-block;width:10px;height:10px;background:${FER_STATUS_COR[k]};border-radius:2px"></span> ${FER_STATUS[k]}</span>`).join('')}</div></div>
+    <div class="card" style="overflow-x:auto"><table style="table-layout:fixed;min-width:${180+ndias*22}px"><thead><tr><th style="width:180px">Funcionário</th>${cab}</tr></thead><tbody>${linhas||`<tr><td colspan="${ndias+1}" class="empty">Ninguém de férias em ${fopagCompLabel(_fer.mes)}.</td></tr>`}</tbody></table></div>`;
+}
+function ferRegrasHtml(){
+  const desde=(DB.folhaCfg.find(x=>x.chave==='ferias_controle_desde')||{});
+  $('fer_corpo').innerHTML=`
+    <div class="alert info" style="font-size:12px;line-height:1.5">Cada regra tem <b>fonte</b> e <b>vigência</b>. Enquanto o DP não valida, ela só <b>avisa</b> na programação. Validada e com "bloqueia", impede gravar. Mudou parâmetro ou fonte → a validação cai e precisa ser feita de novo. Saldo, sobreposição e ordem do fluxo bloqueiam sempre.</div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Regra</th><th>Fonte</th><th>Vigência</th><th>Parâmetros</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${DB.folhaRegras.filter(r=>r.modulo==='ferias').sort((a,b)=>a.codigo.localeCompare(b.codigo)).map(r=>`<tr>
+      <td><b>${escapeHtml(r.codigo)}</b><div style="font-size:12px">${escapeHtml(r.descricao)}</div></td>
+      <td style="font-size:12px">${escapeHtml(r.fonte)}</td>
+      <td style="font-size:12px">${r.vigencia_inicio?'desde '+folhaData(r.vigencia_inicio):'—'}${r.vigencia_fim?' até '+folhaData(r.vigencia_fim):''}</td>
+      <td style="font-size:11px;font-family:monospace">${escapeHtml(JSON.stringify(r.parametros||{}))}</td>
+      <td style="font-size:12px">${!r.ativa?'<span class="status warn">Desligada</span>':(r.validado_em?`<span class="status ok">Validada</span> ${r.bloqueia?'· bloqueia':'· só avisa'}<div style="color:var(--muted)">${escapeHtml(r.validado_por_nome||'')} · ${new Date(r.validado_em).toLocaleDateString('pt-BR')}</div>`:'<span class="status warn">Aguardando o DP</span> · só avisa')}</td>
+      <td>${folhaEdita()?`<button class="btn btn-secondary btn-sm" onclick="ferRegraForm('${r.codigo}')">Editar / validar</button>`:''}</td>
+    </tr>`).join('')}</tbody></table></div>
+    <div class="card" style="margin-top:10px;font-size:13px">Controle de férias desde <b>${folhaData(desde.valor)}</b> — entram os períodos cujo concessivo termina nessa data ou depois. ${folhaEdita()?`<button class="btn btn-secondary btn-sm" onclick="ferDesdeForm()">Alterar</button>`:''}</div>`;
+}
+
+/* ---- programar ---- */
+let _ferConf = null;
+function ferProgForm(periodoId){
+  if(!folhaEdita()) return;
+  const s=DB.ferSaldos.find(x=>x.periodo_id===periodoId); if(!s) return;
+  const f=ferFunc(s.funcionario_id)||{};
+  showModal('Programar férias — '+(f.nome||''), `
+    <div class="alert info" style="font-size:12px">Aquisitivo ${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)} · concessivo até <b>${folhaData(s.concessivo_fim)}</b> · saldo <b>${ferNum(s.saldo)} dia(s)</b></div>
+    <div class="grid-3">
+      <div class="form-group"><label>Início *</label><input id="fpg_ini" type="date" min="${plusDays(1,s.aquisitivo_fim)}" onchange="ferConferir(${periodoId})"></div>
+      <div class="form-group"><label>Dias de gozo *</label><input id="fpg_dias" type="number" min="1" max="30" value="${Math.min(30, Math.floor(Number(s.saldo)||0))}" onchange="ferConferir(${periodoId})"></div>
+      <div class="form-group"><label>Abono (dias vendidos)</label><input id="fpg_abono" type="number" min="0" max="10" value="0" onchange="ferConferir(${periodoId})"></div>
+    </div>
+    <div id="fpg_fim" style="font-size:13px;margin:-4px 0 8px"></div>
+    <div id="fpg_conf" style="font-size:12px"></div>
+    <div class="form-group"><label>Observação</label><input id="fpg_obs" maxlength="300"></div>
+  `, async function(){
+    const ini=$('fpg_ini').value, dias=parseInt($('fpg_dias').value,10), ab=parseInt($('fpg_abono').value||'0',10)||0;
+    if(!ini || !(dias>=1)){ toast('Informe início e dias.','err'); return false; }
+    const c=await ferConferir(periodoId);
+    if(c && c.some(x=>x.bloqueia)){ toast('Não dá para gravar: veja os itens em vermelho.','err'); return false; }
+    const {error}=await sb.from('folha_ferias_programacoes').insert({periodo_id:periodoId, inicio:ini, dias, abono_dias:ab, obs:$('fpg_obs').value.trim()});
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true); toast('Férias programadas.'); renderFolhaFerias(); return true;
+  }, [], false, '', 'Programar');
+}
+async function ferConferir(periodoId){
+  const ini=$('fpg_ini') && $('fpg_ini').value, dias=parseInt(($('fpg_dias')||{}).value,10), ab=parseInt(($('fpg_abono')||{}).value||'0',10)||0;
+  if(!ini || !(dias>=1)){ if($('fpg_conf')) $('fpg_conf').innerHTML=''; return null; }
+  if($('fpg_fim')) $('fpg_fim').innerHTML='Volta ao trabalho: <b>'+folhaData(plusDays(dias,ini))+'</b> (fim em '+folhaData(plusDays(dias-1,ini))+')';
+  const r=await sb.rpc('folha_ferias_conferir',{p_periodo:periodoId, p_inicio:ini, p_dias:dias, p_abono:ab, p_ignorar:null});
+  const lista=(r && !r.error && Array.isArray(r.data)) ? r.data : [];
+  _ferConf=lista;
+  if($('fpg_conf')) $('fpg_conf').innerHTML = lista.length
+    ? lista.map(x=>`<div style="padding:4px 8px;margin-bottom:4px;border-radius:6px;${x.bloqueia?'background:#fee2e2;color:#991b1b':'background:#fef3c7;color:#92400e'}">${x.bloqueia?'✖ ':'⚠️ '}${escapeHtml(x.msg)}${x.fonte?' <span style="opacity:.8">('+escapeHtml(x.fonte)+')</span>':''}</div>`).join('')
+    : '<div style="color:#166534">✔ Sem impedimentos.</div>';
+  return lista;
+}
+async function ferPasso(id, para){
+  const g=DB.ferProgs.find(x=>x.id===id); if(!g) return;
+  let extra={};
+  if(para==='paga'){
+    const d=prompt('Data do pagamento (DD/MM/AAAA):', new Date().toLocaleDateString('pt-BR'));
+    if(d===null) return; const iso=folhaImportData(d); if(!iso){ toast('Data inválida.','err'); return; }
+    extra.pago_em=iso;
+  } else if(!confirm(FER_STATUS[para]+': '+(ferFunc(g.funcionario_id)||{}).nome+', '+folhaData(g.inicio)+' a '+folhaData(g.fim)+'?')) return;
+  const {error}=await sb.from('folha_ferias_programacoes').update(Object.assign({status:para}, extra)).eq('id',id);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  await folhaLoad(true); toast(FER_STATUS[para]+'.'); renderFolhaFerias();
+}
+async function ferCancelar(id){
+  const g=DB.ferProgs.find(x=>x.id===id); if(!g) return;
+  const m=prompt('Motivo do cancelamento (o saldo volta para o período):');
+  if(m===null) return; if(!m.trim()){ toast('Informe o motivo.','err'); return; }
+  const {error}=await sb.from('folha_ferias_programacoes').update({status:'cancelada', cancelado_motivo:m.trim()}).eq('id',id);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  await folhaLoad(true); toast('Cancelada — o saldo voltou para o período.'); renderFolhaFerias();
+}
+
+/* ---- ajustes e carga ---- */
+function ferAjusteForm(periodoId){
+  if(!folhaEdita()) return;
+  const s=DB.ferSaldos.find(x=>x.periodo_id===periodoId); if(!s) return;
+  const f=ferFunc(s.funcionario_id)||{};
+  showModal('Saldo de férias — '+(f.nome||''), `
+    <div class="alert info" style="font-size:12px">Aquisitivo ${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)} · saldo hoje <b>${ferNum(s.saldo)}</b> dia(s). Nada é apagado: cada ajuste fica no histórico com quem fez e a justificativa.</div>
+    <div class="form-group"><label>Tipo</label><select id="faj_tipo" onchange="$('faj_saldo_box').style.display=this.value==='carga_inicial'?'block':'none';$('faj_dias_box').style.display=this.value==='ajuste'?'block':'none'">
+      <option value="carga_inicial">Saldo conferido (carga inicial)</option><option value="ajuste">Ajuste (+/− dias)</option></select></div>
+    <div class="form-group" id="faj_saldo_box"><label>Saldo disponível hoje, conferido (dias) *</label><input id="faj_saldo" type="number" step="0.5" min="0" max="30"><div style="font-size:11px;color:var(--muted)">Já descontadas as férias programadas aqui. O sistema lança a diferença.</div></div>
+    <div class="form-group" id="faj_dias_box" style="display:none"><label>Dias (ex.: −6 por faltas, art. 130)</label><input id="faj_dias" type="number" step="0.5"></div>
+    <div class="form-group"><label>Justificativa / fonte *</label><input id="faj_just" maxlength="300" placeholder="ex.: planilha de saldos conferida pelo DP em 20/10/2026"></div>
+  `, async function(){
+    const tipo=$('faj_tipo').value, just=$('faj_just').value.trim();
+    if(!just){ toast('Informe a justificativa.','err'); return false; }
+    const p={periodo_id:periodoId, tipo, justificativa:just};
+    if(tipo==='carga_inicial'){ const v=parseFloat($('faj_saldo').value); if(isNaN(v)||v<0){ toast('Informe o saldo conferido.','err'); return false; } p.saldo_informado=v; }
+    else { const v=parseFloat($('faj_dias').value); if(isNaN(v)||!v){ toast('Informe os dias.','err'); return false; } p.dias=v; }
+    const {error}=await sb.from('folha_ferias_ajustes').insert(p);
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true); toast('Saldo registrado.'); renderFolhaFerias(); return true;
+  }, [], false, '', 'Gravar');
+}
+function ferHist(periodoId){
+  const s=DB.ferSaldos.find(x=>x.periodo_id===periodoId); if(!s) return;
+  const f=ferFunc(s.funcionario_id)||{};
+  const ev=[[s.aquisitivo_fim, 'Direito: '+ferNum(s.dias_direito)+' dias', '']];
+  DB.ferAjustes.filter(a=>a.periodo_id===periodoId).forEach(a=>ev.push([a.em.slice(0,10), (a.tipo==='carga_inicial'?'Saldo conferido: '+ferNum(a.saldo_informado)+' (lançado '+(a.dias>0?'+':'')+ferNum(a.dias)+')':'Ajuste '+(a.dias>0?'+':'')+ferNum(a.dias)), a.por_nome+' · '+a.justificativa]));
+  DB.ferProgs.filter(g=>g.periodo_id===periodoId).forEach(g=>{
+    ev.push([g.programado_em.slice(0,10), 'Programadas '+g.dias+' dia(s)'+(g.abono_dias?' + abono '+g.abono_dias:'')+' ('+folhaData(g.inicio)+' a '+folhaData(g.fim)+')', g.programado_por_nome]);
+    [['aprovado_em','Aprovada','aprovado_por_nome'],['enviado_em','Enviada à contabilidade','enviado_por_nome'],['realizado_em','Realizada','realizado_por_nome'],['cancelado_em','Cancelada — saldo devolvido','cancelado_por_nome']].forEach(([c,r,q])=>{ if(g[c]) ev.push([String(g[c]).slice(0,10), r, g[q]+(c==='cancelado_em'?' · '+g.cancelado_motivo:'')]); });
+    if(g.pago_em) ev.push([g.pago_em, 'Paga', g.pago_por_nome]);
+  });
+  ev.sort((a,b)=>a[0].localeCompare(b[0]));
+  showModal('Histórico — '+(f.nome||'')+' · '+folhaData(s.aquisitivo_inicio)+' a '+folhaData(s.aquisitivo_fim), `
+    <table><thead><tr><th>Data</th><th>O quê</th><th>Quem / por quê</th></tr></thead><tbody>${ev.map(e=>`<tr><td>${folhaData(e[0])}</td><td>${escapeHtml(e[1])}</td><td style="font-size:12px">${escapeHtml(e[2]||'')}</td></tr>`).join('')}</tbody></table>
+    <div style="margin-top:8px;font-weight:700">Saldo hoje: ${ferNum(s.saldo)} dia(s)</div>`, null, [], true, 'lg');
+}
+/* carga em lote: CPF · início do aquisitivo · saldo conferido · justificativa */
+let _ferCarga=null;
+function ferCargaForm(){
+  if(!folhaEdita()) return;
+  showModal('Carga de saldos de férias (planilha)', `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Colunas: <b>CPF</b>, <b>Início do aquisitivo</b> (DD/MM/AAAA), <b>Saldo conferido</b> (dias) e <b>Justificativa</b> (opcional; vazio = "Carga de saldos conferidos"). Uma linha por período. Antes de gravar você vê a prévia. Rodar de novo o mesmo arquivo não duplica: o saldo vira o informado.</div>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="ferCargaModelo()">⬇️ Modelo com os períodos atuais</button>
+    <div class="form-group" style="margin-top:10px"><label>Arquivo (.xlsx ou .csv)</label><input id="fcg_arq" type="file" accept=".xlsx,.xls,.csv"></div>
+  `, ()=>ferCargaLer(), [], false, '', 'Conferir');
+}
+async function ferCargaModelo(){
+  if(!window.XLSX) await folhaLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const linhas=[['CPF','Nome (só para conferir)','Início do aquisitivo','Fim do aquisitivo','Saldo no sistema','Saldo conferido','Justificativa']];
+  _ferFuncsFiltrados().forEach(f=>ferPeriodosDe(f.id).filter(s=>s.aquisitivo_fim<hoje()).forEach(s=>linhas.push([f.cpf||'', f.nome||'', folhaData(s.aquisitivo_inicio), folhaData(s.aquisitivo_fim), Number(s.saldo), '', ''])));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), 'Saldos'); XLSX.writeFile(wb, 'Modelo - Saldos de ferias.xlsx');
+}
+async function ferCargaLer(){
+  const arq=$('fcg_arq') && $('fcg_arq').files[0]; if(!arq){ toast('Selecione o arquivo','err'); return false; }
+  if(!window.XLSX) await folhaLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const wb=XLSX.read(new Uint8Array(await arq.arrayBuffer()),{type:'array'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:true});
+  _ferCarga=ferCargaConferir(rows);
+  ferCargaPrevia(); return false;
+}
+/* separada da leitura para dar para testar sem arquivo */
+function ferCargaConferir(rows){
+  const col=(r,nomes)=>{ const k=Object.keys(r).find(h=>nomes.includes(_impNorm(h))); return k?r[k]:''; };
+  const porCpf={}; DB.folhaFuncs.filter(f=>f.ativo!==false).forEach(f=>{ const c=_soDig(f.cpf); if(c.length===11) porCpf[c]=f; });
+  return rows.map((r,i)=>{
+    const L={n:i+2, erros:[], cpf:String(col(r,['cpf'])||'').trim()};
+    const c=_soDig(typeof col(r,['cpf'])==='number'?String(Math.round(col(r,['cpf']))).padStart(11,'0'):col(r,['cpf']));
+    const f=porCpf[c]; L.f=f||null;
+    if(!f) L.erros.push('CPF sem vínculo ativo');
+    const ini=folhaImportData(col(r,['inicio do aquisitivo','inicio aquisitivo','aquisitivo']));
+    if(!ini) L.erros.push('Início do aquisitivo inválido');
+    const sv=folhaImportValor(col(r,['saldo conferido','saldo']));
+    if(sv==null || isNaN(sv) || sv<0 || sv>30) L.erros.push('Saldo conferido inválido');
+    L.saldo=sv; L.ini=ini; L.just=String(col(r,['justificativa'])||'').trim()||'Carga de saldos conferidos ('+(_ferCarga&&_ferCarga.arquivo||'planilha')+')';
+    if(f && ini){ L.per=DB.ferSaldos.find(s=>s.funcionario_id===f.id && s.aquisitivo_inicio===ini) || null; if(!L.per) L.erros.push('Período '+folhaData(ini)+' não existe para '+f.nome+' (confira a admissão)'); }
+    if(L.per && L.per.aquisitivo_fim>=hoje()) L.erros.push('Período ainda em aquisição');
+    L.situacao = L.erros.length ? 'erro' : (Number(L.per.saldo)===Number(sv) ? 'igual' : 'grava');
+    return L;
+  }).filter(L=>L.cpf || L.ini);
+}
+function ferCargaPrevia(){
+  const L=_ferCarga||[]; const ct=k=>L.filter(x=>x.situacao===k).length;
+  showModal('Prévia da carga de saldos — nada gravado ainda', `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:13px"><span class="pill" style="background:#dcfce7;color:#166534">Gravar: ${ct('grava')}</span><span class="pill">Já iguais: ${ct('igual')}</span><span class="pill" style="background:#fee2e2;color:#991b1b">Com erro: ${ct('erro')}</span></div>
+    <div style="overflow:auto;max-height:50vh"><table><thead><tr><th>Linha</th><th>Funcionário</th><th>Aquisitivo</th><th>No sistema</th><th>Conferido</th><th></th></tr></thead><tbody>
+    ${L.map(x=>`<tr><td>${x.n}</td><td>${escapeHtml(x.f?x.f.nome:x.cpf)}</td><td>${x.ini?folhaData(x.ini):'-'}</td><td>${x.per?ferNum(x.per.saldo):'-'}</td><td>${x.saldo!=null&&!isNaN(x.saldo)?ferNum(x.saldo):'-'}</td><td style="font-size:12px">${x.erros.map(e=>'<div style="color:var(--crit)">✖ '+escapeHtml(e)+'</div>').join('')}${x.situacao==='igual'?'igual — não grava':''}</td></tr>`).join('')}
+    </tbody></table></div>`, ct('grava') ? ()=>ferCargaGravar() : null, [], !ct('grava'), 'lg', 'Gravar '+ct('grava')+' saldo(s)');
+}
+async function ferCargaGravar(){
+  const L=(_ferCarga||[]).filter(x=>x.situacao==='grava'); let ok=0; const falhas=[];
+  for(const x of L){
+    const {error}=await sb.from('folha_ferias_ajustes').insert({periodo_id:x.per.periodo_id, tipo:'carga_inicial', saldo_informado:x.saldo, justificativa:x.just});
+    if(error) falhas.push('Linha '+x.n+': '+error.message); else ok++;
+  }
+  await folhaLoad(true);
+  toast(ok+' saldo(s) gravado(s)'+(falhas.length?' · '+falhas.length+' falha(s)':''), falhas.length?'warn':'');
+  if(falhas.length) console.warn(falhas);
+  renderFolhaFerias(); return true;
+}
+/* ---- regras ---- */
+function ferRegraForm(cod){
+  const r=DB.folhaRegras.find(x=>x.codigo===cod); if(!r || !folhaEdita()) return;
+  showModal('Regra '+cod, `
+    <div class="form-group"><label>Descrição</label><input id="frg_desc" value="${escapeHtml(r.descricao)}"></div>
+    <div class="form-group"><label>Fonte *</label><input id="frg_fonte" value="${escapeHtml(r.fonte)}"></div>
+    <div class="grid-2"><div class="form-group"><label>Vigência desde</label><input id="frg_ini" type="date" value="${r.vigencia_inicio||''}"></div><div class="form-group"><label>Vigência até</label><input id="frg_fim" type="date" value="${r.vigencia_fim||''}"></div></div>
+    <div class="form-group"><label>Parâmetros (JSON)</label><input id="frg_par" style="font-family:monospace" value="${escapeHtml(JSON.stringify(r.parametros||{}))}"></div>
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="frg_ativa" style="width:auto" ${r.ativa?'checked':''}> Ativa</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="frg_bloq" style="width:auto" ${r.bloqueia?'checked':''}> Bloquear quando não cumprir (vale só depois de validada)</label>
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px;margin-top:6px"><input type="checkbox" id="frg_valid" style="width:auto" ${r.validado_em?'checked':''}> <b>Validada pelo DP</b> (fonte e parâmetros conferidos)</label>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Mudar descrição, fonte, vigência ou parâmetros tira a validação — confira e valide de novo.</div>
+  `, async function(){
+    let par; try{ par=JSON.parse($('frg_par').value||'{}'); }catch(e){ toast('Parâmetros: JSON inválido.','err'); return false; }
+    const fonte=$('frg_fonte').value.trim(); if(!fonte){ toast('Informe a fonte.','err'); return false; }
+    const mudou = $('frg_desc').value.trim()!==r.descricao || fonte!==r.fonte || ($('frg_ini').value||null)!==(r.vigencia_inicio||null) || ($('frg_fim').value||null)!==(r.vigencia_fim||null) || JSON.stringify(par)!==JSON.stringify(r.parametros||{});
+    const p={descricao:$('frg_desc').value.trim(), fonte, vigencia_inicio:$('frg_ini').value||null, vigencia_fim:$('frg_fim').value||null, parametros:par, ativa:$('frg_ativa').checked, bloqueia:$('frg_bloq').checked};
+    const querValidada=$('frg_valid').checked;
+    if(querValidada && (!r.validado_em || mudou)) p.validado_em=new Date().toISOString();
+    else if(!querValidada) p.validado_em=null;
+    const {error}=await sb.from('folha_regras').update(p).eq('codigo',cod);
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true); toast('Regra gravada.'); renderFolhaFerias(); return true;
+  }, [], false, '', 'Gravar');
+}
+function ferDesdeForm(){
+  const c=DB.folhaCfg.find(x=>x.chave==='ferias_controle_desde')||{};
+  showModal('Controle de férias desde', `
+    <div class="alert info" style="font-size:12px">Entram os períodos cujo concessivo termina nesta data ou depois. Antes disso o sistema não controla (considera resolvido fora).</div>
+    <div class="form-group"><label>Data</label><input id="fds_data" type="date" value="${c.valor||''}"></div>`, async function(){
+    const v=$('fds_data').value; if(!v){ toast('Informe a data.','err'); return false; }
+    const {error}=await sb.from('folha_config').update({valor:v}).eq('chave','ferias_controle_desde');
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await sb.rpc('folha_ferias_gerar',{p_funcionario:null});
+    await folhaLoad(true); renderFolhaFerias(); return true;
+  }, [], false, '', 'Gravar');
 }
 
 /* ============================================================================
@@ -3169,9 +3535,9 @@ async function folhaImportRelatorioExcel(){
 const FOLHA_ACAO_ROT = {abriu_modulo:'Abriu a Folha', abriu_tela:'Abriu a tela', abriu_funcionario:'Abriu a ficha',
   abriu_documento:'Abriu documento', abriu_historico:'Abriu o histórico', exportou:'Exportou', imprimiu:'Imprimiu',
   incluiu:'Incluiu', alterou:'Alterou', excluiu:'Excluiu'};
-const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
+const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_ferias:'Férias', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
   folha_cc:'Centros de custo', folha_sind:'Sindicatos', folha_turnos:'Turnos', folha_acessos:'Acessos', folha_docs:'Documentos'};
-const FOLHA_TAB_ROT = {folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
+const FOLHA_TAB_ROT = {folha_ferias_programacoes:'Férias (programação)', folha_ferias_ajustes:'Férias (ajuste de saldo)', folha_ferias_periodos:'Férias (período)', folha_regras:'Regra trabalhista', folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
   folha_alteracoes:'Histórico', folha_beneficios:'Benefício', folha_centros_custo:'Centro de custo',
   folha_sindicatos:'Sindicato', folha_turnos:'Turno'};
 let _acs = {linhas:[], busca:'', acao:'', dias:30, erro:''};
@@ -3261,7 +3627,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
@@ -3301,14 +3667,14 @@ document.addEventListener('input', function(ev){
    NAVEGAÇÃO — abas no lugar do menu FOLHA INTERNA do Docs
    ============================================================================ */
 function abas(){
-  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],
+  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],
              ['folha_qualidade','Qualidade da base'],['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
   if(PODE.acessos) a.push(['folha_acessos','Acessos']);
   return a;
 }
 const _TELAS = {folha_dash:()=>renderFolhaDash(), folha_func:()=>renderFolhaFunc(), folha_benef:()=>renderFolhaBenef(),
   folha_rel:()=>renderFolhaRel(), folha_cc:()=>renderFolhaCC(), folha_sind:()=>renderFolhaSind(),
-  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_acessos:()=>renderFolhaAcessos()};
+  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_ferias:()=>renderFolhaFerias(), folha_acessos:()=>renderFolhaAcessos()};
 function go(page){
   if(!abas().some(a=>a[0]===page)) page='folha_dash';
   const mudou = currentPage !== page;
