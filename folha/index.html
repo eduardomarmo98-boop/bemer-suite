@@ -211,7 +211,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.20.3';
+var APP_VERSION = '2026.10.20.4';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -222,7 +222,7 @@ function $(id){ return document.getElementById(id); }
 var session = null;            // {id, nome, email} — quem está logado
 var PODE = { ver:false, edita:false, importar:false, exportar:false, acessos:false };
 var currentPage = '';
-var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[], ferSaldos:[], ferProgs:[], ferAjustes:[], folhaRegras:[], vigencias:[], comps:[], compEventos:[],
+var DB = { folhaCC:[], folhaFuncs:[], folhaDeps:[], folhaDocs:[], folhaAlt:[], folhaSind:[], folhaTurnos:[], folhaCfg:[], folhaExcluidos:[], folhaDupDisp:[], folhaExpAcomp:[], ferSaldos:[], ferProgs:[], ferAjustes:[], folhaRegras:[], vigencias:[], comps:[], compEventos:[], rubricas:[], rateios:[],
            empresas:[], funcionarios:[], catalogoFuncoes:[], obras:[] };
 
 $('rodape').textContent = 'BeMer · Folha · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
@@ -629,7 +629,7 @@ let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg, vig, cps, cev] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg, vig, cps, cev, rub, rat] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -657,7 +657,10 @@ async function folhaLoad(force){
       /* E4 (0077): vigências e competências */
       _selTudo(()=>sb.from('folha_vigencias').select('*').order('id')),
       sb.from('folha_competencias').select('*'),
-      _selTudo(()=>sb.from('folha_competencia_eventos').select('*').order('id'))
+      _selTudo(()=>sb.from('folha_competencia_eventos').select('*').order('id')),
+      /* E5 (0078): custos */
+      sb.from('folha_rubricas').select('*'),
+      sb.from('folha_rateios').select('*')
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[];
@@ -682,6 +685,8 @@ async function folhaLoad(force){
     _folhaTemVigencias = !!(vig && !vig.error && cps && !cps.error);
     DB.vigencias = _folhaTemVigencias ? (vig.data||[]) : []; DB.comps = _folhaTemVigencias ? (cps.data||[]) : [];
     DB.compEventos = (_folhaTemVigencias && cev && !cev.error) ? (cev.data||[]) : [];
+    _folhaTemCustos = !!(rub && !rub.error && rat && !rat.error);
+    DB.rubricas = _folhaTemCustos ? (rub.data||[]) : []; DB.rateios = _folhaTemCustos ? (rat.data||[]) : [];
     _folha.loaded = true;
     if(!DB.folhaFuncs.length) _conferirSessao();   // módulo: vazio pode ser 2FA vencido
     return true;
@@ -1985,7 +1990,7 @@ function ferRegraForm(cod){
     else if(!querValidada) p.validado_em=null;
     const {error}=await sb.from('folha_regras').update(p).eq('codigo',cod);
     if(error){ toast('Erro: '+error.message,'err'); return false; }
-    await folhaLoad(true); toast('Regra gravada.'); renderFolhaFerias(); return true;
+    await folhaLoad(true); toast('Regra gravada.'); if(currentPage==='folha_custos'){ await cusCarregar(_cus.comp, true); cusDesenhar(); } else renderFolhaFerias(); return true;
   }, [], false, '', 'Gravar');
 }
 function ferDesdeForm(){
@@ -2114,6 +2119,540 @@ async function compVerFoto(c){
     <div style="overflow:auto;max-height:60vh"><table style="font-size:12px"><thead><tr><th>Nome</th><th>Cargo</th><th>Obra(s) no mês</th><th style="text-align:right">Dias</th><th style="text-align:right">Salário-base</th></tr></thead><tbody>
     ${F.linhas.map(x=>`<tr><td>${escapeHtml(x.nome)}</td><td>${escapeHtml(x.cargo||'')}</td><td>${cc(x)}</td><td style="text-align:right">${x.dias_no_mes}</td><td style="text-align:right">${folhaMoney(x.salario)}</td></tr>`).join('')}
     </tbody><tfoot><tr><td colspan="4"><b>TOTAL (${F.linhas.length})</b></td><td style="text-align:right"><b>${folhaMoney(tot)}</b></td></tr></tfoot></table></div>`, null, [], true, 'lg');
+}
+
+/* ============================================================================
+   LEITOR DO "ESPELHO E RESUMO DA FOLHA MENSAL" (SCI Novo Visual) — E5
+   ----------------------------------------------------------------------------
+   Entrada: as páginas do PDF como o pdf.js entrega ([{itens:[{s,x,y}]}]).
+   Saída: competência, um bloco por pessoa (matrícula, nome, CPF, categoria
+   eSocial, admissão, proventos e descontos com código/descrição/referência/
+   valor, bases e valores de INSS e FGTS, FGTS rescisório), o resumo por
+   rubrica (pág. "PROVENTOS / DESCONTOS" sem referência), o resumo geral e o
+   analítico da GPS (alíquotas do mês — é a FONTE dos encargos).
+   Tudo é conferido: soma das rubricas = "Total de proventos" de cada pessoa;
+   soma das pessoas = resumo por rubrica e resumo geral. Diferença → aviso.
+   Layout conhecido (19/10/2026): proventos x < 300, descontos x ≥ 300.
+   ============================================================================ */
+function sciNum(s){ const t=String(s||'').trim(); if(!/^-?[\d.]+,\d{2,4}%?$/.test(t)) return null; return Number(t.replace('%','').replace(/\./g,'').replace(',','.')); }
+function _sciLinhas(itens){
+  const L=[]; itens.slice().sort((a,b)=>b.y-a.y||a.x-b.x).forEach(i=>{
+    const l=L.find(l=>Math.abs(l.y-i.y)<=1.6); if(l) l.it.push(i); else L.push({y:i.y, it:[i]}); });
+  L.forEach(l=>l.it.sort((a,b)=>a.x-b.x)); return L.sort((a,b)=>b.y-a.y);
+}
+const SCI_MESES={JANEIRO:1,FEVEREIRO:2,'MARÇO':3,MARCO:3,ABRIL:4,MAIO:5,JUNHO:6,JULHO:7,AGOSTO:8,SETEMBRO:9,OUTUBRO:10,NOVEMBRO:11,DEZEMBRO:12};
+function _sciData(s){ const m=/(\d{2})\/(\d{2})\/(\d{4})/.exec(s||''); return m?m[3]+'-'+m[2]+'-'+m[1]:null; }
+/* uma metade da linha (proventos ou descontos) → rubrica ou continuação de descrição */
+function _sciRubrica(its, xCod){
+  if(!its.length) return null;
+  const cod=its[0]; const ehCod=/^\d{1,6}$/.test(cod.s) && cod.x<xCod;
+  const nums=its.filter(i=>sciNum(i.s)!==null || /^\d{1,3}:\d{2}$/.test(i.s));
+  const txt=its.filter(i=>i!==cod && !nums.includes(i)).map(i=>i.s).join(' ').trim();
+  if(!ehCod) return (txt && !nums.length) ? {continua:txt} : null;
+  const vals=nums.filter(i=>sciNum(i.s)!==null);
+  const valor = vals.length ? sciNum(vals[vals.length-1].s) : null;
+  const ref = nums.length>1 ? nums[0].s : (nums.length===1 && valor===null ? nums[0].s : '');
+  return {codigo:cod.s, descricao:txt, referencia:ref, valor};
+}
+function sciParse(paginas){
+  const out={competencia:null, empresa:'', pessoas:[], resumoRubricas:{proventos:[], descontos:[]}, resumo:{}, gps:{}, avisos:[]};
+  let p=null, modo='', basesCols=null, fgtsCols=null;
+  const fechar=()=>{ if(p){ out.pessoas.push(p); p=null; } };
+  paginas.forEach(function(pg){
+    const L=_sciLinhas(pg.itens);
+    const txtPag=pg.itens.map(i=>i.s).join(' ');
+    const ehResumoRub = /PROVENTOS/.test(txtPag) && !/REFERÊNCIA/.test(txtPag) && !/Admissão em/.test(txtPag) && !/Analítico GPS/.test(txtPag);
+    const ehGps = /Analítico GPS/.test(txtPag);
+    L.forEach(function(l, li){
+      const s=l.it.map(i=>i.s).join(' ');
+      let m;
+      if(!out.competencia && (m=/referente ao m[eê]s de ([A-ZÇ]+)\/(\d{4})/.exec(s)) && SCI_MESES[m[1]]) out.competencia=m[2]+'-'+String(SCI_MESES[m[1]]).padStart(2,'0');
+      if(!out.empresa && (m=/^Empresa:\s*(.+)$/.exec(l.it[0].s))) out.empresa=m[1].trim();
+      if(/^(Espelho e resumo|Empresa:|NOME DO COLABORADOR|PROVENTOS|Página:)/.test(l.it[0].s) || /SCI Novo Visual/.test(s)) return;
+      /* ---- analítico GPS ---- */
+      if(ehGps){
+        if(l.it[0].s==='Empregadores' && l.it.some(i=>/%$/.test(i.s))){
+          const pc=l.it.filter(i=>/%$/.test(i.s));
+          const col=x=>{ let best=null; pc.forEach(i=>{ if(best===null || Math.abs(i.x-x)<Math.abs(best.x-x)) best=i; }); return best?sciNum(best.s):null; };
+          out.gps.colaboradores_pct=col(173); out.gps.empregadores_pct=col(230); out.gps.rat_pct=col(376); out.gps.terceiros_pct=col(432);
+        }
+        if((m=/RAT Aplic[aá]vel- >\s*(.+)/.exec(s))) out.gps.rat_texto=m[1].trim();
+        if(/^GPS patronal/.test(l.it[0].s)){ const v=l.it.map(i=>/^([\d.,]+) \(L[ií]quido GPS patronal\)/.exec(i.s)).find(Boolean); if(v) out.gps.patronal_total=sciNum(v[1]); }
+        if(l.it[0].s==='Colaboradores' && l.it.length>3){ out.gps.base_colaboradores=sciNum(l.it[2].s); out.gps.base_empregadores=sciNum(l.it[3].s); }
+        return;
+      }
+      /* ---- resumo por rubrica / resumo geral ---- */
+      if(ehResumoRub){
+        const r1=_sciRubrica(l.it.filter(i=>i.x<300), 60), r2=_sciRubrica(l.it.filter(i=>i.x>=300), 320);
+        if(r1 && r1.codigo) out.resumoRubricas.proventos.push(r1);
+        if(r2 && r2.codigo) out.resumoRubricas.descontos.push(r2);
+        const rot=l.it[0].s;
+        if(['Quantidade','Proventos','Descontos','Base INSS','Base RAT','Valor GFD Mensal 8%','Valor GFD 2%','Total GFD','Base GFD Total'].includes(rot) && l.it.length>=3) out.resumo[rot]=rot==='Quantidade'?Number(l.it[1].s):sciNum(l.it[1].s);
+        if(rot==='Valor mês anterior'){ const i=l.it.findIndex(x=>x.s==='Total GFD'); if(i>=0 && l.it[i+1]) out.resumo['GFD Rescisória']=sciNum(l.it[i+1].s); }
+        return;
+      }
+      /* ---- pessoa ---- */
+      const adm=l.it.find(i=>/^Admissão em/.test(i.s));
+      if(adm){
+        fechar();
+        const viz=L.filter(o=>Math.abs(o.y-l.y)<=3).flatMap(o=>o.it);
+        const mat=viz.find(i=>i.x<75 && /^\d+$/.test(i.s)), nome=viz.find(i=>i.x>=70 && i.x<90 && !/^\d+$/.test(i.s));
+        const sb=viz.findIndex(i=>i.s==='Salário base');
+        p={matricula:mat?mat.s:'', nome:nome?nome.s.trim():'', cpf:'', categoria:'', admissao:_sciData(adm.s), salario_base:sb>=0&&viz[sb+1]?sciNum(viz[sb+1].s):null,
+           funcao:'', situacoes:[], demissao:null, proventos:[], descontos:[], total_proventos:null, total_descontos:null, bases:{}, fgts_rescisorio:null, liquido:null};
+        modo='cab'; return;
+      }
+      if(!p) return;
+      if(Math.abs(l.y - (out._yAdm||0))<=3) return;
+      const s0=l.it[0].s;
+      if(modo==='cab'){
+        if((m=/^CPF:\s*([\d.\-]+)/.exec(s0))){ p.cpf=m[1]; const fu=l.it.find(i=>/^Função:/.test(i.s)); if(fu) p.funcao=fu.s.replace(/^Função:\s*/,''); return; }
+        if((m=/^Categoria eSocial:\s*(\d+)/.exec(s0))){ p.categoria=m[1]; modo='rub'; return; }
+        if(!p.cpf && l.it.length===1 && /^[A-ZÀ-Ü' ]+$/.test(s0)){ p.nome+=' '+s0.trim(); return; }
+        return;
+      }
+      if(modo==='rub'){
+        if(/^Total de proventos/.test(s0)){
+          p.total_proventos=sciNum((l.it.find((i,k)=>k>0 && i.x<300)||{}).s);
+          const td=l.it.findIndex(i=>/^Total de descontos/.test(i.s)); if(td>=0 && l.it[td+1]) p.total_descontos=sciNum(l.it[td+1].s);
+          modo='pos'; return;
+        }
+        if(l.it.length===1 && l.it[0].x>=60 && l.it[0].x<90 && /^(Demitido|Doen|Acidente|Afast|Licen|Matern|Férias|Aviso|Inicio)/.test(s0) ){
+          p.situacoes.push(s0); if((m=/^Demitido em (\d{2}\/\d{2}\/\d{4})/.exec(s0))) p.demissao=_sciData(m[1]); return;
+        }
+        const esq=l.it.filter(i=>i.x<300), dir=l.it.filter(i=>i.x>=300);
+        const r1=_sciRubrica(esq, 60), r2=_sciRubrica(dir, 322);
+        if(r1){ if(r1.codigo) p.proventos.push(r1); else if(r1.continua && p.proventos.length) p.proventos[p.proventos.length-1].descricao+=' '+r1.continua; }
+        if(r2){ if(r2.codigo) p.descontos.push(r2); else if(r2.continua && p.descontos.length) p.descontos[p.descontos.length-1].descricao+=' '+r2.continua; }
+        return;
+      }
+      if(modo==='pos'){
+        if(/^Base INSS/.test(s0)){ basesCols=l.it.map(i=>({x:i.x, rot:i.s})); return; }
+        if(/^Mês anterior/.test(s0)){ fgtsCols=l.it.map(i=>({x:i.x, rot:i.s})); return; }
+        const rotLinha=s0.trim();
+        if(['Folha','13º','Total','Férias'].includes(rotLinha) && basesCols){
+          const r={}; l.it.slice(1).forEach(i=>{ const v=sciNum(i.s); if(v===null) return; let best=null;
+            basesCols.forEach(c=>{ if(best===null || Math.abs(c.x+8-i.x)<Math.abs(best.x+8-i.x)) best=c; }); if(best) r[best.rot]=v; });
+          p.bases[rotLinha]=r;
+          const lq=l.it.findIndex(i=>/^Líquido/.test(i.s)); if(lq>=0 && l.it[lq+1]) p.liquido=sciNum(l.it[lq+1].s);
+          return;
+        }
+        if(/^Líquido/.test(s0) || l.it.some(i=>/^Líquido/.test(i.s))){ const lq=l.it.findIndex(i=>/^Líquido/.test(i.s)); if(l.it[lq+1] && p.liquido===null) p.liquido=sciNum(l.it[lq+1].s); return; }
+        if(rotLinha==='FGTS' && fgtsCols){ const ult=l.it[l.it.length-1]; p.fgts_rescisorio=sciNum(ult.s); return; }
+        return;
+      }
+    });
+  });
+  fechar();
+  /* conferências */
+  const soma=a=>Math.round(a.reduce((x,y)=>x+(Number(y)||0),0)*100)/100;
+  out.pessoas.forEach(function(p){
+    const b=p.bases.Total||p.bases.Folha||{};
+    p.base_inss=b['Base INSS']||0; p.base_fgts=b['Base FGTS']||0; p.valor_fgts=b['Valor FGTS']||0;
+    const sp=soma(p.proventos.map(r=>r.valor));
+    if(p.total_proventos!==null && Math.abs(sp-p.total_proventos)>0.011) out.avisos.push(p.nome+': soma das rubricas '+sp.toFixed(2)+' ≠ total de proventos '+p.total_proventos.toFixed(2));
+    if(!p.cpf && p.categoria!=='722') out.avisos.push(p.nome+': sem CPF no espelho');
+  });
+  const totP=soma(out.pessoas.map(p=>p.total_proventos));
+  out.conferencia={pessoas:out.pessoas.length, proventos:totP, resumo_proventos:out.resumo.Proventos||null,
+    base_inss:soma(out.pessoas.filter(p=>p.categoria!=='722').map(p=>p.base_inss)), fgts:soma(out.pessoas.map(p=>p.fgts_rescisorio!==null?0:p.valor_fgts))};
+  if(out.resumo.Quantidade && out.resumo.Quantidade!==out.pessoas.length) out.avisos.push('Resumo diz '+out.resumo.Quantidade+' pessoas; li '+out.pessoas.length);
+  if(out.resumo.Proventos && Math.abs(totP-out.resumo.Proventos)>0.011) out.avisos.push('Proventos: soma das pessoas '+totP.toFixed(2)+' ≠ resumo '+out.resumo.Proventos.toFixed(2));
+  /* rubrica a rubrica contra o resumo */
+  const porCod={}; out.pessoas.forEach(p=>p.proventos.forEach(r=>{ porCod[r.codigo]=(porCod[r.codigo]||0)+(r.valor||0); }));
+  out.resumoRubricas.proventos.forEach(r=>{ const v=Math.round((porCod[r.codigo]||0)*100)/100; if(r.valor!==null && Math.abs(v-r.valor)>0.011) out.avisos.push('Rubrica '+r.codigo+' '+r.descricao+': pessoas '+v.toFixed(2)+' ≠ resumo '+r.valor.toFixed(2)); });
+  if(!out.gps.colaboradores_pct) out.avisos.push('Não achei as alíquotas no analítico da GPS');
+  return out;
+}
+
+/* ============================================================================
+   CUSTOS POR COMPETÊNCIA (E5, 20/10/2026, 0078)
+   ----------------------------------------------------------------------------
+   Fontes: espelho do SCI (PDF), planilha de horas da quinzena (XLS, pago fora
+   da folha) e a tela de Benefícios. O banco guarda cada valor com a origem e a
+   memória (folha_lancamentos), distribui entre obras (rateio manual > regra
+   CUSTO_RATEIO validada > obra do fim do mês) e, ao fechar a competência,
+   guarda a foto. Mesmo arquivo não entra duas vezes; arquivo novo substitui.
+   ============================================================================ */
+let _folhaTemCustos = false;
+let _cus = {comp:'', aba:'obra', linhas:[], fonte:'', carregado:'', imp:null, he:null};
+const CUS_GRUPO = {remuneracao:'Remuneração', encargo:'Encargos', beneficio:'Benefícios', fora_folha:'Fora da folha (planilha)', informativo:'Informativo (não é custo)', desconto:'Desconto (não é custo)'};
+const CUS_CUSTO = ['remuneracao','encargo','beneficio','fora_folha'];
+const CUS_NAT = {realizado:'Realizado', provisao:'Provisão', previsao:'Previsão'};
+function cusDinheiro(n){ return folhaMoney(n); }
+async function cusCarregar(comp, forca){
+  if(!forca && _cus.carregado===comp) return;
+  const r=await sb.rpc('folha_custos',{p_comp:comp});
+  _cus.linhas = (r && !r.error) ? (r.data||[]) : [];
+  _cus.fonte = _cus.linhas.length ? _cus.linhas[0].fonte : '';
+  _cus.carregado = comp;
+  const im=await sb.from('folha_importacoes').select('*').eq('competencia',comp).order('id');
+  _cus.importacoes = (im && !im.error) ? (im.data||[]) : [];
+}
+/* previsão (não gravada): competência sem espelho importado → salário-base pelas vigências */
+function cusPrevisao(comp){
+  if(_cus.importacoes && _cus.importacoes.some(i=>i.tipo==='folha_sci' && i.status==='ativa')) return [];
+  return compLinhas(comp).map(x=>({lancamento_ref:'PREV:'+x.funcionario_id, funcionario_id:x.funcionario_id, nome:x.nome, centro_custo_id:x.centro_custo_id,
+    grupo:'remuneracao', componente:'Salário-base (previsão)', natureza:'previsao', origem:'vigencias', valor_total:x.salario, fracao:1, valor:x.salario,
+    criterio:'obra do fim do mês', memoria:'salário-base vigente no fim do mês (sem espelho importado)'}));
+}
+function cusSoma(L, fn){ return Math.round(L.filter(fn||(()=>true)).reduce((a,x)=>a+Number(x.valor||0),0)*100)/100; }
+
+async function renderFolhaCustos(){
+  if(!folhaPode()){ $('main').innerHTML='<div class="empty">Sem permissão.</div>'; return; }
+  const ok=await folhaLoad(); if(!ok){ $('main').innerHTML='<div class="empty">Folha Interna indisponível.</div>'; return; }
+  if(!_folhaTemCustos){ $('main').innerHTML='<div class="empty">Rode a <b>0078_folha_custos.sql</b> no Supabase e recarregue.</div>'; return; }
+  if(!_cus.comp){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); _cus.comp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  $('main').innerHTML='<div class="empty">Carregando custos…</div>';
+  await cusCarregar(_cus.comp, true);
+  cusDesenhar();
+}
+function cusDesenhar(){
+  const comp=_cus.comp, st=compStatus(comp);
+  const prev=cusPrevisao(comp);
+  const L=_cus.linhas.concat(prev);
+  const custo=L.filter(x=>CUS_CUSTO.includes(x.grupo));
+  const card=(label,val,cor)=>`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);flex:1;min-width:150px"><div style="font-size:12px;color:var(--muted)">${label}</div><div style="font-size:19px;font-weight:800;color:${cor||'var(--bm-blue)'}">${val}</div></div>`;
+  const imp=t=>(_cus.importacoes||[]).filter(i=>i.tipo===t && i.status==='ativa')[0];
+  const isci=imp('folha_sci'), ihe=imp('planilha_he');
+  const naoAprov=DB.rubricas.filter(r=>!r.aprovado_em && _cus.linhas.some(x=>x.rubrica===r.codigo)).length;
+  const abaBtn=(k,l)=>`<button class="btn btn-sm ${_cus.aba===k?'btn-primary':'btn-secondary'}" onclick="_cus.aba='${k}';cusDesenhar()">${l}</button>`;
+  const impHtml=(i,rot)=>i?`<div style="font-size:12px">✔ <b>${rot}</b>: ${escapeHtml(i.arquivo)} · ${escapeHtml(i.por_nome||'')} · ${new Date(i.em).toLocaleString('pt-BR')}${(_cus.importacoes||[]).filter(x=>x.tipo===i.tipo && x.status==='substituida').length?' · substituiu '+(_cus.importacoes||[]).filter(x=>x.tipo===i.tipo && x.status==='substituida').length+' anterior(es)':''}${i.avisos?'<div style="color:#92400e">'+escapeHtml(i.avisos)+'</div>':''}</div>`:`<div style="font-size:12px;color:var(--muted)">— ${rot}: não importado</div>`;
+  $('main').innerHTML=`
+    <div class="page-header"><div><div class="page-title">💵 Custos por competência</div><div class="page-sub">${fopagCompLabel(comp)} · ${COMP_STATUS[st]} · ${escapeHtml(prev.length?'previsão pelas vigências (sem espelho importado)':_cus.fonte||'sem lançamentos')}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <input type="month" value="${comp}" onchange="_cus.comp=this.value;renderFolhaCustos()">
+        ${(PODE.importar && st!=='fechada')?`<button class="btn btn-primary btn-sm" onclick="cusImportarSciForm()">⬆️ Espelho da folha (PDF SCI)</button><button class="btn btn-secondary btn-sm" onclick="cusImportarHeForm()">⬆️ Planilha de horas (XLS)</button>`:''}
+        ${PODE.exportar?'<button class="btn btn-secondary btn-sm" onclick="cusExcel()">📊 Excel</button>':''}
+      </div></div>
+    <div class="card" style="margin-bottom:10px">${impHtml(isci,'Espelho da folha (SCI)')}${impHtml(ihe,'Planilha de horas')}${naoAprov?`<div style="font-size:12px;color:#b45309;margin-top:4px">⚠️ ${naoAprov} rubrica(s) ainda não aprovada(s) pelo DP — veja a aba Rubricas.</div>`:''}${st==='fechada'?'<div style="font-size:12px;margin-top:4px">🔒 Competência fechada: valores da foto do fechamento.</div>':''}</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      ${card('Remuneração', cusDinheiro(cusSoma(L,x=>x.grupo==='remuneracao' && x.natureza!=='provisao')))}
+      ${card('Encargos', cusDinheiro(cusSoma(L,x=>x.grupo==='encargo' && x.natureza!=='provisao')))}
+      ${card('Benefícios', cusDinheiro(cusSoma(L,x=>x.grupo==='beneficio')))}
+      ${card('Fora da folha', cusDinheiro(cusSoma(L,x=>x.grupo==='fora_folha')), '#b45309')}
+      ${card('Provisões', cusDinheiro(cusSoma(L,x=>x.natureza==='provisao')), 'var(--muted)')}
+      ${card('Total do custo', cusDinheiro(cusSoma(custo)), '#0f766e')}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${abaBtn('obra','Por obra')}${abaBtn('func','Por funcionário')}${abaBtn('rubricas','Rubricas')}${abaBtn('regras','Regras de custo')}</div>
+    <div id="cus_corpo"></div>`;
+  ({obra:cusPorObra, func:cusPorFunc, rubricas:cusRubricas, regras:cusRegras}[_cus.aba]||cusPorObra)(L);
+}
+function cusPorObra(L){
+  const custo=L.filter(x=>CUS_CUSTO.includes(x.grupo));
+  const obras={}; custo.forEach(x=>{ const k=x.centro_custo_id==null?'':String(x.centro_custo_id); const o=(obras[k]=obras[k]||{tot:0,g:{}}); o.tot+=Number(x.valor); o.g[x.grupo]=(o.g[x.grupo]||0)+Number(x.valor); });
+  const ks=Object.keys(obras).sort((a,b)=>(folhaCCNome(Number(a))||'zz').localeCompare(folhaCCNome(Number(b))||'zz'));
+  const tot=cusSoma(custo);
+  $('cus_corpo').innerHTML=`<div class="card" style="overflow-x:auto"><table><thead><tr><th>Obra (centro de custo)</th>${CUS_CUSTO.map(g=>`<th style="text-align:right">${CUS_GRUPO[g]}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>
+    ${ks.map(k=>`<tr><td><b>${escapeHtml(k?folhaCCNome(Number(k))||'#'+k:'(sem obra)')}</b></td>${CUS_CUSTO.map(g=>`<td style="text-align:right">${obras[k].g[g]?cusDinheiro(obras[k].g[g]):''}</td>`).join('')}<td style="text-align:right;font-weight:700">${cusDinheiro(obras[k].tot)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Nada nesta competência.</td></tr>'}
+    </tbody><tfoot><tr><td><b>TOTAL</b></td>${CUS_CUSTO.map(g=>`<td style="text-align:right"><b>${cusDinheiro(cusSoma(custo,x=>x.grupo===g))}</b></td>`).join('')}<td style="text-align:right"><b>${cusDinheiro(tot)}</b></td></tr></tfoot></table>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">O total é a soma de ${custo.length} lançamento(s) rateado(s) — abra "Por funcionário" para ver a origem e a memória de cada um.</div></div>`;
+}
+function cusPorFunc(L){
+  const por={}; L.forEach(x=>{ const k=x.funcionario_id==null?'n:'+x.nome:'f:'+x.funcionario_id; (por[k]=por[k]||{nome:x.nome, fid:x.funcionario_id, L:[]}).L.push(x); });
+  const linhas=Object.values(por).sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  $('cus_corpo').innerHTML=`<div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Custo</th><th style="text-align:right">Fora da folha</th><th>Obras</th><th></th></tr></thead><tbody>
+    ${linhas.map((p,i)=>{ const c=cusSoma(p.L,x=>CUS_CUSTO.includes(x.grupo)); const obras=[...new Set(p.L.map(x=>x.centro_custo_id==null?'(sem obra)':(folhaCCNome(x.centro_custo_id)||'#'+x.centro_custo_id)))];
+      return `<tr><td><b>${escapeHtml(p.nome||'')}</b>${p.fid==null?' <span class="status warn" style="font-size:10px">sem cadastro</span>':''}</td><td style="text-align:right;font-weight:700">${cusDinheiro(c)}</td><td style="text-align:right">${cusSoma(p.L,x=>x.grupo==='fora_folha')?cusDinheiro(cusSoma(p.L,x=>x.grupo==='fora_folha')):''}</td><td style="font-size:12px">${escapeHtml(obras.join(', '))}</td>
+      <td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="cusDetalhe(${i})">Detalhar</button>${(p.fid!=null && folhaEdita() && compStatus(_cus.comp)!=='fechada')?` <button class="btn btn-secondary btn-sm" onclick="cusRateioForm(${p.fid})">Rateio</button>`:''}</td></tr>`; }).join('')||'<tr><td colspan="5" class="empty">Nada nesta competência.</td></tr>'}
+    </tbody></table></div>`;
+  _cus._porFunc=linhas;
+}
+function cusDetalhe(i){
+  const p=(_cus._porFunc||[])[i]; if(!p) return;
+  const L=p.L.slice().sort((a,b)=>(CUS_CUSTO.indexOf(a.grupo)+10*!CUS_CUSTO.includes(a.grupo))-(CUS_CUSTO.indexOf(b.grupo)+10*!CUS_CUSTO.includes(b.grupo))||String(a.componente).localeCompare(String(b.componente)));
+  showModal('Custos — '+(p.nome||'')+' · '+fopagCompLabel(_cus.comp), `
+    <div style="overflow:auto;max-height:62vh"><table style="font-size:12px"><thead><tr><th>Grupo</th><th>Componente</th><th>Natureza</th><th>Obra</th><th style="text-align:right">Parte</th><th style="text-align:right">Valor</th><th>Origem e memória</th></tr></thead><tbody>
+    ${L.map(x=>`<tr style="${CUS_CUSTO.includes(x.grupo)?'':'color:var(--muted)'}"><td>${escapeHtml(CUS_GRUPO[x.grupo]||x.grupo)}</td><td>${escapeHtml(x.componente)}</td><td>${CUS_NAT[x.natureza]||x.natureza}</td>
+      <td>${escapeHtml(x.centro_custo_id==null?'(sem obra)':folhaCCNome(x.centro_custo_id)||'')}</td><td style="text-align:right">${Number(x.fracao)<1?(Number(x.fracao)*100).toFixed(2).replace('.',',')+'%':''}</td>
+      <td style="text-align:right">${cusDinheiro(x.valor)}</td><td>${escapeHtml(({folha_sci:'espelho SCI',planilha_he:'planilha de horas',beneficios:'tela de Benefícios',calculo:'cálculo',vigencias:'vigências'}[x.origem]||x.origem))}${x.memoria?' · '+escapeHtml(x.memoria):''}<div style="color:var(--muted)">${escapeHtml(x.criterio||'')}</div></td></tr>`).join('')}
+    </tbody><tfoot><tr><td colspan="5"><b>Custo (sem informativos/descontos)</b></td><td style="text-align:right"><b>${cusDinheiro(cusSoma(L,x=>CUS_CUSTO.includes(x.grupo)))}</b></td><td></td></tr></tfoot></table></div>`, null, [], true, 'lg');
+}
+function cusRubricas(){
+  const usadas=new Set(_cus.linhas.map(x=>x.rubrica).filter(Boolean));
+  const R=DB.rubricas.slice().sort((a,b)=>(usadas.has(b.codigo)-usadas.has(a.codigo))||(!!a.aprovado_em-!!b.aprovado_em)||Number(a.codigo)-Number(b.codigo));
+  const pend=R.filter(r=>!r.aprovado_em).length;
+  $('cus_corpo').innerHTML=`<div class="alert info" style="font-size:12px;line-height:1.5">Só <b>Remuneração</b> entra no custo. Benefício pago pela folha não entra: o custo de benefício vem da tela de Benefícios (não conta duas vezes). O sistema sugere; o DP aprova. Mudar a classificação vale para as competências abertas — mês fechado não muda.</div>
+    ${(folhaEdita() && pend)?`<button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="cusRubricasAprovarTodas()">Aprovar as ${pend} sugestões como estão</button>`:''}
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Código</th><th>Rubrica</th><th>Tipo</th><th>Grupo</th><th>Situação</th></tr></thead><tbody>
+    ${R.map(r=>`<tr><td>${escapeHtml(r.codigo)}</td><td>${escapeHtml(r.descricao)}${usadas.has(r.codigo)?'':' <span style="font-size:10px;color:var(--muted)">(não usada neste mês)</span>'}</td><td>${r.tipo}</td>
+      <td>${folhaEdita()?`<select onchange="cusRubricaSalvar('${escapeHtml(r.codigo)}', this.value)">${Object.keys(CUS_GRUPO).filter(g=>!['encargo','fora_folha'].includes(g)).map(g=>`<option value="${g}" ${r.grupo===g?'selected':''}>${CUS_GRUPO[g]}</option>`).join('')}</select>`:escapeHtml(CUS_GRUPO[r.grupo]||r.grupo)}</td>
+      <td style="font-size:12px">${r.aprovado_em?'<span class="status ok">Aprovada</span> '+escapeHtml(r.aprovado_por_nome||''):'<span class="status warn">Sugestão</span>'+(folhaEdita()?` <button class="btn btn-secondary btn-sm" onclick="cusRubricaSalvar('${escapeHtml(r.codigo)}', null)">Aprovar</button>`:'')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhuma rubrica — importe um espelho da folha.</td></tr>'}
+    </tbody></table></div>`;
+}
+async function cusRubricaSalvar(cod, grupo){
+  const r=DB.rubricas.find(x=>x.codigo===cod); if(!r) return;
+  const p={aprovado_em:new Date().toISOString()}; if(grupo) p.grupo=grupo;
+  const {error}=await sb.from('folha_rubricas').update(p).eq('codigo',cod);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  await folhaLoad(true); await cusCarregar(_cus.comp, true); cusDesenhar(); toast('Rubrica '+cod+': '+(CUS_GRUPO[grupo||r.grupo])+' (aprovada).');
+}
+async function cusRubricasAprovarTodas(){
+  const pend=DB.rubricas.filter(r=>!r.aprovado_em); if(!pend.length) return;
+  if(!confirm('Aprovar '+pend.length+' rubrica(s) com a classificação sugerida?')) return;
+  for(const r of pend){ const {error}=await sb.from('folha_rubricas').update({aprovado_em:new Date().toISOString()}).eq('codigo',r.codigo); if(error){ toast('Erro em '+r.codigo+': '+error.message,'err'); break; } }
+  await folhaLoad(true); await cusCarregar(_cus.comp, true); cusDesenhar();
+}
+function cusRegras(){
+  $('cus_corpo').innerHTML=`<div class="alert info" style="font-size:12px;line-height:1.5">Regras de custo com fonte. Sem validação do DP/contabilidade: o rateio fica na obra do último dia do mês e as provisões não são calculadas. Encargos usam as alíquotas do analítico GPS importado (fonte: o próprio espelho).</div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Regra</th><th>Fonte</th><th>Parâmetros</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${DB.folhaRegras.filter(r=>r.modulo==='custos').map(r=>`<tr><td><b>${escapeHtml(r.codigo)}</b><div style="font-size:12px">${escapeHtml(r.descricao)}</div></td><td style="font-size:12px">${escapeHtml(r.fonte)}</td><td style="font-size:11px;font-family:monospace">${escapeHtml(JSON.stringify(r.parametros||{}))}</td>
+      <td style="font-size:12px">${r.validado_em?'<span class="status ok">Validada</span> '+escapeHtml(r.validado_por_nome||''):'<span class="status warn">Aguardando validação</span>'}</td><td>${folhaEdita()?`<button class="btn btn-secondary btn-sm" onclick="ferRegraForm('${r.codigo}')">Editar / validar</button>`:''}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+/* ---- rateio manual ---- */
+function cusRateioForm(fid){
+  const f=ferFunc(fid)||{};
+  const atuais=(DB.rateios||[]).filter(r=>r.competencia===_cus.comp && r.funcionario_id===fid);
+  const partes = atuais.length ? atuais.map(r=>({cc:r.centro_custo_id, p:Number(r.percentual)})) : [{cc:f.centro_custo_id||'', p:100}];
+  _cus.rateio={fid, partes, motivo:atuais.length?atuais[0].motivo:''};
+  showModal('Rateio de '+(f.nome||'')+' em '+fopagCompLabel(_cus.comp), `<div id="crt_box"></div>`, async function(){
+    const R=_cus.rateio; const soma=R.partes.reduce((a,x)=>a+(Number(x.p)||0),0);
+    if(R.partes.some(x=>!x.cc)){ toast('Escolha a obra de cada parte.','err'); return false; }
+    if(Math.abs(soma-100)>0.0001){ toast('O rateio soma '+soma.toFixed(4).replace('.',',')+'% — tem de fechar 100%.','err'); return false; }
+    if(!String($('crt_motivo').value||'').trim()){ toast('Informe o critério (motivo).','err'); return false; }
+    const {error}=await sb.rpc('folha_rateio_definir',{p_comp:_cus.comp, p_fid:fid, p_partes:R.partes.map(x=>({centro_custo_id:Number(x.cc), percentual:Number(x.p)})), p_motivo:$('crt_motivo').value.trim()});
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true); await cusCarregar(_cus.comp, true); cusDesenhar(); toast('Rateio gravado.'); return true;
+  }, atuais.length?[{label:'Voltar ao critério padrão', fn:async()=>{ const {error}=await sb.rpc('folha_rateio_definir',{p_comp:_cus.comp, p_fid:fid, p_partes:[], p_motivo:''}); if(error){ toast('Erro: '+error.message,'err'); return; } closeModal(); await folhaLoad(true); await cusCarregar(_cus.comp,true); cusDesenhar(); }}]:[], false, '', 'Gravar rateio');
+  cusRateioDesenhar();
+}
+function cusRateioDesenhar(){
+  const R=_cus.rateio; const soma=R.partes.reduce((a,x)=>a+(Number(x.p)||0),0);
+  $('crt_box').innerHTML=`<div class="alert info" style="font-size:12px">Divide TODO o custo da folha desta pessoa no mês (salário, encargos, benefícios sem obra). Hora extra da planilha fica na obra informada lá. O total tem de fechar 100%.</div>
+    ${R.partes.map((x,i)=>`<div style="display:flex;gap:6px;margin-bottom:6px"><select style="flex:1" onchange="_cus.rateio.partes[${i}].cc=this.value"><option value="">— obra —</option>${DB.folhaCC.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}" ${String(x.cc)===String(c.id)?'selected':''}>${escapeHtml(c.nome)}</option>`).join('')}</select>
+      <input type="number" step="0.0001" min="0" max="100" style="width:110px" value="${x.p}" oninput="_cus.rateio.partes[${i}].p=this.value;$('crt_soma').textContent=_cus.rateio.partes.reduce((a,y)=>a+(Number(y.p)||0),0).toFixed(4).replace('.',',')+'%'"> %
+      <button type="button" class="btn btn-secondary btn-sm" onclick="_cus.rateio.partes.splice(${i},1);cusRateioDesenhar()">✕</button></div>`).join('')}
+    <button type="button" class="btn btn-secondary btn-sm" onclick="_cus.rateio.partes.push({cc:'',p:0});cusRateioDesenhar()">+ obra</button>
+    <div style="margin:8px 0;font-size:13px">Soma: <b id="crt_soma">${soma.toFixed(4).replace('.',',')}%</b></div>
+    <div class="form-group"><label>Critério / motivo *</label><input id="crt_motivo" maxlength="200" value="${escapeHtml(R.motivo||'')}" placeholder="ex.: dias trabalhados em cada obra conforme apontamento"></div>`;
+}
+
+/* ---- importar o espelho do SCI ---- */
+function cusImportarSciForm(){
+  if(!PODE.importar){ toast('Importar não está liberado para o seu perfil.','warn'); return; }
+  showModal('Importar espelho da folha (SCI)', `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Use o PDF "Espelho e resumo da folha mensal" do SCI. O sistema lê as rubricas de cada pessoa, as bases, o FGTS e as alíquotas do analítico da GPS, confere com os totais do próprio PDF e mostra a prévia. <b>Nada é gravado antes de você confirmar.</b> O mesmo arquivo não entra duas vezes; um arquivo novo da mesma competência substitui o anterior.</div>
+    <div class="form-group"><label>Arquivo PDF</label><input id="csi_arq" type="file" accept="application/pdf"></div><div id="csi_st" style="font-size:13px;color:var(--muted)"></div>`, ()=>cusLerSci(), [], false, '', 'Ler e conferir');
+}
+async function _cusHash(buf){ const h=await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+async function cusLerSci(){
+  const arq=$('csi_arq') && $('csi_arq').files[0]; if(!arq){ toast('Selecione o PDF.','err'); return false; }
+  $('csi_st').textContent='Lendo o PDF…';
+  try{
+    await libPdfJs();
+    const buf=await arq.arrayBuffer(); const hash=await _cusHash(buf.slice(0));
+    const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise; const pags=[];
+    for(let p=1;p<=doc.numPages;p++){ const pg=await doc.getPage(p); const tc=await pg.getTextContent();
+      pags.push({itens:tc.items.filter(i=>i.str && i.str.trim()).map(i=>({s:i.str, x:Math.round(i.transform[4]*10)/10, y:Math.round(i.transform[5]*10)/10}))}); }
+    const r=sciParse(pags);
+    _cus.imp=cusSciMontar(r, arq.name, hash);
+    cusSciPrevia(); return false;
+  }catch(e){ console.error(e); $('csi_st').textContent=''; toast('Não consegui ler o PDF: '+(e.message||e),'err'); return false; }
+}
+function cusSugerirGrupo(tipo, desc){
+  if(tipo==='desconto') return 'desconto';
+  if(/^(Situação|Estouro)/i.test(desc||'')) return 'informativo';
+  return 'remuneracao';
+}
+/* vínculo de cada pessoa do espelho: pelo CPF; entre vínculos da mesma pessoa, o do mês */
+function cusVinculoDoCpf(cpf, comp){
+  const c=_soDig(cpf); if(c.length!==11) return null;
+  const ini=comp+'-01', fim=compFimMes(comp);
+  const V=DB.folhaFuncs.filter(f=>_soDig(f.cpf)===c);
+  return V.find(f=>f.data_admissao && f.data_admissao<=fim && (!f.data_demissao || f.data_demissao>=ini)) || V.find(f=>f.ativo!==false) || V[0] || null;
+}
+function cusSciMontar(r, arquivo, hash){
+  const g=r.gps||{}, comp=r.competencia;
+  const pctColab=(g.colaboradores_pct||0)+(g.rat_pct||0)+(g.terceiros_pct||0);
+  const rubDB={}; DB.rubricas.forEach(x=>rubDB[x.codigo]=x);
+  const rubNovas={}; const linhas=[]; const semVinc=[];
+  r.pessoas.forEach(function(p){
+    const v=cusVinculoDoCpf(p.cpf, comp);
+    if(!v) semVinc.push(p);
+    const base={funcionario_id:v?v.id:null, ref_origem:p.matricula, nome:v?v.nome:p.nome};
+    p.proventos.forEach(function(x){
+      const ex=rubDB[x.codigo]; const grupo=ex?ex.grupo:cusSugerirGrupo('provento', x.descricao);
+      if(!ex && !rubNovas[x.codigo]) rubNovas[x.codigo]={codigo:x.codigo, descricao:x.descricao, tipo:'provento', grupo};
+      linhas.push(Object.assign({}, base, {grupo, rubrica:x.codigo, componente:x.codigo+' '+x.descricao, valor:x.valor||0, memoria:'espelho SCI'+(x.referencia?': referência '+x.referencia:'')}));
+    });
+    p.descontos.forEach(function(x){ if(!rubDB[x.codigo] && !rubNovas[x.codigo]) rubNovas[x.codigo]={codigo:x.codigo, descricao:x.descricao, tipo:'desconto', grupo:'desconto'}; });
+    const socio=p.categoria==='722';
+    const pct=socio?(g.empregadores_pct||0):pctColab;
+    const inss=Math.round(p.base_inss*pct)/100;
+    if(inss) linhas.push(Object.assign({}, base, {grupo:'encargo', componente:'INSS patronal', valor:inss,
+      memoria:'base INSS '+cusDinheiro(p.base_inss)+' × '+String(pct).replace('.',',')+'% ('+(socio?'contribuinte individual: '+g.empregadores_pct+'%':'empresa '+g.colaboradores_pct+'% + RAT '+g.rat_pct+'% + terceiros '+g.terceiros_pct+'%')+' — analítico GPS do espelho)'}));
+    const fg=p.fgts_rescisorio!==null ? p.fgts_rescisorio : p.valor_fgts;
+    if(fg) linhas.push(Object.assign({}, base, {grupo:'encargo', componente:p.fgts_rescisorio!==null?'FGTS rescisório (GFD, inclui multa)':'FGTS', valor:fg, memoria:p.fgts_rescisorio!==null?'GFD rescisória do espelho':'valor FGTS do espelho (base '+cusDinheiro(p.base_fgts)+')'}));
+  });
+  const inssTot=Math.round(linhas.filter(x=>x.componente==='INSS patronal').reduce((a,x)=>a+x.valor,0)*100)/100;
+  const avisos=r.avisos.slice();
+  if(g.patronal_total!=null && Math.abs(inssTot-g.patronal_total)>1) avisos.push('INSS patronal calculado '+cusDinheiro(inssTot)+' ≠ GPS patronal '+cusDinheiro(g.patronal_total));
+  if(semVinc.length) avisos.push(semVinc.length+' pessoa(s) sem vínculo no cadastro (entram como "sem cadastro"): '+semVinc.map(p=>p.nome).join(', '));
+  return {comp, arquivo, hash, r, linhas, rubricas:Object.values(rubNovas), semVinc, inssTot, avisos,
+    parametros:{colaboradores_pct:g.colaboradores_pct, empregadores_pct:g.empregadores_pct, rat_pct:g.rat_pct, terceiros_pct:g.terceiros_pct, rat_texto:g.rat_texto||'', fonte:'Analítico GPS do espelho SCI ('+arquivo+')'},
+    conferencia:{pessoas:r.pessoas.length, proventos:r.conferencia.proventos, resumo_proventos:r.resumo.Proventos||null, inss_patronal:inssTot, gps_patronal:g.patronal_total||null,
+      fgts_mensal:r.conferencia.fgts, gfd_mensal:(r.resumo['Valor GFD Mensal 8%']||0)+(r.resumo['Valor GFD 2%']||0), gfd_rescisoria:r.resumo['GFD Rescisória']||null}};
+}
+function cusSciPrevia(){
+  const I=_cus.imp; const c=I.conferencia; const ok=(a,b)=>b==null?'—':(Math.abs(a-b)<=1?'<span style="color:#166534">✔</span>':'<span style="color:#b91c1c">✖</span>');
+  const custo=Math.round(I.linhas.filter(x=>CUS_CUSTO.includes(x.grupo)).reduce((a,x)=>a+x.valor,0)*100)/100;
+  const outraComp = I.comp && I.comp!==_cus.comp;
+  showModal('Prévia do espelho — nada gravado ainda', `
+    <div style="font-size:13px;margin-bottom:8px">Arquivo <b>${escapeHtml(I.arquivo)}</b> · competência no PDF: <b>${I.comp?fopagCompLabel(I.comp):'não achei'}</b>${outraComp?' <span style="color:#b45309">(diferente da escolhida na tela — vale a do PDF)</span>':''}</div>
+    <table style="font-size:13px"><tbody>
+      <tr><td>Pessoas</td><td style="text-align:right">${c.pessoas}</td><td></td></tr>
+      <tr><td>Proventos (soma das pessoas × resumo do PDF)</td><td style="text-align:right">${cusDinheiro(c.proventos)} × ${c.resumo_proventos!=null?cusDinheiro(c.resumo_proventos):'—'}</td><td>${ok(c.proventos,c.resumo_proventos)}</td></tr>
+      <tr><td>INSS patronal (calculado × GPS patronal)</td><td style="text-align:right">${cusDinheiro(c.inss_patronal)} × ${c.gps_patronal!=null?cusDinheiro(c.gps_patronal):'—'}</td><td>${ok(c.inss_patronal,c.gps_patronal)}</td></tr>
+      <tr><td>FGTS mensal (pessoas × resumo)</td><td style="text-align:right">${cusDinheiro(c.fgts_mensal)} × ${cusDinheiro(c.gfd_mensal)}</td><td>${ok(c.fgts_mensal,c.gfd_mensal)}</td></tr>
+      <tr><td>Alíquotas (analítico GPS)</td><td colspan="2" style="text-align:right">empresa ${I.parametros.colaboradores_pct}% · RAT ${I.parametros.rat_pct}% · terceiros ${I.parametros.terceiros_pct}% · sócios ${I.parametros.empregadores_pct}%</td></tr>
+      <tr><td><b>Custo que entra</b> (remuneração + encargos)</td><td style="text-align:right"><b>${cusDinheiro(custo)}</b></td><td></td></tr>
+    </tbody></table>
+    ${I.rubricas.length?`<div class="alert" style="font-size:12px;margin-top:8px">${I.rubricas.length} rubrica(s) nova(s) entram como <b>sugestão</b> (o DP aprova na aba Rubricas): ${escapeHtml(I.rubricas.map(r=>r.codigo+' '+r.descricao+' → '+CUS_GRUPO[r.grupo]).join(' · '))}</div>`:''}
+    ${I.avisos.length?`<div class="alert" style="font-size:12px;margin-top:8px;background:#fef3c7;border:1px solid #f59e0b">${I.avisos.map(a=>'• '+escapeHtml(a)).join('<br>')}</div>`:'<div style="color:#166534;font-size:13px;margin-top:8px">✔ Tudo confere com os totais do próprio PDF.</div>'}
+  `, I.comp ? ()=>cusGravar('folha_sci') : null, [], !I.comp, '', 'Gravar '+fopagCompLabel(I.comp||_cus.comp));
+}
+async function cusGravar(tipo){
+  const I = tipo==='folha_sci' ? _cus.imp : _cus.he;
+  if(!I) return false;
+  if(tipo==='planilha_he'){
+    for(const k of Object.keys(I.nomesNovos||{})){ const v=I.nomesNovos[k]; if(v) await sb.rpc('folha_he_depara',{p_tipo:'nome', p_chave:k, p_valor:v}); }
+    for(const k of Object.keys(I.obrasNovas||{})){ await sb.rpc('folha_he_depara',{p_tipo:'obra', p_chave:k, p_valor:I.obrasNovas[k]||null}); }
+  }
+  const {data,error}=await sb.rpc('folha_custos_importar',{p_comp:I.comp, p_tipo:tipo, p_arquivo:I.arquivo, p_hash:I.hash, p_parametros:I.parametros||{},
+    p_conferencia:I.conferencia||{}, p_avisos:(I.avisos||[]).join(' · ').slice(0,2000), p_rubricas:I.rubricas||[], p_linhas:I.linhas});
+  if(error){ toast(error.message,'err'); return false; }
+  toast('Importado: '+data.lancamentos+' lançamento(s)'+(data.substituiu?' — substituiu a importação anterior':'')+(data.rubricas_novas?' · '+data.rubricas_novas+' rubrica(s) para o DP aprovar':''));
+  _cus.comp=I.comp; await folhaLoad(true); await cusCarregar(I.comp, true); cusDesenhar(); return true;
+}
+
+/* ---- importar a planilha de horas (quinzena) ---- */
+function cusImportarHeForm(){
+  if(!PODE.importar){ toast('Importar não está liberado para o seu perfil.','warn'); return; }
+  showModal('Importar planilha de horas (quinzena)', `
+    <div class="alert info" style="font-size:12px;line-height:1.5">A planilha "Controle de dias e horas trabalhadas" (duas linhas por pessoa: D e N). Entram: hora extra de dia normal/sábado e de domingo, "Fora de SP / P.F SÁL" e café/extra VT. Tudo é <b>pago fora da folha</b>: o sistema mostra separado e não lança encargo. Nome e obra são casados com o cadastro; o que não casar você escolhe na prévia e o sistema lembra no mês seguinte.</div>
+    <div class="grid-2"><div class="form-group"><label>Competência</label><input id="che_comp" type="month" value="${_cus.comp}"></div>
+    <div class="form-group"><label>Arquivo (.xls/.xlsx)</label><input id="che_arq" type="file" accept=".xls,.xlsx"></div></div>`, ()=>cusLerHe(), [], false, '', 'Ler e conferir');
+}
+async function cusLerHe(){
+  const arq=$('che_arq') && $('che_arq').files[0]; if(!arq){ toast('Selecione a planilha.','err'); return false; }
+  const comp=$('che_comp').value; if(!comp){ toast('Escolha a competência.','err'); return false; }
+  try{
+    if(!window.XLSX) await folhaLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    const buf=await arq.arrayBuffer(); const hash=await _cusHash(buf.slice(0));
+    const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const r=heParse(ws);
+    if(r.erro){ toast(r.erro,'err'); return false; }
+    const ap=await sb.from('folha_he_apelidos').select('*'), ob=await sb.from('folha_he_obras').select('*');
+    _cus.he=heMontar(r, comp, arq.name, hash, (ap.data||[]), (ob.data||[]));
+    hePrevia(); return false;
+  }catch(e){ console.error(e); toast('Não consegui ler a planilha: '+(e.message||e),'err'); return false; }
+}
+/* lê a aba: confere o cabeçalho e devolve uma linha por pessoa (D + N somados) */
+function heParse(ws){
+  const v=a=>{ const c=ws[a]; return c ? c.v : null; };
+  const w=a=>{ const c=ws[a]; return c ? String(c.w!=null?c.w:c.v).trim() : ''; };
+  const num=a=>{ const x=v(a); if(typeof x==='number') return x; const n=folhaImportValor(String(x==null?'':x).replace(/R\$\s*/,'').replace(/^-$/,'')); return (n==null||isNaN(n))?0:n; };
+  const cab=_impNorm([w('E3'),w('H3'),w('K3'),w('N3'),w('Q3')].join('|'));
+  if(!/sabado/.test(cab) || !/domingo/.test(cab) || !/fora de sp/.test(cab) || !/cafe/.test(cab) || !/total a pagar/.test(cab))
+    return {erro:'Não reconheci o cabeçalho (linha 3: Sábado/Dia Normal, Domingo, Fora de SP, Café, Total à pagar). O modelo da planilha mudou?'};
+  const periodo=(w('Q2')||w('P2')||w('R2')||'').trim() || (()=>{ for(const k of ['O2','P2','Q2','R2','S2']){ if(/\d{2}\/\d{2}/.test(w(k))) return w(k); } return ''; })();
+  const range=XLSX.utils.decode_range(ws['!ref']); const pessoas=[]; let total=null;
+  for(let R=4; R<=range.e.r; R++){
+    const n=R+1, nome=w('C'+n), dn=w('D'+n);
+    if(!nome && !dn && w('Q'+n) && !w('A'+n)) { total=num('Q'+n); continue; }
+    if(!nome || dn!=='D') continue;
+    const n2=n+1;
+    const hora=a=>{ const x=v(a); return typeof x==='number' ? x*24 : 0; };
+    const p={linha:n, nome, funcao:w('B'+n), obra:w('S'+n),
+      he_dia:num('G'+n)+num('G'+n2), he_dia_h:hora('F'+n)+hora('F'+n2), he_dia_u:num('E'+n),
+      he_dom:num('J'+n)+num('J'+n2), he_dom_h:hora('I'+n)+hora('I'+n2), he_dom_u:num('H'+n),
+      fora:num('M'+n)+num('M'+n2), cafe:num('P'+n)+num('P'+n2), cafe_qtd:num('O'+n)+num('O'+n2), total_pagar:num('Q'+n)};
+    const comp_=Math.round((p.he_dia+p.he_dom+p.fora)*100)/100;
+    /* o 'Total à pagar' às vezes tem ajuste digitado na fórmula (ex.: G93+…-177.99): vira um lançamento próprio */
+    p.ajuste = ws['Q'+n] ? Math.round((p.total_pagar - comp_)*100)/100 : 0;
+    if(Math.abs(p.ajuste)<0.01) p.ajuste=0;
+    p.formula = ws['Q'+n] && ws['Q'+n].f ? String(ws['Q'+n].f) : '';
+    p.soma=Math.round((comp_+p.ajuste)*100)/100;
+    pessoas.push(p);
+  }
+  return {pessoas, total, periodo};
+}
+function _heH(h){ const m=Math.round(h*60); return Math.floor(m/60)+':'+String(m%60).padStart(2,'0'); }
+function heMontar(r, comp, arquivo, hash, apelidos, obras){
+  const ativos=DB.folhaFuncs.filter(f=>f.ativo!==false || (f.data_demissao && f.data_demissao>=comp+'-01'));
+  const porPessoa={}; ativos.forEach(f=>{ if(f.pessoa_id) porPessoa[f.pessoa_id]=porPessoa[f.pessoa_id] && porPessoa[f.pessoa_id].ativo!==false ? porPessoa[f.pessoa_id] : f; });
+  const apel={}; apelidos.forEach(a=>apel[a.apelido]=a.pessoa_id);
+  const obr={}; obras.forEach(o=>obr[o.obra]=o.centro_custo_id);
+  const tok=s=>_impNorm(s).split(' ').filter(t=>t.length>1 && !['da','de','do','dos','das','e'].includes(t));
+  const casarNome=function(nome){
+    const k=_impNorm(nome);
+    if(apel[k]!=null && porPessoa[apel[k]]) return {f:porPessoa[apel[k]], como:'de-para salvo'};
+    const t=tok(nome);
+    const cand=ativos.filter(f=>{ const ft=tok(f.nome); return t.length && t.every(x=>ft.includes(x)) && ft[0]===t[0]; });
+    if(cand.length===1) return {f:cand[0], como:'nome'};
+    return {f:null, cand};
+  };
+  const casarObra=function(obra){
+    const k=_impNorm(obra); if(!k) return {cc:null, como:'sem obra na planilha'};
+    if(k in obr) return {cc:obr[k], como:'de-para salvo'};
+    const c=DB.folhaCC.find(x=>_impNorm(x.nome)===k) || DB.folhaCC.find(x=>{ const n=_impNorm(x.nome); return n && (k.includes(n) || n.includes(k)); });
+    return c ? {cc:c.id, como:'nome'} : {cc:undefined, como:'não casou'};
+  };
+  const itens=r.pessoas.map(p=>Object.assign({}, p, {casa:casarNome(p.nome), ob:casarObra(p.obra)}));
+  const conf={pessoas:itens.length, total_planilha:r.total, soma_lida:Math.round(itens.reduce((a,p)=>a+p.soma,0)*100)/100, periodo:r.periodo};
+  return {comp, arquivo, hash, itens, conferencia:conf, nomesNovos:{}, obrasNovas:{}, parametros:{periodo:r.periodo, fonte:'planilha de horas (pago fora da folha)'}};
+}
+function hePrevia(){
+  const H=_cus.he, c=H.conferencia;
+  const semNome=H.itens.filter(p=>!p.casa.f && !H.nomesNovos[_impNorm(p.nome)]), semObra=[...new Set(H.itens.filter(p=>p.ob.cc===undefined && !(_impNorm(p.obra) in H.obrasNovas)).map(p=>p.obra))];
+  const ccOpts=sel=>'<option value="">— usar a obra do cadastro —</option>'+DB.folhaCC.filter(x=>x.ativo!==false).map(x=>`<option value="${x.id}" ${String(sel)===String(x.id)?'selected':''}>${escapeHtml(x.nome)}</option>`).join('');
+  const fOpts=(p)=>'<option value="">— escolha —</option>'+DB.folhaFuncs.filter(f=>f.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>`<option value="${f.pessoa_id||''}" ${(p.casa.cand||[]).some(x=>x.id===f.id)?'style="font-weight:700"':''}>${escapeHtml(f.nome)}</option>`).join('');
+  const bate = c.total_planilha==null ? null : Math.abs(c.total_planilha-c.soma_lida)<=0.05;
+  showModal('Prévia da planilha de horas — nada gravado ainda', `
+    <div style="font-size:13px;margin-bottom:6px">Arquivo <b>${escapeHtml(H.arquivo)}</b> · período ${escapeHtml(c.periodo||'—')} · lançado em <b>${fopagCompLabel(H.comp)}</b></div>
+    <div style="font-size:13px;margin-bottom:8px">${c.pessoas} pessoa(s) · "Total à pagar" da planilha ${c.total_planilha!=null?cusDinheiro(c.total_planilha):'—'} × soma lida ${cusDinheiro(c.soma_lida)} ${bate===null?'':(bate?'<span style="color:#166534">✔</span>':'<span style="color:#b91c1c">✖ não bate</span>')}</div>
+    <div class="alert" style="font-size:12px;background:#fef3c7;border:1px solid #f59e0b">Pago fora da folha: entra como custo "fora da folha", sem INSS/FGTS lançados.</div>
+    ${semNome.length?`<div style="font-weight:700;margin:8px 0 4px">Nomes que não casaram (${semNome.length}) — escolha a pessoa</div>${semNome.map(p=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:13px"><span style="width:200px">${escapeHtml(p.nome)}</span><select onchange="_cus.he.nomesNovos[${JSON.stringify(_impNorm(p.nome)).replace(/"/g,'&quot;')}]=this.value?Number(this.value):null">${fOpts(p)}</select></div>`).join('')}`:''}
+    ${semObra.length?`<div style="font-weight:700;margin:8px 0 4px">Obras que não casaram (${semObra.length})</div>${semObra.map(o=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:13px"><span style="width:200px">${escapeHtml(o)}</span><select onchange="_cus.he.obrasNovas[${JSON.stringify(_impNorm(o)).replace(/"/g,'&quot;')}]=this.value?Number(this.value):null">${ccOpts('')}</select></div>`).join('')}`:''}
+    <div style="overflow:auto;max-height:36vh;margin-top:8px"><table style="font-size:12px"><thead><tr><th>Planilha</th><th>Cadastro</th><th>Obra</th><th style="text-align:right">HE dia/sáb</th><th style="text-align:right">HE domingo</th><th style="text-align:right">Fora SP/P.F</th><th style="text-align:right">Ajuste</th><th style="text-align:right">Café/VT</th></tr></thead><tbody>
+    ${H.itens.map(p=>`<tr><td>${escapeHtml(p.nome)}</td><td>${p.casa.f?escapeHtml(p.casa.f.nome):'<span style="color:#b91c1c">?</span>'}</td><td>${escapeHtml(p.obra)}${p.ob.cc?' → '+escapeHtml(folhaCCNome(p.ob.cc)):''}</td>
+      <td style="text-align:right">${p.he_dia?cusDinheiro(p.he_dia):''}</td><td style="text-align:right">${p.he_dom?cusDinheiro(p.he_dom):''}</td><td style="text-align:right">${p.fora?cusDinheiro(p.fora):''}</td><td style="text-align:right;color:#b45309" title="${escapeHtml(p.formula||'')}">${p.ajuste?cusDinheiro(p.ajuste):''}</td><td style="text-align:right">${p.cafe?cusDinheiro(p.cafe):''}</td></tr>`).join('')}
+    </tbody></table></div>`, ()=>heGravar(), [], false, 'lg', 'Gravar');
+}
+function heLinhas(H){
+  const porPes={}; DB.folhaFuncs.forEach(f=>{ if(f.pessoa_id && (!porPes[f.pessoa_id] || f.ativo!==false)) porPes[f.pessoa_id]=f; });
+  const L=[]; const pend=[];
+  H.itens.forEach(function(p){
+    let f=p.casa.f; const k=_impNorm(p.nome);
+    if(!f && H.nomesNovos[k]) f=porPes[H.nomesNovos[k]]||null;
+    if(!f){ pend.push(p.nome); return; }
+    const ko=_impNorm(p.obra); let cc = p.ob.cc; if(cc===undefined) cc = (ko in H.obrasNovas) ? H.obrasNovas[ko] : null;
+    const b={funcionario_id:f.id, ref_origem:'linha '+p.linha+' · '+p.nome, nome:f.nome};
+    if(p.he_dia) L.push(Object.assign({}, b, {grupo:'fora_folha', componente:'Hora extra — dia normal/sábado', valor:Math.round(p.he_dia*100)/100, centro_custo_id:cc, memoria:_heH(p.he_dia_h)+' h × '+cusDinheiro(p.he_dia_u)+' (planilha, obra '+(p.obra||'—')+')'}));
+    if(p.he_dom) L.push(Object.assign({}, b, {grupo:'fora_folha', componente:'Hora extra — domingo', valor:Math.round(p.he_dom*100)/100, centro_custo_id:cc, memoria:_heH(p.he_dom_h)+' h × '+cusDinheiro(p.he_dom_u)+' (planilha, obra '+(p.obra||'—')+')'}));
+    if(p.fora) L.push(Object.assign({}, b, {grupo:'fora_folha', componente:'Fora de SP / P.F SÁL', valor:Math.round(p.fora*100)/100, centro_custo_id:null, memoria:'planilha (a própria planilha não desmembra por obra) — vai na obra do cadastro'}));
+    if(p.ajuste) L.push(Object.assign({}, b, {grupo:'fora_folha', componente:'Ajuste do Total à pagar (planilha)', valor:p.ajuste, centro_custo_id:cc, memoria:'diferença entre o "Total à pagar" da planilha e a soma das colunas'+(p.formula?' (fórmula: '+p.formula+')':'')}));
+    if(p.cafe) L.push(Object.assign({}, b, {grupo:'beneficio', componente:'Café / extra VT (planilha)', valor:Math.round(p.cafe*100)/100, centro_custo_id:cc, memoria:p.cafe_qtd+' dia(s) (planilha) — não conta se a tela de Benefícios já tem vale café'}));
+  });
+  return {L, pend};
+}
+async function heGravar(){
+  const H=_cus.he; const {L, pend}=heLinhas(H);
+  if(pend.length){ toast('Escolha a pessoa de: '+pend.join(', '),'err'); return false; }
+  H.linhas=L; H.avisos=[]; if(H.conferencia.total_planilha!=null && Math.abs(H.conferencia.total_planilha-H.conferencia.soma_lida)>0.05) H.avisos.push('Total da planilha não bate com a soma lida');
+  return cusGravar('planilha_he');
+}
+async function cusExcel(){
+  if(!window.XLSX) await folhaLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const L=_cus.linhas.concat(cusPrevisao(_cus.comp));
+  const lin=[['Competência','Funcionário','Obra','Grupo','Componente','Rubrica','Natureza','Origem','Valor do lançamento','Parte (%)','Valor','Critério','Memória']]
+    .concat(L.map(x=>[_cus.comp, x.nome, x.centro_custo_id==null?'(sem obra)':folhaCCNome(x.centro_custo_id), CUS_GRUPO[x.grupo]||x.grupo, x.componente, x.rubrica||'', CUS_NAT[x.natureza]||x.natureza, x.origem, Number(x.valor_total), Math.round(Number(x.fracao)*1000000)/10000, Number(x.valor), x.criterio||'', x.memoria||'']));
+  lin.push([]); lin.push(['', 'TOTAL DO CUSTO', '', '', '', '', '', '', '', '', cusSoma(L,x=>CUS_CUSTO.includes(x.grupo))]);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lin), 'Lançamentos');
+  XLSX.writeFile(wb, 'Custos da folha - '+_cus.comp+'.xlsx');
+  folhaLog('exportou','folha_custos',null,'Excel custos '+_cus.comp);
 }
 
 /* ============================================================================
@@ -3678,9 +4217,9 @@ async function folhaImportRelatorioExcel(){
 const FOLHA_ACAO_ROT = {abriu_modulo:'Abriu a Folha', abriu_tela:'Abriu a tela', abriu_funcionario:'Abriu a ficha',
   abriu_documento:'Abriu documento', abriu_historico:'Abriu o histórico', exportou:'Exportou', imprimiu:'Imprimiu',
   incluiu:'Incluiu', alterou:'Alterou', excluiu:'Excluiu'};
-const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_ferias:'Férias', folha_comp:'Competências', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
+const FOLHA_TELA_ROT = {folha_dash:'Painel', folha_qualidade:'Qualidade da base', folha_exp:'Experiência', folha_ferias:'Férias', folha_comp:'Competências', folha_custos:'Custos', folha_func:'Funcionários', folha_benef:'Benefícios', folha_rel:'Relatórios',
   folha_cc:'Centros de custo', folha_sind:'Sindicatos', folha_turnos:'Turnos', folha_acessos:'Acessos', folha_docs:'Documentos'};
-const FOLHA_TAB_ROT = {folha_vigencias:'Vigência (salário/cargo/obra)', folha_competencia_eventos:'Competência', folha_ferias_programacoes:'Férias (programação)', folha_ferias_ajustes:'Férias (ajuste de saldo)', folha_ferias_periodos:'Férias (período)', folha_regras:'Regra trabalhista', folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
+const FOLHA_TAB_ROT = {folha_importacoes:'Importação de custos', folha_rubricas:'Rubrica', folha_rateios:'Rateio entre obras', folha_he_apelidos:'De-para de nome (horas)', folha_he_obras:'De-para de obra (horas)', folha_vigencias:'Vigência (salário/cargo/obra)', folha_competencia_eventos:'Competência', folha_ferias_programacoes:'Férias (programação)', folha_ferias_ajustes:'Férias (ajuste de saldo)', folha_ferias_periodos:'Férias (período)', folha_regras:'Regra trabalhista', folha_experiencia_acomp:'Experiência (avaliação/decisão)', folha_config:'Regra da folha', folha_dup_dispensas:'Não é duplicado', folha_funcionarios:'Funcionário', folha_dependentes:'Dependente', folha_documentos:'Documento',
   folha_alteracoes:'Histórico', folha_beneficios:'Benefício', folha_centros_custo:'Centro de custo',
   folha_sindicatos:'Sindicato', folha_turnos:'Turno'};
 let _acs = {linhas:[], busca:'', acao:'', dias:30, erro:''};
@@ -3770,9 +4309,9 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^comp(Mudar|FecharForm|Reabrir)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^cus(ImportarSciForm|ImportarHeForm|RubricaSalvar|RubricasAprovarTodas|RateioForm|Gravar)\b|^comp(Mudar|FecharForm|Reabrir)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
-const _EXPORT_FOLHA = /^(folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
+const _EXPORT_FOLHA = /^(cusExcel|folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
   if(!session) return;
   const alvo = ev.target && ev.target.closest ? ev.target.closest('[onclick]') : null;
@@ -3810,14 +4349,14 @@ document.addEventListener('input', function(ev){
    NAVEGAÇÃO — abas no lugar do menu FOLHA INTERNA do Docs
    ============================================================================ */
 function abas(){
-  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],['folha_comp','Competências'],
+  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],['folha_comp','Competências'],['folha_custos','Custos'],
              ['folha_qualidade','Qualidade da base'],['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
   if(PODE.acessos) a.push(['folha_acessos','Acessos']);
   return a;
 }
 const _TELAS = {folha_dash:()=>renderFolhaDash(), folha_func:()=>renderFolhaFunc(), folha_benef:()=>renderFolhaBenef(),
   folha_rel:()=>renderFolhaRel(), folha_cc:()=>renderFolhaCC(), folha_sind:()=>renderFolhaSind(),
-  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_ferias:()=>renderFolhaFerias(), folha_comp:()=>renderFolhaComp(), folha_acessos:()=>renderFolhaAcessos()};
+  folha_turnos:()=>renderFolhaTurnos(), folha_qualidade:()=>renderFolhaQualidade(), folha_exp:()=>renderFolhaExp(), folha_ferias:()=>renderFolhaFerias(), folha_comp:()=>renderFolhaComp(), folha_custos:()=>renderFolhaCustos(), folha_acessos:()=>renderFolhaAcessos()};
 function go(page){
   if(!abas().some(a=>a[0]===page)) page='folha_dash';
   const mudou = currentPage !== page;
