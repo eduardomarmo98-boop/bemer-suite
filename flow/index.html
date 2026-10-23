@@ -900,7 +900,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -921,7 +921,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -938,7 +938,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1063,7 +1063,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.23.1';
+var APP_VERSAO = '2026.10.23.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -6353,7 +6353,7 @@ $('btn-cadastros').addEventListener('click', function(){
    Aqui (versão local) fica no navegador; a publicada grava em flow.config
    pelo flow.config_salvar (o _prod.js troca o ler/salvar).
    ===================================================================== */
-var AVISOS_PADRAO = { email_por_interacao:false, resumo_email:true, resumo_whatsapp:true, resumo_hora:'07:30', exclusao_liberada:true,
+var AVISOS_PADRAO = { email_por_interacao:false, resumo_email:true, resumo_whatsapp:true, resumo_hora:'07:30', resumo_hora_whatsapp:'13:30', exclusao_liberada:true,
                       insumos_liberado:true };
 var AvisosCfg = {
   ler: function(){
@@ -6370,6 +6370,8 @@ var AvisosCfg = {
 $('btn-avisos').addEventListener('click', function(){
   if(!podeNoFlow('avisos')) return;
   var horas = []; for(var h=5; h<=12; h++){ horas.push((h<10?'0':'')+h+':00'); horas.push((h<10?'0':'')+h+':30'); }
+  /* 23/10/2026 (0079): o WhatsApp tem hora própria, à tarde */
+  var horasWa = []; for(var h2=11; h2<=17; h2++){ horasWa.push(h2+':00'); horasWa.push(h2+':30'); }
   var m = abrirModal(
     '<div class="modal-topo"><h2>Avisos</h2><button class="fechar">&times;</button></div>'+
     '<div class="modal-corpo" id="av-corpo"><div class="dica">Carregando…</div></div>'+
@@ -6382,13 +6384,14 @@ $('btn-avisos').addEventListener('click', function(){
   AvisosCfg.ler().then(function(r){
     var c = r.cfg, s = r.situacao;
     if(horas.indexOf(c.resumo_hora) < 0) horas.push(c.resumo_hora);
+    if(horasWa.indexOf(c.resumo_hora_whatsapp) < 0) horasWa.push(c.resumo_hora_whatsapp);
     m.querySelector('#av-corpo').innerHTML =
       '<div class="dica" style="margin:0 0 12px">O sino do app avisa na hora, sempre. Aqui se escolhe o que vai por e-mail e WhatsApp.</div>'+
       '<div class="marcadores">'+
       chave('av-res', 'resumo_email', 'Resumo diário por e-mail',
-        'Segunda a sábado, um e-mail por pessoa, só para quem tem algo: atrasadas, vencendo, esperando ação e o que mudou.', c.resumo_email)+
+        'De manhã, de segunda a sábado: um e-mail por pessoa, só para quem tem algo: atrasadas, vencendo, esperando ação e o que mudou.', c.resumo_email)+
       chave('av-wa', 'resumo_whatsapp', 'WhatsApp diário',
-        'Segunda a sexta, só para quem tem pendência atrasada ou vencendo hoje (e pediu aviso pelo WhatsApp no cadastro).', c.resumo_whatsapp)+
+        'À tarde, de segunda a sexta, só para quem tem pendência atrasada ou vencendo hoje (e pediu aviso pelo WhatsApp no cadastro).', c.resumo_whatsapp)+
       chave('av-int', 'email_por_interacao', 'E-mail a cada movimentação',
         'Um e-mail por comentário, prazo, redirecionamento… (o jeito antigo). Desligado, só o resumo.', c.email_por_interacao)+
       '</div>'+
@@ -6404,10 +6407,15 @@ $('btn-avisos').addEventListener('click', function(){
         'Mostra a planilha de insumos de cada obra para todos; edita quem tem a ação "Insumos" em Cadastros › Permissões.'+
         (souAdminSistema() ? '' : ' <b>Só o administrador do sistema muda.</b>'), c.insumos_liberado === true, !souAdminSistema())+
       '</div>'+
-      '<div class="bloco" style="margin-top:14px"><div class="rot">Hora do resumo (Brasília)</div>'+
+      '<div class="bloco" style="margin-top:14px;display:flex;gap:16px;flex-wrap:wrap">'+
+      '<div><div class="rot">Hora do e-mail (Brasília)</div>'+
       '<select id="av-hora" style="font-size:15px;padding:8px 10px;border-radius:10px">'+
       horas.sort().map(function(x){ return '<option'+(x===c.resumo_hora?' selected':'')+'>'+x+'</option>'; }).join('')+
       '</select></div>'+
+      '<div><div class="rot">Hora do WhatsApp (Brasília)</div>'+
+      '<select id="av-hora-wa" style="font-size:15px;padding:8px 10px;border-radius:10px">'+
+      horasWa.sort().map(function(x){ return '<option'+(x===c.resumo_hora_whatsapp?' selected':'')+'>'+x+'</option>'; }).join('')+
+      '</select></div></div>'+
       (s && s.ultimo_dia ? '<div class="dica" id="av-sit">Último resumo: '+dataBR(s.ultimo_dia+'T12:00:00')+' — '+
         s.email+(s.email===1?' e-mail':' e-mails')+', '+s.whatsapp+' WhatsApp'+
         (s.erros ? ', <b>'+s.erros+(s.erros===1?' erro':' erros')+'</b>' : '')+(s.simulado ? ' (simulado)' : '')+'.</div>' : '');
@@ -6425,8 +6433,14 @@ $('btn-avisos').addEventListener('click', function(){
     var sel = m.querySelector('#av-hora'), antes = sel.value;
     sel.addEventListener('change', function(){
       var v = sel.value;
-      AvisosCfg.salvar('resumo_hora', v).then(function(){ antes = v; aviso('Resumo às '+v+'.','ok'); })
+      AvisosCfg.salvar('resumo_hora', v).then(function(){ antes = v; aviso('E-mail às '+v+'.','ok'); })
         .catch(function(e){ sel.value = antes; aviso(e.message||String(e),'erro'); });
+    });
+    var selW = m.querySelector('#av-hora-wa'), antesW = selW.value;
+    selW.addEventListener('change', function(){
+      var v = selW.value;
+      AvisosCfg.salvar('resumo_hora_whatsapp', v).then(function(){ antesW = v; aviso('WhatsApp às '+v+'.','ok'); })
+        .catch(function(e){ selW.value = antesW; aviso(e.message||String(e),'erro'); });
     });
   }).catch(function(e){
     m.querySelector('#av-corpo').innerHTML = '<div class="aviso">Não consegui ler a configuração: '+esc(e.message||String(e))+'</div>';
