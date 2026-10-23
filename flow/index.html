@@ -900,7 +900,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.19.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -921,7 +921,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.19.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -938,7 +938,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.19.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1063,7 +1063,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.19.2';
+var APP_VERSAO = '2026.10.23.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -6826,7 +6826,8 @@ Regras = {
    chegar no aparelho (o gatilho do banco chama a edge).
    iPhone: só funciona com o BeMer instalado na Tela de Início.
    ===================================================================== */
-var PUSH_CHAVE = 'BO7OibIBD3WA6K2RMOLN1yW8PeWXHZtKczz8cEEb9TW2uWez4ZWW9vR_5Iau5k3RLftD4brHa5ej3HoP7xDYBbw';
+var PUSH_CAMPANHA_ATE = '2026-11-15';   // 23/10: convite diário para ligar o aviso no celular (temporário)
+var PUSH_CHAVE ='BO7OibIBD3WA6K2RMOLN1yW8PeWXHZtKczz8cEEb9TW2uWez4ZWW9vR_5Iau5k3RLftD4brHa5ej3HoP7xDYBbw';
 var Push = {
   ios: function(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); },
   instalado: function(){ try { return !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches); } catch(e){ return false; } },
@@ -6873,17 +6874,58 @@ var Push = {
       return Promise.resolve(sb.schema('flow').rpc('push_cancelar', { p_endpoint:s.endpoint })).then(function(){ return s.unsubscribe(); });
     });
   },
-  /* faixa no topo da lista: só enquanto não ativou e não disse "agora não" */
+  /* 23/10/2026 (pedido do dono): quem não tem o aviso no CELULAR só sabe da
+     pendência nova no dia seguinte, pelo resumo das 7h30. Campanha temporária
+     (até PUSH_CAMPANHA_ATE): enquanto a pessoa não tiver NENHUM celular
+     inscrito (flow.push_inscricoes, pelo agente), o convite abre 1x por dia
+     — no celular com o botão Ativar; no computador, ensinando a fazer no
+     celular — e o "Agora não" da faixa vale só para hoje. */
+  celular: function(ag){ return /Android|iPhone|iPad|iPod|Mobile/i.test(String(ag||'')); },
+  temCelular: function(){
+    return Promise.resolve(sb.schema('flow').from('push_inscricoes').select('agente')).then(function(r){
+      if(!r || r.error) return true;   // sem saber, não insiste
+      return (r.data || []).some(function(x){ return Push.celular(x.agente); });
+    }, function(){ return true; });
+  },
+  campanha: function(){ return new Date() < new Date(PUSH_CAMPANHA_ATE+'T23:59:59'); },
+  hojeTxt: function(){ var d = new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); },
+  convite: function(st){
+    if(Pref.ler('push_conv_'+EU.id) === Push.hojeTxt()) return;
+    Pref.gravar('push_conv_'+EU.id, Push.hojeTxt());
+    var noCel = Push.celular(navigator.userAgent) || Push.ios();
+    var passos = Push.ios()
+      ? '<li>No Safari, toque em <b>Compartilhar</b> (o quadrado com a seta) › <b>Adicionar à Tela de Início</b>.</li><li>Abra o <b>BeMer</b> pelo ícone novo e entre no Flow.</li><li>Toque em <b>Ativar</b> e permita os avisos.</li>'
+      : '<li>No Chrome, toque no menu <b>⋮</b> › <b>Instalar app</b> (ou Adicionar à tela inicial).</li><li>Abra o <b>BeMer</b> pelo ícone e entre no Flow.</li><li>Toque em <b>Ativar</b> e permita os avisos.</li>';
+    var corpo = '<p style="font-size:15px;line-height:1.5;margin:0">Com o aviso ligado no celular, você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem ele, só no dia seguinte, pelo e-mail das 7h30.</p>' +
+      (noCel
+        ? (st === 'inativo' ? '<p class="dica" style="margin:10px 0 0">É um toque só.</p>' : '<ol style="margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.6">'+passos+'</ol>')
+        : '<p style="font-size:14px;line-height:1.5;margin:10px 0 0">No <b>celular</b>, abra <b>bemer.brandaoemarmo.com.br/flow</b> e:</p>' +
+          '<ol style="margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.6"><li><b>iPhone:</b> Safari › Compartilhar › Adicionar à Tela de Início; abra pelo ícone.</li><li><b>Android:</b> Chrome › menu ⋮ › Instalar app.</li><li>No Flow, toque em <b>Ativar</b>.</li></ol>');
+    var bts = (noCel && st === 'inativo' ? '<button class="bt-pri" id="cv-on">Ativar agora</button>' : '') +
+      '<button class="bt-sec" id="cv-depois">'+(noCel && st === 'inativo' ? 'Amanhã' : 'Entendi')+'</button>';
+    var f = folha('Ligue os avisos do Flow no celular', corpo, bts);
+    f.querySelector('#cv-depois').addEventListener('click', function(){ f.remove(); });
+    if(f.querySelector('#cv-on')) f.querySelector('#cv-on').addEventListener('click', function(){
+      var b = this; b.disabled = true;
+      Push.ativar().then(function(){ f.remove(); var fx = $('faixa-push'); if(fx) fx.classList.add('oculto'); aviso('Avisos ligados neste celular. Mandei um teste.', 'ok'); },
+        function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
+    });
+  },
+  /* faixa no topo da lista: só enquanto não ativou e não disse "agora não"
+     (na campanha, sem celular inscrito, o "agora não" vale só para hoje) */
   faixa: function(){
     var f = $('faixa-push'); if(!f || !Push.suporta()) return;
-    if(Pref.ler('push_nao_'+EU.id)) { f.classList.add('oculto'); return; }
-    Push.estado().then(function(st){
+    Promise.all([Push.estado(), Push.campanha() ? Push.temCelular() : Promise.resolve(true)]).then(function(r){
+      var st = r[0], temCel = r[1];
+      if(!temCel && (st === 'inativo' || st === 'instalar' || !(Push.celular(navigator.userAgent) || Push.ios()))) Push.convite(st);
+      var nao = Pref.ler('push_nao_'+EU.id);
+      if(nao && (temCel || nao === Push.hojeTxt())) { f.classList.add('oculto'); return; }
       if(st !== 'inativo' && st !== 'instalar'){ f.classList.add('oculto'); return; }
       f.innerHTML = st === 'instalar'
         ? '<span>Para receber os avisos do Flow no iPhone, instale o BeMer na Tela de Início (Compartilhar › Adicionar à Tela de Início) e abra por lá.</span><button type="button" class="nao" id="fp-nao">Ok</button>'
         : '<span>Receba os avisos do Flow neste aparelho, como um aplicativo.</span><button type="button" class="sim" id="fp-sim">Ativar</button><button type="button" class="nao" id="fp-nao">Agora não</button>';
       f.classList.remove('oculto');
-      $('fp-nao').addEventListener('click', function(){ Pref.gravar('push_nao_'+EU.id, '1'); f.classList.add('oculto'); });
+      $('fp-nao').addEventListener('click', function(){ Pref.gravar('push_nao_'+EU.id, temCel ? '1' : Push.hojeTxt()); f.classList.add('oculto'); });
       if($('fp-sim')) $('fp-sim').addEventListener('click', function(){
         var b = this; b.disabled = true;
         Push.ativar().then(function(){ f.classList.add('oculto'); aviso('Avisos ligados neste aparelho. Mandei um teste.', 'ok'); },
