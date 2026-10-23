@@ -905,7 +905,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -926,7 +926,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -943,7 +943,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1068,7 +1068,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.23.3';
+var APP_VERSAO = '2026.10.23.4';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2984,6 +2984,67 @@ var RascunhoNova = {
   gravar: function(r){ Pref.gravar(RascunhoNova.chave(), (r && (r.titulo || r.desc)) ? JSON.stringify(r) : ''); },
   limpar: function(){ Pref.gravar(RascunhoNova.chave(), ''); }
 };
+/* =====================================================================
+   PARECIDAS (23/10/2026, pedido do dono: "se duas pessoas abrem a mesma
+   pendência?"). Antes de enviar, procura abertas da MESMA obra com o título
+   parecido (2+ palavras que contam em comum, 60% das palavras do menor).
+   Palavras que todo pedido tem ("contratação", "para", "obra"…) não contam.
+   Achou: oferece acompanhar a que já existe, ver, ou abrir mesmo assim.
+   ===================================================================== */
+var Parecidas = {
+  PARAR: ['contratacao','contratar','para','com','sem','das','dos','nas','nos','pela','pelo','uma','obra','obras',
+          'mao','fazer','enviar','solicitar','sobre','entre','que','ser','por','mais','referente','pendencia'],
+  palavras: function(t){
+    var vistas = {};
+    return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .split(/[^a-z0-9]+/).filter(function(w){
+        if(w.length < 3 || Parecidas.PARAR.indexOf(w) >= 0 || vistas[w]) return false;
+        vistas[w] = 1; return true;
+      });
+  },
+  achar: function(titulo, obraId){
+    var a = Parecidas.palavras(titulo); if(!a.length) return [];
+    return DB.pendencias.filter(function(p){
+      return aberta(p) && String(p.obra_id||'') === String(obraId||'') && (!EU || Regras.podeVer(p, EU.id));
+    }).map(function(p){
+      var b = Parecidas.palavras(p.titulo);
+      var comuns = a.filter(function(w){ return b.indexOf(w) >= 0; });
+      var menor = Math.min(a.length, b.length) || 1;
+      var ok = (comuns.length >= 2 && comuns.length / menor >= 0.6) || (a.length === 1 && b.length === 1 && comuns.length === 1);
+      return ok ? { p:p, nota: comuns.length / Math.max(a.length, b.length) } : null;
+    }).filter(Boolean).sort(function(x, y){ return y.nota - x.nota; }).slice(0, 3).map(function(x){ return x.p; });
+  },
+  /* aoSeguir(): abre mesmo assim · aoAcompanhar(p): a pessoa ficou com a existente */
+  perguntar: function(lista, aoSeguir, aoAcompanhar){
+    var f = folha(lista.length === 1 ? 'Já existe uma parecida' : 'Já existem '+lista.length+' parecidas',
+      '<p class="dica" style="margin:0 0 10px">Para não ter duas pessoas cuidando da mesma coisa, veja se não é a mesma:</p>'+
+      lista.map(function(p){
+        var dela = souCriador(p) || souResp(p);
+        return '<div class="vinc-op" style="cursor:default">'+
+          '<b>#'+esc(p.id)+' '+esc(p.titulo)+'</b>'+
+          '<small>de '+esc(quemCurto(p.criado_por))+' · com '+esc(quemCurto(p.responsavel_id))+' · '+esc(dataCartao(p).t)+'</small>'+
+          '<span style="display:flex;gap:8px;margin-top:6px">'+
+            '<button type="button" class="btn-mini" data-ver="'+p.id+'">Ver</button>'+
+            (dela || acompanho(p) ? '' : '<button type="button" class="btn-mini" data-acomp="'+p.id+'" style="box-shadow:inset 0 0 0 1.5px var(--azul);color:var(--azul);font-weight:600">Acompanhar esta</button>')+
+          '</span></div>';
+      }).join(''),
+      '<button class="bt-sec so" id="par-voltar">Voltar</button><button class="bt-pri" id="par-seguir">Abrir mesmo assim</button>');
+    f.querySelector('#par-voltar').addEventListener('click', function(){ f.remove(); });
+    f.querySelector('#par-seguir').addEventListener('click', function(){ f.remove(); aoSeguir(); });
+    Array.prototype.forEach.call(f.querySelectorAll('[data-ver]'), function(b){
+      b.addEventListener('click', function(){ Detalhe.abrir(Number(this.dataset.ver), { topo:true }); });
+    });
+    Array.prototype.forEach.call(f.querySelectorAll('[data-acomp]'), function(b){
+      b.addEventListener('click', function(){
+        var p = pend(Number(this.dataset.acomp)); if(!p) return;
+        this.disabled = true;
+        Dados.acompanhar(p).then(function(){ f.remove(); aoAcompanhar(p); }, function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
+      });
+    });
+    return f;
+  }
+};
+
 var Nova = {
   abrir: function(){
     if(!podeNoFlow('criar')) return;
@@ -3214,6 +3275,22 @@ var Nova = {
       if(!q('#n-resp').value){ aviso('Escolha para quem é a pendência.','erro'); return; }
       if(!obraSel){ aviso('Escolha a obra (ou "Interno").','erro'); return; }
       if(faltaCategoria()){ aviso('Escolha a categoria.','erro'); return; }
+      /* 23/10/2026: antes de enviar, a parecida que já existe (uma vez por envio) */
+      if(!m._semParecidas){
+        var par = Parecidas.achar(titulo, obraSel === '__interno' ? '' : obraSel);
+        if(par.length){
+          Parecidas.perguntar(par, function(){
+            m._semParecidas = true;
+            q('#f-nova').dispatchEvent(new Event('submit', { cancelable:true }));
+          }, function(p){
+            RascunhoNova.limpar(); m.remove(); desenhar();
+            Detalhe.abrir(p.id, { topo:true });
+            aviso('Você passou a acompanhar a #'+p.id+'. Nada novo foi aberto.', 'ok');
+          });
+          return;
+        }
+      }
+      m._semParecidas = false;
       bt.disabled = true; q('#n-enviar-txt').textContent = 'Enviando…';
       assuntoEscolhido(m).then(function(assunto){
         dados = {
@@ -3637,6 +3714,7 @@ var Detalhe = {
     if(pp.aberta && p.pai_id != null && podeSoltar(p)) it.push('<button data-acao="soltar">Soltar da #'+esc(p.pai_id)+'</button>');
     it.push('<button data-menu-d="copiar">Copiar link</button>');
     it.push('<button data-acao="linha">Linha do tempo completa</button>');
+    if(pp.aberta && pp.souCriador && !subItens(p).length) it.push('<button id="d-duplicada">É duplicada de outra…</button>');   // 23/10/2026
     if(pp.aberta && pp.souCriador) it.push('<button class="perigo" id="d-cancelar">Cancelar pendência</button>');
     /* 09/10/2026, período de teste: quem abriu (ou o administrador do sistema) exclui de vez */
     if(podeExcluir(p)) it.push('<button class="perigo" data-acao="excluir">Excluir pendência</button>');
@@ -3844,6 +3922,43 @@ var Detalhe = {
         '<button class="bt-sec so" id="d-cancelar-nao">Voltar</button><button class="btn btn-perigo" id="d-cancelar-ok" style="flex:1;min-height:52px">Cancelar pendência</button>');
       f.querySelector('#d-cancelar-nao').addEventListener('click', function(){ f.remove(); });
       f.querySelector('#d-cancelar-ok').addEventListener('click', function(){ f.remove(); status('cancelada','Pendência cancelada.'); });
+    });
+    /* 23/10/2026 (pedido do dono): duas pessoas abriram a mesma coisa. Quem abriu
+       esta diz qual é a outra: fica a nota com o número, esta é cancelada e a
+       pessoa passa a acompanhar a outra (se já não está nela). */
+    if(q('#d-duplicada')) q('#d-duplicada').addEventListener('click', function(){
+      Detalhe.menuAbrir(m, false);
+      var sug = Parecidas.achar(p.titulo, p.obra_id).filter(function(x){ return !mesmoId(x.id, p.id); });
+      var f = folha('É duplicada de qual?',
+        '<p class="dica" style="margin:0 0 10px">Esta (#'+esc(p.id)+') é cancelada com uma nota apontando para a outra, e você passa a acompanhar a outra.</p>'+
+        '<label for="dup-num" style="margin-top:0">Número da pendência que fica</label>'+
+        '<input id="dup-num" inputmode="numeric" placeholder="ex.: 42" value="'+(sug[0] ? esc(sug[0].id) : '')+'">'+
+        (sug.length ? '<div class="dica">Parecida: '+sug.map(function(x){ return '#'+esc(x.id)+' '+esc(x.titulo); }).join(' · ')+'</div>' : '')+
+        '<div class="dica" id="dup-quem" style="margin-top:8px"></div>',
+        '<button class="bt-sec so" id="dup-nao">Voltar</button><button class="bt-pri" id="dup-ok">Cancelar esta e seguir na outra</button>');
+      var campoN = f.querySelector('#dup-num'), quem = f.querySelector('#dup-quem');
+      function alvo(){
+        var n = Number(String(campoN.value).replace(/\D/g, ''));
+        var o = n ? pend(n) : null;
+        if(!n) return { erro:'Escreva o número.' };
+        if(mesmoId(n, p.id)) return { erro:'É esta mesma.' };
+        if(!o || o._futura || !Regras.podeVer(o, EU.id)) return { erro:'Não achei a #'+n+' (ou você não vê).' };
+        if(!aberta(o)) return { erro:'A #'+n+' não está aberta.' };
+        return { o:o };
+      }
+      function mostrar(){ var a = alvo(); quem.textContent = a.o ? '#'+a.o.id+' '+a.o.titulo+' — com '+quemCurto(a.o.responsavel_id) : (campoN.value ? a.erro : ''); }
+      campoN.addEventListener('input', mostrar); mostrar();
+      f.querySelector('#dup-nao').addEventListener('click', function(){ f.remove(); });
+      f.querySelector('#dup-ok').addEventListener('click', function(){
+        var a = alvo(), b = this; if(!a.o){ aviso(a.erro, 'erro'); return; }
+        b.disabled = true;
+        Dados.notaComAnexos(p, 'Duplicada da #'+a.o.id+' “'+a.o.titulo+'”. Cancelada para seguir lá.', []).then(function(){
+          f.remove();
+          status('cancelada', 'Cancelada: duplicada da #'+a.o.id+'.');
+          return (souCriador(a.o) || souResp(a.o) || acompanho(a.o)) ? null : Dados.acompanhar(a.o);
+        }).then(function(){ desenhar(); Detalhe.abrir(a.o.id, { topo:true }); },
+          function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
+      });
     });
 
     /* caixa de mensagem */
