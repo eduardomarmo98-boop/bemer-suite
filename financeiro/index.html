@@ -4843,6 +4843,7 @@ function bmCelulaVerba(it){
    insumo — o próximo pedido vê o saldo descontado. Não contam: reprovado,
    cancelado, rascunho. Os relatórios de consumo continuam só com aprovados. */
 function bmPcReserva(st){ return ["reprovada","cancelada","rascunho"].indexOf(st)<0; }
+function bmTelaDeForm(){ try{ return !!(R&&/Form$/.test(R.name)); }catch(e){ return false; } }
 function bmQtd(v){
   if(v==null||v==="")return 0;
   if(typeof v==="number")return v;
@@ -16084,7 +16085,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.10.23.1';
+var APP_VERSION = '2026.10.23.2';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -16710,7 +16711,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
   function ligarRealtime(){
     if(!CLOUD||canal)return;
     if(!window._interHook){window._interHook=1;['click','keydown','input'].forEach(function(ev){document.addEventListener(ev,function(){window._lastInteract=Date.now();},true);});}
-    if(!window._pendTimer){window._pendTimer=setInterval(function(){if(!window._pendRender)return;if(Date.now()-(window._lastInteract||0)<2500)return;var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;if(document.querySelector('.fixed.inset-0')||document.querySelector('[data-otabp]')||document.getElementById('cf-emp-save'))return;window._pendRender=false;try{render();}catch(e){}},4000);}
+    if(!window._pendTimer){window._pendTimer=setInterval(function(){if(!window._pendRender)return;if(bmTelaDeForm())return;if(Date.now()-(window._lastInteract||0)<2500)return;var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;if(document.querySelector('.fixed.inset-0')||document.querySelector('[data-otabp]')||document.getElementById('cf-emp-save'))return;window._pendRender=false;try{render();}catch(e){}},4000);}
     try{
       canal=sb.channel('financeiro-rt').on('postgres_changes',{event:'*',schema:'financeiro'},()=>{
         clearTimeout(pullTimer);
@@ -16720,7 +16721,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
           if(_rtb!=null&&_sig()===_rtb)return;
           var _ae=document.activeElement, foco=_ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(_ae.tagName);
           var ocupado=foco||document.querySelector('.fixed.inset-0')||document.querySelector('[data-otabp]')||document.getElementById('cf-emp-save')||(Date.now()-(window._lastInteract||0)<2500);
-          if(ocupado){window._pendRender=true;return;}
+          if(ocupado||bmTelaDeForm()){window._pendRender=true;return;}
           render();
         },1200);
       }).subscribe();

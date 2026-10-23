@@ -86,6 +86,10 @@
   .bloco-cab span{flex:1}
   .bloco-cab b{min-width:28px;height:24px;padding:0 8px;border-radius:12px;background:#EEF2F9;color:var(--azul);display:inline-flex;align-items:center;justify-content:center;font-size:13px}
   .bloco-cab b.r{background:#FDECEC;color:#B42318}
+  /* 23/10/2026: links discretos abaixo de Arquivadas (Registro, aviso no celular) */
+  .sublinks{display:flex;flex-wrap:wrap;gap:2px 14px;padding:2px 6px 0}
+  .sublink{background:none;border:none;padding:6px 2px;min-height:36px;font:inherit;font-size:13px;color:var(--tinta2);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .sublink:hover{color:var(--azul)}
   .bloco-cab i{font-style:normal;color:#8A96A8}
   .bloco.on .bloco-cab{border-bottom:1px solid var(--linha)}
   .bloco-corpo{padding:8px 8px 10px}
@@ -905,7 +909,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -926,7 +930,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -943,7 +947,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.5</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1068,7 +1072,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.23.4';
+var APP_VERSAO = '2026.10.23.5';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2216,8 +2220,76 @@ function blocosVisoes(R, dentro){
     h += '<div class="bloco'+(on?' on':'')+'"><button type="button" class="bloco-cab" data-bloco="'+k+'"><span>'+esc(v[1])+'</span><b class="'+(k==='atrasadas'&&n?'r':'')+'">'+n+'</b><i>'+(on?'▾':'▸')+'</i></button>'+
       (on ? '<div class="bloco-corpo">'+dentro+'</div>' : '')+'</div>';
   }); });
+  /* 23/10/2026 (pedido do dono): discreto, abaixo de Arquivadas — o "Registro"
+     (como o Registro SESMT do Docs) e quem já recebe o aviso no celular */
+  if(Registro.pode()) h += '<div class="sublinks"><button type="button" class="sublink" id="bloco-registro">🕘 Registro de atividades</button>'+
+    '<button type="button" class="sublink" id="bloco-avisos-cel">📲 Quem recebe aviso no celular</button></div>';
   return h + '</div>';
 }
+
+/* =====================================================================
+   REGISTRO DE ATIVIDADES e AVISO NO CELULAR (23/10/2026, 0080)
+   Só leitura. Quem tem "Ver o Painel" ou o administrador do sistema.
+   O registro sai de flow.eventos (quem fez o quê, quando, em qual pendência);
+   respeita o que a pessoa vê. Na versão local, sai das notas da memória.
+   ===================================================================== */
+var REG_VERBO = { nova:'abriu', comentario:'escreveu em', prazo:'assumiu o prazo de', reprogramada:'adiou',
+  resolvida:'confirmou', cancelada:'cancelou', reaberta:'reabriu', andamento:'mudou o andamento de',
+  redirecionada:'passou adiante', acompanhar:'incluiu alguém em' };
+var Registro = {
+  pode: function(){ try { return podeNoFlow('ver_painel') || souAdminSistema(); } catch(e){ return false; } },
+  abrir: function(){
+    var dias = 7;
+    var f = folha('Registro de atividades',
+      '<div class="dica" style="margin:0 0 10px">Quem fez o quê, e quando. Não pode ser editado nem apagado.</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
+        '<select id="reg-dias" style="font-size:15px;padding:8px 10px;border-radius:10px"><option value="1">Hoje</option><option value="7" selected>7 dias</option><option value="30">30 dias</option><option value="90">90 dias</option></select>'+
+        '<input id="reg-busca" type="search" placeholder="pessoa, obra, nº ou título" style="flex:1;min-width:160px;font-size:15px;padding:8px 10px;border-radius:10px">'+
+      '</div><div id="reg-lista"><div class="dica">Carregando…</div></div>', '');
+    var lista = [];
+    function pintar(){
+      var q = String(f.querySelector('#reg-busca').value||'').trim().toLowerCase();
+      var vis = lista.filter(function(e){ return !q || [e.autor, e.alvo, e.titulo, e.obra, '#'+e.pendencia_id, e.texto].join(' ').toLowerCase().indexOf(q) >= 0; });
+      var dia = '', h = '';
+      vis.slice(0, 400).forEach(function(e){
+        var d = new Date(e.em), dd = dataBR(e.em);
+        if(dd !== dia){ dia = dd; h += '<div class="rot" style="margin:12px 0 4px">'+esc(DIA_LONGO[d.getDay()]+', '+dd)+'</div>'; }
+        h += '<button type="button" class="dep-item" data-reg="'+esc(e.pendencia_id)+'" style="width:100%">'+
+          '<span style="flex:1;min-width:0"><b>'+esc(hhmm(e.em))+'</b> · '+esc(nomeCurto(e.autor||'Sistema'))+' '+esc(REG_VERBO[e.tipo]||'atualizou')+
+          ' <b>#'+esc(e.pendencia_id)+'</b> '+esc(e.titulo||'')+(e.alvo && e.tipo !== 'nova' ? ' → '+esc(nomeCurto(e.alvo)) : '')+'</span>'+
+          '<small>'+esc(e.obra||'Interno')+'</small></button>';
+      });
+      f.querySelector('#reg-lista').innerHTML = h || '<div class="dica">Nada neste período.</div>';
+      Array.prototype.forEach.call(f.querySelectorAll('[data-reg]'), function(b){
+        b.addEventListener('click', function(){ var p = pend(Number(this.dataset.reg)); if(p) Detalhe.abrir(p.id, { topo:true }); else aviso('Esta pendência não está mais na sua lista.', 'erro'); });
+      });
+    }
+    function carregar(){
+      f.querySelector('#reg-lista').innerHTML = '<div class="dica">Carregando…</div>';
+      Dados.registro(dias).then(function(r){ lista = r || []; pintar(); },
+        function(e){ f.querySelector('#reg-lista').innerHTML = '<div class="aviso">'+esc(e.message||String(e))+'</div>'; });
+    }
+    f.querySelector('#reg-dias').addEventListener('change', function(){ dias = Number(this.value)||7; carregar(); });
+    f.querySelector('#reg-busca').addEventListener('input', pintar);
+    carregar();
+    return f;
+  },
+  avisosCelular: function(){
+    var f = folha('Quem recebe aviso no celular', '<div id="cel-lista"><div class="dica">Carregando…</div></div>', '');
+    Dados.pushSituacao().then(function(r){
+      r = r || [];
+      var sem = r.filter(function(x){ return !(x.celulares > 0); }), com = r.filter(function(x){ return x.celulares > 0; });
+      var item = function(x){ return '<div class="dep-item"><span style="flex:1;min-width:0">'+esc(x.nome)+'</span><small>'+
+        (x.celulares > 0 ? 'celular'+(x.computadores ? ' e computador' : '') : (x.computadores ? 'só no computador' : 'nenhum aparelho'))+'</small></div>'; };
+      f.querySelector('#cel-lista').innerHTML =
+        '<p style="font-size:15px;margin:0 0 6px"><b>'+com.length+' de '+r.length+'</b> já recebem o aviso no celular.</p>'+
+        '<div class="dica" style="margin:0 0 10px">Quem está sem recebe o convite no Portal e no Flow até 15/11. Para ver na hora, basta a pessoa instalar o BeMer no celular e tocar em Ativar.</div>'+
+        (sem.length ? '<div class="rot" style="margin:10px 0 4px">Ainda sem aviso no celular ('+sem.length+')</div>'+sem.map(item).join('') : '')+
+        (com.length ? '<div class="rot" style="margin:14px 0 4px">Com aviso no celular ('+com.length+')</div>'+com.map(item).join('') : '');
+    }, function(e){ f.querySelector('#cel-lista').innerHTML = '<div class="aviso">'+esc(e.message||String(e))+'</div>'; });
+    return f;
+  }
+};
 function ligarBlocos(){
   var bs = document.querySelectorAll('#conteudo [data-bloco]');
   for(var i=0;i<bs.length;i++) bs[i].addEventListener('click', function(){
@@ -2229,6 +2301,8 @@ function ligarBlocos(){
   if($('bloco-cat')) $('bloco-cat').addEventListener('click', escolherCategoria);
   if($('bloco-st')) $('bloco-st').addEventListener('click', escolherStatus);
   if($('bloco-insumos')) $('bloco-insumos').addEventListener('click', function(){ $('btn-insumos').click(); });
+  if($('bloco-registro')) $('bloco-registro').addEventListener('click', function(){ Registro.abrir(); });
+  if($('bloco-avisos-cel')) $('bloco-avisos-cel').addEventListener('click', function(){ Registro.avisosCelular(); });
 }
 
 /* No computador a pendência abre ao lado: o cartão dela fica marcado. */
@@ -3350,6 +3424,24 @@ var Dados = {
     p.envolvidos = (p.envolvidos||[]).filter(function(x){ return !mesmoId(x, id); });
     Regras._nota(p.id, EU.id, pessoa(EU.id).nome+' tirou '+pessoa(id).nome+' do acompanhamento.');
     return Promise.resolve(salvar());
+  },
+  /* 23/10/2026: Registro de atividades — na versão local, das pendências e notas da memória */
+  registro: function(dias){
+    var desde = Date.now() - (Number(dias)||7) * 86400000, saida = [];
+    var obraNome = function(p){ var o = obra(p.obra_id); return o ? o.nome : ''; };
+    DB.pendencias.forEach(function(p){
+      if(new Date(p.criado_em).getTime() >= desde) saida.push({ em:p.criado_em, tipo:'nova', pendencia_id:p.id, titulo:p.titulo,
+        obra:obraNome(p), autor:pessoa(p.criado_por).nome, alvo:pessoa(p.responsavel_id).nome, texto:'' });
+    });
+    (DB.notas||[]).forEach(function(n){
+      var p = pend(n.pendencia_id); if(!p || new Date(n.criado_em).getTime() < desde) return;
+      saida.push({ em:n.criado_em, tipo:n.sistema ? 'andamento' : 'comentario', pendencia_id:p.id, titulo:p.titulo,
+        obra:obraNome(p), autor:pessoa(n.autor_id).nome, alvo:'', texto:n.texto });
+    });
+    return Promise.resolve(saida.sort(function(a, b){ return new Date(b.em) - new Date(a.em); }));
+  },
+  pushSituacao: function(){
+    return Promise.resolve(DB.colaboradores.filter(function(x){ return x.ativo !== false; }).map(function(x){ return { pessoa_id:x.id, nome:x.nome, celulares:0, computadores:0 }; }));
   },
   /* Acompanhar por conta própria (v2): qualquer um que vê a pendência */
   acompanhar: function(p){
@@ -7348,6 +7440,17 @@ Dados = {
   },
   naoResolvida: function(p, texto){
     return Dados.notaComAnexos(p, MARCA_FALTA+(texto && texto.trim() ? ' — '+texto.trim() : '.'), []);
+  },
+  /* 23/10/2026 (0080): Registro de atividades e quem recebe aviso no celular */
+  registro: function(dias){
+    var hoje = new Date(), de = new Date(Date.now() - ((Number(dias)||7) - 1) * 86400000);
+    var iso = function(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+    return Promise.resolve(sb.schema('flow').rpc('registro', { p_de:iso(de), p_ate:iso(hoje) })).then(function(r){
+      if(r.error) throw new Error(traduzErro(r.error.message)); return r.data || []; });
+  },
+  pushSituacao: function(){
+    return Promise.resolve(sb.schema('flow').rpc('push_situacao')).then(function(r){
+      if(r.error) throw new Error(traduzErro(r.error.message)); return r.data || []; });
   },
   /* Acompanhar voluntário (v2): a própria pessoa se inclui e se retira.
      No banco: políticas env_ins_eu / env_del_eu (0044). */
