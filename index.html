@@ -167,6 +167,16 @@ a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16)
 .centro{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--texto2);font-size:14px}
 
 /* aviso de nova versão: por cima de tudo, no topo */
+/* 23/10/2026: convite para ligar o aviso do Flow no celular (ocupa a linha toda dos cards) */
+.convite-cel{grid-column:1/-1;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;background:var(--laranja);color:var(--azul);
+  border-radius:16px;padding:16px 18px;box-shadow:0 6px 18px rgba(0,41,107,.18)}
+.convite-ico{font-size:30px;line-height:1}
+.convite-txt{flex:1 1 280px;min-width:0;font-size:14px;line-height:1.45}
+.convite-txt > b{display:block;font-size:17px;margin-bottom:2px}
+.convite-txt ol{margin:8px 0 0;padding-left:20px}
+.convite-bts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.convite-ir{background:var(--azul);color:#fff;text-decoration:none;font-weight:600;border-radius:10px;padding:10px 16px;font-size:14px}
+.convite-nao{background:transparent;border:1.5px solid var(--azul);color:var(--azul);font:inherit;font-weight:600;border-radius:10px;padding:9px 14px;font-size:14px;cursor:pointer}
 .faixa-atualizar{position:fixed;left:0;right:0;top:0;z-index:200;background:var(--laranja);color:var(--azul);
                  padding:10px 16px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
                  font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.2)}
@@ -499,7 +509,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.15.1';
+var VERSAO   = '2026.10.23.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -1276,8 +1286,49 @@ function montarPortal(pessoa){
            +   '</div>'
            + fim;
     }).join('');
+    if(meus.indexOf('flow') >= 0) conviteCelular();
     mostrarPortal();
   });
+}
+
+/* =====================================================================
+   CONVITE: AVISO DO FLOW NO CELULAR (23/10/2026, pedido do dono)
+   Campanha temporária (até CONVITE_ATE). Quem tem o Flow e ainda não tem
+   NENHUM celular inscrito em flow.push_inscricoes vê um cartão no alto do
+   portal com o passo a passo. "Hoje não" esconde só até amanhã. Some sozinho
+   depois que a pessoa ativa no celular (o Flow inscreve o aparelho).
+   ===================================================================== */
+var CONVITE_ATE = '2026-11-15';
+function conviteCelular(){
+  if(new Date() > new Date(CONVITE_ATE+'T23:59:59')) return;
+  var hojeK = new Date().toISOString().slice(0,10);
+  try { if(localStorage.getItem('bemer_convite_cel') === hojeK) return; } catch(e){}
+  Promise.resolve(sb.schema('flow').from('push_inscricoes').select('agente')).then(function(r){
+    if(!r || r.error) return;
+    var temCel = (r.data||[]).some(function(x){ return /Android|iPhone|iPad|iPod|Mobile/i.test(String(x.agente||'')); });
+    if(temCel || !$('cards') || $('convite-cel')) return;
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent), cel = ios || /Android|Mobile/i.test(navigator.userAgent);
+    var passos = cel
+      ? (ios ? '<li>No Safari, toque em <b>Compartilhar</b> › <b>Adicionar à Tela de Início</b>.</li>'
+             : '<li>No Chrome, toque no menu <b>⋮</b> › <b>Instalar app</b>.</li>')+
+        '<li>Abra o <b>BeMer</b> pelo ícone novo e entre no <b>Flow</b>.</li><li>Toque em <b>Ativar</b> e permita os avisos.</li>'
+      : '<li>No <b>celular</b>, abra <b>bemer.brandaoemarmo.com.br</b>.</li>'+
+        '<li><b>iPhone:</b> Safari › Compartilhar › Adicionar à Tela de Início. <b>Android:</b> Chrome › ⋮ › Instalar app.</li>'+
+        '<li>Abra o BeMer pelo ícone, entre no <b>Flow</b> e toque em <b>Ativar</b>.</li>';
+    var d = document.createElement('div');
+    d.id = 'convite-cel'; d.className = 'convite-cel'; d.setAttribute('role', 'note');
+    d.innerHTML = '<div class="convite-ico" aria-hidden="true">📲</div><div class="convite-txt">'+
+      '<b>Ligue os avisos do Flow no celular</b>'+
+      '<span>Com o aviso ligado você fica sabendo <b>na hora</b> quando alguém te pede algo. Sem ele, só no dia seguinte.</span>'+
+      '<ol>'+passos+'</ol></div>'+
+      '<div class="convite-bts">'+(cel ? '<a class="convite-ir" href="'+esc(MODULOS.flow.url)+'">Abrir o Flow</a>' : '')+
+      '<button type="button" class="convite-nao">Hoje não</button></div>';
+    $('cards').insertBefore(d, $('cards').firstChild);
+    d.querySelector('.convite-nao').addEventListener('click', function(){
+      try { localStorage.setItem('bemer_convite_cel', hojeK); } catch(e){}
+      d.remove();
+    });
+  }, function(){});
 }
 
 /* =====================================================================
