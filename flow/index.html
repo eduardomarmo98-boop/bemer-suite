@@ -909,7 +909,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -930,7 +930,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -947,7 +947,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.5</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.6</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1072,7 +1072,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.23.5';
+var APP_VERSAO = '2026.10.23.6';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2222,8 +2222,9 @@ function blocosVisoes(R, dentro){
   }); });
   /* 23/10/2026 (pedido do dono): discreto, abaixo de Arquivadas — o "Registro"
      (como o Registro SESMT do Docs) e quem já recebe o aviso no celular */
-  if(Registro.pode()) h += '<div class="sublinks"><button type="button" class="sublink" id="bloco-registro">🕘 Registro de atividades</button>'+
-    '<button type="button" class="sublink" id="bloco-avisos-cel">📲 Quem recebe aviso no celular</button></div>';
+  if(Registro.pode() || Registro.podeCelular()) h += '<div class="sublinks">'+
+    (Registro.pode() ? '<button type="button" class="sublink" id="bloco-registro">🕘 Registro de atividades</button>' : '')+
+    (Registro.podeCelular() ? '<button type="button" class="sublink" id="bloco-avisos-cel">📲 Quem recebe aviso no celular</button>' : '')+'</div>';
   return h + '</div>';
 }
 
@@ -2238,6 +2239,8 @@ var REG_VERBO = { nova:'abriu', comentario:'escreveu em', prazo:'assumiu o prazo
   redirecionada:'passou adiante', acompanhar:'incluiu alguém em' };
 var Registro = {
   pode: function(){ try { return podeNoFlow('ver_painel') || souAdminSistema(); } catch(e){ return false; } },
+  /* 23/10/2026 (0081, decisão do dono): a lista do aviso no celular é só da diretoria e do TI */
+  podeCelular: function(){ if(!EU) return false; return EU.perfil ? (EU.perfil === 'diretoria' || EU.perfil === 'ti') : (EU.papel === 'diretor' || EU.papel === 'ti'); },
   abrir: function(){
     var dias = 7;
     var f = folha('Registro de atividades',
