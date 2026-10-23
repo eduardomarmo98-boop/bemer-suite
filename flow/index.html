@@ -274,6 +274,18 @@
   .etq-filtro span{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--azul);
                    background:var(--azul-bg);border-radius:14px;padding:3px 8px 3px 12px;max-width:62vw;
                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 23/10/2026: tela obrigatória de ativar o aviso no celular (cobre o Flow) */
+  .push-obriga{position:fixed;inset:0;z-index:300;background:var(--fundo);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+  .pob-caixa{background:#fff;border-radius:18px;box-shadow:var(--sombra);max-width:420px;width:100%;padding:24px 20px;font-size:15px;line-height:1.5;color:var(--tinta)}
+  .pob-ico{font-size:40px;text-align:center}
+  .pob-caixa h2{font-size:20px;font-weight:700;color:var(--azul);text-align:center;margin:6px 0 10px;line-height:1.3}
+  .pob-caixa p{margin:0 0 10px}
+  .pob-caixa ol{padding-left:20px;margin:8px 0 0}
+  .pob-por{color:var(--tinta2);text-align:center}
+  .pob-bts{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .pob-pri{min-height:54px;border-radius:14px;background:var(--laranja);color:var(--azul);font-size:17px;font-weight:700}
+  .pob-sec{min-height:46px;border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--azul-borda);color:var(--azul);font-size:15px;font-weight:600;background:#fff}
+  .pob-fim{font-size:13px;color:var(--tinta2);text-align:center;margin:0}
   .faixa-push{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0;padding:10px 12px;border-radius:14px;background:var(--azul-bg);color:var(--azul);font-size:14px}
   .faixa-push span{flex:1 1 200px;min-width:0}
   .faixa-push button{min-height:40px;padding:0 14px;border-radius:10px;font-weight:600;font-size:14px}
@@ -909,7 +921,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.7</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -930,7 +942,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.7</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -947,7 +959,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.6</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.23.7</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1072,7 +1084,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.23.6';
+var APP_VERSAO = '2026.10.23.7';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -7059,7 +7071,8 @@ Regras = {
    chegar no aparelho (o gatilho do banco chama a edge).
    iPhone: só funciona com o BeMer instalado na Tela de Início.
    ===================================================================== */
-var PUSH_CAMPANHA_ATE = '2026-11-15';   // 23/10: convite diário para ligar o aviso no celular (temporário)
+var PUSH_CAMPANHA_ATE = '2026-11-15';
+var PUSH_CARENCIA = 3;   // 23/10: dias em que dá para pular a tela obrigatória do celular   // 23/10: convite diário para ligar o aviso no celular (temporário)
 var PUSH_CHAVE ='BO7OibIBD3WA6K2RMOLN1yW8PeWXHZtKczz8cEEb9TW2uWez4ZWW9vR_5Iau5k3RLftD4brHa5ej3HoP7xDYBbw';
 var Push = {
   ios: function(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); },
@@ -7144,13 +7157,74 @@ var Push = {
         function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
     });
   },
+  /* =====================================================================
+     TELA OBRIGATÓRIA NO CELULAR (23/10/2026)
+     O aviso não liga sozinho: o celular exige o toque da pessoa. Então, no
+     celular, quem não tem nenhum celular inscrito vê esta tela cobrindo o
+     Flow. Nos 3 primeiros dias (PUSH_CARENCIA) dá para pular por um dia;
+     depois, só sai ativando. Exceções que não travam: aparelho que BLOQUEOU
+     os avisos (só a pessoa libera nos ajustes) — mostra como e deixa seguir.
+     No iPhone fora do app instalado, ensina a instalar (lá aparece o Ativar).
+     ===================================================================== */
+  obrigar: function(st){
+    if($('push-obriga') || !EU) return;
+    var ini = Pref.ler('push_car_'+EU.id);
+    if(!ini){ ini = Push.hojeTxt(); Pref.gravar('push_car_'+EU.id, ini); }
+    var p = ini.split('-'), d0 = new Date(+p[0], (+p[1]||1)-1, +p[2]||1);
+    var resta = PUSH_CARENCIA - Math.floor((hoje() - d0) / 86400000);
+    if(st !== 'negado' && resta > 0 && Pref.ler('push_pulou_'+EU.id) === Push.hojeTxt()) return;   // já pulou hoje
+    var corpo, bts = '';
+    if(st === 'negado'){
+      corpo = '<p>Este celular <b>bloqueou</b> os avisos do BeMer, e só você consegue liberar:</p><ol>'+
+        (Push.ios() ? '<li>Abra <b>Ajustes</b> › <b>Notificações</b> › <b>BeMer</b>.</li><li>Ligue <b>Permitir Notificações</b>.</li>'
+                    : '<li>No Chrome, toque no <b>cadeado</b> ao lado do endereço (ou ⋮ › Configurações › Notificações).</li><li>Libere as <b>notificações</b> do BeMer.</li>')+
+        '<li>Volte ao Flow: o aviso liga sozinho.</li></ol>';
+      bts = '<button type="button" class="pob-sec" id="pob-seguir">Continuar</button>';
+    } else if(st === 'instalar'){
+      corpo = '<p>No iPhone, o aviso só funciona com o BeMer <b>instalado na Tela de Início</b>:</p><ol>'+
+        '<li>No Safari, toque em <b>Compartilhar</b> (o quadrado com a seta para cima).</li>'+
+        '<li>Escolha <b>Adicionar à Tela de Início</b> › <b>Adicionar</b>.</li>'+
+        '<li>Abra o <b>BeMer</b> pelo ícone novo e entre no Flow: lá aparece o botão <b>Ativar</b>.</li></ol>';
+    } else {
+      corpo = '<p>É um toque só: em seguida o celular pergunta se pode mandar avisos — toque em <b>Permitir</b>.</p>';
+      bts = '<button type="button" class="pob-pri" id="pob-ativar">Ativar agora</button>';
+    }
+    if(st !== 'negado') bts += resta > 0
+      ? '<button type="button" class="pob-sec" id="pob-depois">Agora não ('+(resta === 1 ? 'último dia' : 'faltam '+resta+' dias')+')</button>'
+      : '<p class="pob-fim">A partir de agora, o Flow no celular só funciona com o aviso ligado.</p>';
+    var o = document.createElement('div');
+    o.id = 'push-obriga'; o.className = 'push-obriga'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true');
+    o.innerHTML = '<div class="pob-caixa"><div class="pob-ico" aria-hidden="true">🔔</div>'+
+      '<h2>Ative os avisos do Flow neste celular</h2>'+
+      '<p class="pob-por">Assim você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem o aviso, só no dia seguinte.</p>'+
+      corpo+'<div class="pob-bts">'+bts+'</div></div>';
+    document.body.appendChild(o);
+    function sair(){ o.remove(); }
+    if($('pob-seguir')) $('pob-seguir').addEventListener('click', sair);
+    if($('pob-depois')) $('pob-depois').addEventListener('click', function(){ Pref.gravar('push_pulou_'+EU.id, Push.hojeTxt()); sair(); });
+    if($('pob-ativar')) $('pob-ativar').addEventListener('click', function(){
+      var b = this; b.disabled = true; b.textContent = 'Ativando…';
+      Push.ativar().then(function(){
+        sair(); var fx = $('faixa-push'); if(fx) fx.classList.add('oculto');
+        aviso('Avisos ligados neste celular. Mandei um teste.', 'ok');
+      }, function(e){
+        b.disabled = false; b.textContent = 'Ativar agora';
+        aviso(e.message||String(e), 'erro');
+        try { if(Notification.permission === 'denied'){ sair(); Push.obrigar('negado'); } } catch(x){}
+      });
+    });
+  },
   /* faixa no topo da lista: só enquanto não ativou e não disse "agora não"
      (na campanha, sem celular inscrito, o "agora não" vale só para hoje) */
   faixa: function(){
     var f = $('faixa-push'); if(!f || !Push.suporta()) return;
-    Promise.all([Push.estado(), Push.campanha() ? Push.temCelular() : Promise.resolve(true)]).then(function(r){
-      var st = r[0], temCel = r[1];
-      if(!temCel && (st === 'inativo' || st === 'instalar' || !(Push.celular(navigator.userAgent) || Push.ios()))) Push.convite(st);
+    Promise.all([Push.estado(), Push.temCelular()]).then(function(r){
+      var st = r[0], temCel = r[1], noCel = Push.celular(navigator.userAgent) || Push.ios();
+      /* 23/10/2026 (pedido do dono: "faça isso"): no CELULAR, sem nenhum celular
+         inscrito, a tela de ativar é obrigatória (3 dias de carência). No
+         computador continua o convite diário da campanha. */
+      if(!temCel && noCel && (st === 'inativo' || st === 'instalar' || st === 'negado')) Push.obrigar(st);
+      else if(!temCel && !noCel && Push.campanha()) Push.convite(st);
       var nao = Pref.ler('push_nao_'+EU.id);
       if(nao && (temCel || nao === Push.hojeTxt())) { f.classList.add('oculto'); return; }
       if(st !== 'inativo' && st !== 'instalar'){ f.classList.add('oculto'); return; }
