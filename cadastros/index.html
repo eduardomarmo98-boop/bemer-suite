@@ -213,7 +213,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.15.1';
+var APP_VERSION = '2026.10.27.1';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -908,6 +908,7 @@ var MODULOS = [
   { m:'flow',          nome:'Flow',       dica:'Pendências' },
   { m:'patrimonio',    nome:'Patrimônio', dica:'Bens' },
   { m:'financeiro',    nome:'Custos',     dica:'Orçamento, compras, contratos, medições e faturamento' },
+  { m:'manutencao',    nome:'Manutenção', dica:'Assistência pós-obra: chamados, visitas e garantia' },
   { m:'configuracoes', nome:'Cadastros',  dica:'A engrenagem do portal' },
   { m:'folha',         nome:'Folha',      dica:'Folha interna do DP (salários). Só a diretoria ou o DP ligam.' }
 ];
@@ -1065,6 +1066,12 @@ function resumoPerfil(c){
           + (nv.length ? ' Vê: ' + nv.filter(function(x){ return x !== 'ver todas as obras'; }).join(', ') + '.' : '') + (nf.length ? ' Pode: ' + nf.join(', ') + '.' : '')]);
       } else l.push(['Custos', 'Não entra.']);
     }
+    if(temMan()){
+      if(temModulo(c, 'manutencao')){
+        var mf = nomes('manutencao', false);
+        l.push(['Manutenção', 'Vê os chamados, as obras e o relatório.' + (mf.length ? ' Pode: ' + mf.join(', ') + '.' : ' Registra visita só nos chamados em que é o responsável.')]);
+      } else l.push(['Manutenção', 'Não entra.']);
+    }
     if(temModulo(c, 'configuracoes')){
       var cv = nomes('configuracoes', true), cf = nomes('configuracoes', false);
       l.push(['Cadastros', (cv.length || cf.length ? [].concat(cv, cf).join(', ').replace(/^./, function(x){ return x.toUpperCase(); }) + '.' : 'Vê só os dados da construtora.')
@@ -1094,7 +1101,7 @@ function resumoPerfil(c){
    O banco obedece. Grava por core.definir_permissao (diretoria/TI).
    --------------------------------------------------------------------- */
 var PERM_MOD = 'geral';
-var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['financeiro', 'Custos'], ['configuracoes', 'Cadastros'], ['docs', 'Docs'], ['folha', 'Folha']];
+var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['financeiro', 'Custos'], ['manutencao', 'Manutenção'], ['configuracoes', 'Cadastros'], ['docs', 'Docs'], ['folha', 'Folha']];
 /* 28/09/2026: o Financeiro só aparece onde o banco já o tem (0033 rodada) —
    em produção ele ainda não existe, e ligar o card daria "Módulo inválido". */
 function temFin(){ return (D.acoes || []).some(function(a){ return a.modulo === 'financeiro'; }); }
@@ -1102,9 +1109,12 @@ function temFin(){ return (D.acoes || []).some(function(a){ return a.modulo === 
 function temFolha(){ return (D.acoes || []).some(function(a){ return a.modulo === 'folha'; }); }
 /* editar/importar a folha: só perfil da diretoria ou do DP RECEBE (espelha core.folha_pode_receber) */
 function podeReceberFolha(c){ var p = perfilDe(c); return c === 'diretoria' || !!(p && (p.tipo_docs === 'diretoria' || p.tipo_docs === 'dp')); }
-function modulosAtivos(){ return MODULOS.filter(function(mo){ return (mo.m !== 'financeiro' || temFin()) && (mo.m !== 'folha' || temFolha()); }); }
-function modPerm(){ return MOD_PERM.filter(function(x){ return (x[0] !== 'financeiro' || temFin()) && (x[0] !== 'folha' || temFolha()); }); }
+/* 27/10/2026 (0082): a Manutenção só aparece onde o banco já tem as ações dela */
+function temMan(){ return (D.acoes || []).some(function(a){ return a.modulo === 'manutencao'; }); }
+function modulosAtivos(){ return MODULOS.filter(function(mo){ return (mo.m !== 'financeiro' || temFin()) && (mo.m !== 'folha' || temFolha()) && (mo.m !== 'manutencao' || temMan()); }); }
+function modPerm(){ return MOD_PERM.filter(function(x){ return (x[0] !== 'financeiro' || temFin()) && (x[0] !== 'folha' || temFolha()) && (x[0] !== 'manutencao' || temMan()); }); }
 var NOTA_MOD = {
+  manutencao: 'Quem tem a Manutenção vê todos os chamados, as obras entregues e o relatório. O responsável de um chamado sempre registra visita nele, mesmo sem "Atender". Nada se apaga: chamado se cancela com motivo e fica no histórico.',
   flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
   patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta. Na Diretoria, "Excluir" e apagar só com a marca "Administrador do sistema".',
   configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI e quem tem a marca "Administrador do sistema" têm tudo aqui. Na Diretoria sem a marca, "Cadastrar e editar pessoas" não vale (só consulta).',

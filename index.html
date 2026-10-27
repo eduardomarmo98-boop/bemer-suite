@@ -513,7 +513,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.27.1';
+var VERSAO   = '2026.10.27.2';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -538,7 +538,8 @@ var MODULOS = {
   /* 06/10/2026: a FOLHA INTERNA (salários) saiu do Docs e virou módulo próprio. O card vem
      de core.perfil_modulos ('folha'), que a 0049 mantém igual às caixas da folha (só diretoria/DP marcam). */
   folha:      {nome:'Folha',      desc:'Folha interna do DP: funcionários, benefícios e relatórios.', url:'folha/', icone:'folha'},
-  manutencao: {nome:'Manutenção', desc:'Ordens de serviço.',                               url:null,                              icone:'manutencao'},
+  /* 27/10/2026: Manutenção = assistência técnica pós-obra (0082). O card vem de core.perfil_modulos ('manutencao'). */
+  manutencao: {nome:'Manutenção', desc:'Assistência pós-obra: chamados, visitas e garantia.', url:'manutencao/', icone:'manutencao'},
   /* Não é um sistema: é onde mora o que é da suíte inteira — chaves de IA,
      compactador, garimpador de arquivos mortos, matriz de permissões.
      Só diretoria e TI recebem este módulo (ver migração 0008). Desde o

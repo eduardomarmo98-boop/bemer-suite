@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; media-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; connect-src 'self' https://cupdrskggjmhbzdxiume.supabase.co wss://cupdrskggjmhbzdxiume.supabase.co https://viacep.com.br https://generativelanguage.googleapis.com https://hook.eu2.make.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; frame-src 'self' blob: data: https://cupdrskggjmhbzdxiume.supabase.co https://www.youtube-nocookie.com https://drive.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manutenção · BeMer</title>
+<meta name="theme-color" content="#00296B">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca/icon-192.png">
+<link rel="apple-touch-icon" href="../marca/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   MANUTENÇÃO — assistência técnica pós-obra · módulo da suíte BeMer (27/10/2026)
+   ---------------------------------------------------------------------
+   Veio do app antigo "APP MANUTENÇÃO - DÚVIDA" (diagnóstico em
+   docs/MANUTENCAO-DIAGNOSTICO-2026-10-27.md). Banco: schema `manutencao`
+   (migração 0082). A trava de verdade é o banco: ler exige o card; abrir,
+   atender e cadastrar obra exigem a caixa em Cadastros › Permissões ›
+   Manutenção; toda mudança de chamado passa por função que registra.
+   Padrão dos módulos: login do portal, portão do 2FA, "Portal" como única
+   saída, ← do celular fecha camadas, aviso de versão. Celular primeiro.
+   ===================================================================== */
+:root{
+  --azul:#00296B; --azul-escuro:#001B4D; --laranja:#FE9400; --laranja-claro:#FFF1DC; --laranja-txt:#8A5000;
+  --texto:#0F1B2D; --texto2:#4F5B6D; --borda:#E3E7ED; --borda-forte:#C9D1DD;
+  --fundo:#F5F7FA; --campo:#F7F9FC; --erro:#9B1C14; --erro-fundo:#FDECEB; --ok:#1B5E34; --ok-fundo:#E7F5EC;
+  --shadow:0 1px 3px rgba(0,20,60,.07),0 1px 2px rgba(0,20,60,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:Poppins,system-ui,sans-serif;background:var(--fundo);color:var(--texto);-webkit-font-smoothing:antialiased;font-size:14px}
+.oculto{display:none!important}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--laranja);outline-offset:2px}
+a{color:var(--azul)}
+
+/* ---- cabeçalho padrão dos módulos (igual à Folha) ---- */
+header.topo{background:#fff;display:flex;align-items:center;gap:10px;padding:9px 16px;
+  padding-top:calc(9px + env(safe-area-inset-top));border-bottom:3px solid var(--laranja);
+  box-shadow:0 2px 8px rgba(0,20,60,.08);position:sticky;top:0;z-index:40}
+.marca{display:flex;align-items:center;gap:7px;text-decoration:none;min-height:36px}
+.marca img{height:28px;width:auto;display:block}
+.fio{width:1px;height:26px;background:var(--borda)}
+.modulo{display:flex;align-items:center;gap:7px;font-weight:600;color:var(--azul);font-size:15px;min-width:0}
+.tile{width:28px;height:28px;border-radius:8px;background:var(--azul);color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.direita{margin-left:auto;display:flex;gap:6px;align-items:center}
+.btn-topo{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--borda-forte);color:var(--azul);
+  border-radius:9px;height:36px;padding:0 12px;cursor:pointer;text-decoration:none;font-weight:600}
+.btn-topo.so-icone{border:0;padding:0;width:36px;justify-content:center}
+/* ---- botão "← Portal" — PADRÃO DA SUÍTE (07/10/2026): mesmo bloco em todos os módulos ---- */
+.bm-portal{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;box-sizing:border-box;
+  margin:0;padding:4px 10px;border:1px solid #00296B;border-radius:6px;background:#fff;color:#00296B;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;font-weight:500;line-height:1.5;
+  white-space:nowrap;text-decoration:none;cursor:pointer;transition:background .15s}
+.bm-portal:hover{background:#f0f4fb;color:#00296B}
+.bm-portal:focus-visible{outline:3px solid #FE9400;outline-offset:2px}
+@media (max-width:768px){.bm-portal{min-height:40px;padding:8px 10px;font-size:13px}}
+@media (max-width:520px){ .fio{display:none} header.topo{padding-left:12px;padding-right:12px} }
+@media (max-width:360px){ .marca img{height:24px} .modulo .nome-mod{display:none} }
+
+/* ---- abas ---- */
+nav.abas{background:#fff;border-bottom:1px solid var(--borda);position:sticky;top:calc(57px + env(safe-area-inset-top));z-index:30}
+nav.abas .trilho{max-width:1000px;margin:0 auto;display:flex;gap:4px;padding:0 12px;overflow-x:auto;scrollbar-width:none}
+nav.abas .trilho::-webkit-scrollbar{display:none}
+nav.abas button{border-bottom:3px solid transparent;padding:13px 12px 10px;color:var(--texto2);font-weight:600;white-space:nowrap;min-height:46px}
+nav.abas button.ativa{color:var(--azul);border-bottom-color:var(--laranja)}
+
+main{max-width:1000px;margin:0 auto;padding:16px 16px 96px}
+.carregando{padding:60px 16px;text-align:center;color:var(--texto2)}
+.rodape{text-align:center;color:var(--texto2);font-size:11px;padding:10px 0 24px}
+
+/* ---- comuns ---- */
+.cab{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.cab h1{font-size:19px;color:var(--azul);font-weight:700}
+.card{background:#fff;border:1px solid var(--borda);border-radius:12px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;color:var(--azul);margin-bottom:8px}
+.btn{padding:9px 16px;border-radius:9px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  white-space:nowrap;min-height:42px;border:1px solid transparent}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--azul);color:#fff} .btn-primary:hover{background:var(--azul-escuro)}
+.btn-laranja{background:var(--laranja);color:var(--azul)} .btn-laranja:hover{filter:brightness(.96)}
+.btn-secondary{background:#fff;color:var(--azul);border-color:var(--azul)} .btn-secondary:hover{background:#EEF2F9}
+.btn-danger{background:var(--erro-fundo);color:var(--erro)}
+.btn-sm{padding:5px 11px;min-height:34px;font-size:13px}
+.vazio{text-align:center;padding:40px 12px;color:var(--texto2)}
+.dica{color:var(--texto2);font-size:12px;line-height:1.45}
+.erro-txt{color:var(--erro);font-size:13px;margin-top:6px}
+
+/* campos */
+.campo{margin-bottom:12px}
+label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margin-bottom:5px}
+input,select,textarea{padding:9px 12px;border:1px solid var(--borda-forte);border-radius:9px;width:100%;background:#fff;min-height:42px}
+textarea{min-height:110px;resize:vertical;line-height:1.45}
+input[type=checkbox]{width:auto;min-height:0;accent-color:var(--azul);transform:scale(1.25)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(0,41,107,.12)}
+.lado{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.marcar{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;cursor:pointer}
+.com-mic{position:relative}
+.com-mic textarea{padding-right:52px}
+.mic{position:absolute;right:8px;top:8px;width:40px;height:40px;border-radius:50%;background:var(--azul);color:#fff;
+  display:flex;align-items:center;justify-content:center}
+.mic.gravando{background:#C62828;animation:pulsa 1.2s infinite}
+@keyframes pulsa{50%{opacity:.6}}
+
+/* filtros */
+.filtros{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.filtros::-webkit-scrollbar{display:none}
+.chip{border:1px solid var(--borda-forte);background:#fff;color:var(--texto2);border-radius:20px;padding:6px 13px;font-weight:600;white-space:nowrap;min-height:36px}
+.chip.ativo{background:var(--azul);border-color:var(--azul);color:#fff}
+.chip .n{opacity:.75;font-weight:500;margin-left:3px}
+.busca{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+
+/* lista de chamados */
+.lista{display:flex;flex-direction:column;gap:9px}
+.ch{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--borda);border-left:4px solid var(--borda-forte);
+  border-radius:12px;padding:11px 12px;box-shadow:var(--shadow)}
+.ch.st-aberto{border-left-color:var(--laranja)} .ch.st-em_atendimento{border-left-color:var(--azul)}
+.ch.st-resolvido{border-left-color:#2E7D32} .ch.st-cancelado{border-left-color:#9AA3AF}
+.ch:hover{border-color:var(--borda-forte)}
+.ch-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;min-width:0}
+.num{font-weight:700;color:var(--azul)}
+.obra-nome{color:var(--texto2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.ch-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;margin-bottom:6px}
+.selos{display:flex;flex-wrap:wrap;gap:5px}
+.selo{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;border-radius:10px;padding:2px 8px;background:#EEF2F9;color:var(--azul);white-space:nowrap}
+.selo.st-aberto{background:var(--laranja-claro);color:var(--laranja-txt)}
+.selo.st-em_atendimento{background:#E3ECFA;color:var(--azul)}
+.selo.st-resolvido{background:var(--ok-fundo);color:var(--ok)}
+.selo.st-cancelado{background:#EEF0F3;color:#5B6576}
+.selo.urgente{background:#C62828;color:#fff}
+.selo.atrasado{background:var(--erro-fundo);color:var(--erro)}
+.selo.garantia{background:var(--ok-fundo);color:var(--ok)}
+.selo.fora{background:#EEF0F3;color:#5B6576}
+.selo.cinza{background:#F1F3F6;color:var(--texto2);font-weight:500}
+
+/* botão flutuante (celular) */
+.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:35;box-shadow:0 6px 18px rgba(0,20,60,.25);min-height:52px;padding:0 20px;border-radius:26px;font-size:15px}
+
+/* detalhe */
+.det-linha{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--borda);font-size:13px}
+.det-linha:last-child{border-bottom:0}
+.det-linha b{min-width:96px;color:var(--texto2);font-weight:600}
+.desc-grande{white-space:pre-wrap;line-height:1.5;font-size:15px;margin:4px 0 10px}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:6px}
+.fotos a,.fotos .prev{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#E9EDF3;position:relative}
+.fotos img{width:100%;height:100%;object-fit:cover;display:block}
+.fotos .tirar{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:16px;line-height:26px;text-align:center}
+.add-foto{aspect-ratio:1;border:2px dashed var(--borda-forte);border-radius:8px;color:var(--texto2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;gap:2px;background:#fff}
+.linha-tempo{list-style:none;margin-top:4px}
+.linha-tempo li{position:relative;padding:0 0 12px 18px;border-left:2px solid var(--borda);margin-left:5px}
+.linha-tempo li:last-child{border-left-color:transparent}
+.linha-tempo li::before{content:'';position:absolute;left:-7px;top:3px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--borda-forte)}
+.linha-tempo li.visita::before{border-color:var(--azul);background:var(--azul)}
+.linha-tempo li.resolvido::before{border-color:#2E7D32;background:#2E7D32}
+.linha-tempo li.cancelado::before{border-color:#9AA3AF;background:#9AA3AF}
+.linha-tempo .qd{font-size:11px;color:var(--texto2)}
+.linha-tempo .tx{white-space:pre-wrap;line-height:1.45;margin-top:2px}
+.acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+
+/* relatório */
+.blocos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.bloco{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px;box-shadow:var(--shadow)}
+.bloco .v{font-size:24px;font-weight:700;color:var(--azul)}
+.bloco .r{font-size:12px;color:var(--texto2)}
+.bloco.alerta .v{color:var(--erro)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:8px 8px;font-size:11px;color:var(--texto2);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--borda);background:#F7F9FC}
+td{padding:8px 8px;border-bottom:1px solid var(--borda);font-size:13px}
+td.n,th.n{text-align:right}
+.rolar{overflow-x:auto}
+
+/* obras */
+.obra{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.obra .nm{font-weight:600}
+.obra.inativa{opacity:.6}
+
+/* ---- modal (folha de baixo no celular) ---- */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,20,50,.5);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:640px;max-height:92vh;max-height:92dvh;overflow:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--borda);display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;background:#fff;z-index:2}
+.modal-title{font-size:17px;font-weight:600;color:var(--azul)}
+.modal-close{color:var(--texto2);font-size:26px;line-height:1;width:42px;height:42px;border-radius:8px}
+.modal-body{padding:16px 18px}
+.modal-footer{padding:12px 18px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--borda);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;z-index:2}
+.modal-footer:empty{display:none}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:200;
+  background:var(--azul);color:#fff;border-radius:10px;padding:10px 16px;max-width:92%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast.err{background:var(--erro)}
+.faixa-atualizar{position:fixed;left:0;right:0;top:0;z-index:55;background:var(--laranja);color:var(--azul);
+  padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;font-weight:700}
+.faixa-atualizar button{background:var(--azul);color:#fff;border-radius:9px;padding:8px 14px;min-height:40px;font-weight:600}
+.cartao-aviso{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:24px;max-width:560px;margin:30px auto;box-shadow:var(--shadow)}
+.cartao-aviso h1{font-size:20px;color:var(--azul);margin-bottom:6px}
+.cartao-aviso p{color:var(--texto2);line-height:1.5}
+
+/* ---- celular ---- */
+@media (max-width:768px){
+  main{padding:12px 12px 96px}
+  input,select,textarea{font-size:16px}
+  .lado{grid-template-columns:1fr}
+  .busca{grid-template-columns:1fr}
+  .blocos{grid-template-columns:1fr 1fr}
+  .modal-bg{padding:0;align-items:flex-end}
+  .modal{max-width:100%;border-radius:16px 16px 0 0;max-height:94svh}
+  .modal-body{padding:14px}
+  .modal-footer .btn{flex:1}
+  .so-pc{display:none!important}
+}
+@media (min-width:769px){ .fab{display:none!important} }
+@media print{ header.topo,nav.abas,.rodape,.fab{display:none} }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <a class="marca" href="./" aria-label="BeMer Manutenção — tela inicial" title="Tela inicial da Manutenção">
+    <img src="data:image/png;base64,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" alt="BeMer">
+  </a>
+  <span class="fio"></span>
+  <span class="modulo"><span class="tile"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></span><span class="nome-mod">Manutenção</span></span>
+  <div class="direita">
+    <a class="bm-portal" href="../" title="Voltar ao portal BeMer">&#8592; Portal</a>
+    <button class="btn-topo so-icone" type="button" id="btn-sair" title="Sair" aria-label="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
+  </div>
+</header>
+
+<nav class="abas oculto" id="abas"><div class="trilho">
+  <button type="button" data-aba="chamados">Chamados</button>
+  <button type="button" data-aba="obras">Obras</button>
+  <button type="button" data-aba="relatorio">Relatório</button>
+</div></nav>
+<main id="main"><div class="carregando">Carregando…</div></main>
+<button type="button" class="btn btn-laranja fab oculto" id="fab">+ Novo chamado</button>
+<div class="rodape" id="rodape"></div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal" id="modalEl" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header"><div class="modal-title" id="modalTitle"></div><button type="button" class="modal-close" id="modalX" aria-label="Fechar">×</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+<input type="file" id="arq-fotos" accept="image/*" multiple class="oculto">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+<script>
+/* ===================================================================== */
+var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
+/* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
+var APP_VERSION = '2026.10.27.1';
+var AMBIENTE    = 'homologação';
+/* ===================================================================== */
+
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var M = function(){ return sb.schema('manutencao'); };
+function $(id){ return document.getElementById(id); }
+
+var EU = null;                                     // {id, nome}
+var PODE = { ver:false, abrir:false, atender:false, obras:false };
+var D = { obras:[], chamados:[], pessoas:[], carregadoEm:0 };
+var ABA = 'chamados';
+var FILTRO = { status:'abertos', obra:'', busca:'' };
+var REL = { obra:'', de:'', ate:'' };
+
+/* as mesmas do banco (check de manutencao.chamados.categoria) */
+var CATEGORIAS = ['Hidráulica','Elétrica','Alvenaria / Estrutura','Esquadrias (portas e janelas)','Pintura',
+  'Cobertura / Telhado','Impermeabilização','Pisos e revestimentos','Louças e metais','Marcenaria','Outros'];
+var STATUS = { aberto:'Aberto', em_atendimento:'Em atendimento', resolvido:'Resolvido', cancelado:'Cancelado' };
+
+$('rodape').textContent = 'BeMer · Manutenção · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
+$('btn-sair').addEventListener('click', function(){
+  limparRascunhos();
+  sb.auth.signOut().then(function(){ location.replace('../'); });
+});
+
+/* ---------- utilidades ---------- */
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function toast(msg, tipo){
+  var t = document.createElement('div'); t.className = 'toast ' + (tipo || ''); t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(function(){ t.remove(); }, tipo === 'err' ? Math.max(4000, String(msg).length * 60) : 2800);
+}
+function msgErro(e){
+  var m = (e && (e.message || e.error_description || e.details)) || String(e || 'Erro');
+  if(/row-level security|permission denied|42501/i.test(m)) return 'Sem permissão para isso (Cadastros › Permissões › Manutenção).';
+  if(/Failed to fetch|NetworkError|network/i.test(m)) return 'Sem internet. O que foi digitado continua aqui; tente de novo.';
+  return m;
+}
+function iso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function hoje(){ return iso(new Date()); }
+function dataDe(v){ return v ? (String(v).length > 10 ? iso(new Date(v)) : String(v).slice(0, 10)) : ''; }
+function fmtData(v){ var s = dataDe(v); return s ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : ''; }
+function fmtDataHora(v){ if(!v) return ''; var d = new Date(v); return fmtData(v) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function somaMeses(s, n){
+  var a = +s.slice(0, 4), m = +s.slice(5, 7) - 1 + n, d = +s.slice(8, 10);
+  var alvo = new Date(a, m, 1), fim = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  return iso(new Date(alvo.getFullYear(), alvo.getMonth(), Math.min(d, fim)));
+}
+function dias(de, ate){ return Math.round((new Date(dataDe(ate) + 'T12:00') - new Date(dataDe(de) + 'T12:00')) / 86400000); }
+function uuid(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ var r = crypto.getRandomValues(new Uint8Array(1))[0] % 16; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+}
+function sem(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+function obraDe(id){ return D.obras.find(function(o){ return o.id === id; }) || null; }
+function nomePessoa(id){ var p = D.pessoas.find(function(x){ return x.id === id; }); return p ? p.nome : ''; }
+function aberto(c){ return c.status === 'aberto' || c.status === 'em_atendimento'; }
+function atrasado(c){ return aberto(c) && c.prazo && c.prazo < hoje(); }
+/* garantia: entrega + meses da obra, comparada com a data em que o chamado foi aberto */
+function fimGarantia(o){ return o && o.entrega ? somaMeses(o.entrega, o.garantia_meses || 0) : ''; }
+function naGarantia(c){ var f = fimGarantia(obraDe(c.obra_id)); return f ? dataDe(c.aberto_em) <= f : null; }
+function telLinks(t){
+  var dg = String(t || '').replace(/\D/g, ''); if(dg.length < 8) return esc(t);
+  var wa = dg.length <= 11 ? '55' + dg : dg;
+  return '<a href="tel:' + dg + '">' + esc(t) + '</a> · <a href="https://wa.me/' + wa + '" target="_blank" rel="noopener">WhatsApp</a>';
+}
+
+/* ---------------------------------------------------------------------
+   VOLTA — o ← do celular fecha primeiro o que está por cima (mesmo
+   mecanismo de Cadastros/Flow/Folha). Na tela inicial o ← NÃO sai para
+   o portal — o único caminho é o botão "Portal".
+   --------------------------------------------------------------------- */
+var Volta = {
+  pilha: [], sobra: 0, ignorar: 0,
+  abrir: function(k, fechar){
+    var c = { k:k, fechar:fechar };
+    Volta.pilha.push(c);
+    try {
+      var st = { bm:Volta.pilha.length };
+      if(Volta.sobra > 0){ Volta.sobra--; history.replaceState(st, '', location.href); }
+      else history.pushState(st, '', location.href);
+    } catch(e){ Volta.pilha.pop(); }
+    return c;
+  },
+  fechou: function(c){
+    var i = c ? Volta.pilha.indexOf(c) : -1;
+    if(i < 0) return;
+    Volta.pilha.splice(i, 1); Volta.sobra++;
+    setTimeout(Volta.desfazer, 0);
+  },
+  desfazer: function(){
+    var n = Volta.sobra; if(!n) return;
+    Volta.sobra = 0; Volta.ignorar++;
+    try { history.go(-n); } catch(e){ Volta.ignorar--; }
+  }
+};
+var Guarda = {
+  posta: false,
+  armar: function(){
+    if(Guarda.posta || Volta.pilha.length || Volta.sobra || Volta.ignorar) return;
+    try {
+      history.replaceState({ bm:0, raiz:1 }, '', location.href);
+      history.pushState({ bm:0 }, '', location.href);
+      Guarda.posta = true;
+    } catch(e){}
+  }
+};
+document.addEventListener('pointerdown', Guarda.armar, true);
+document.addEventListener('keydown', Guarda.armar, true);
+document.addEventListener('touchstart', Guarda.armar, { capture:true, passive:true });
+window.addEventListener('popstate', function(e){
+  var d = (e.state && typeof e.state.bm === 'number') ? e.state.bm : 0;
+  if(e.state && e.state.raiz && !Volta.ignorar){
+    Guarda.posta = false;
+    if(!Volta.pilha.length){ toast('Para voltar ao portal, toque em Portal.'); return; }
+  }
+  if(Volta.ignorar){ Volta.ignorar--; return; }
+  while(Volta.pilha.length > d){ var c = Volta.pilha.pop(); try { c.fechar(); } catch(x){} }
+  if(d > Volta.pilha.length){ Volta.ignorar++; try { history.go(Volta.pilha.length - d); } catch(x){ Volta.ignorar--; } }
+});
+try { if(history.state && history.state.bm) history.replaceState(null, '', location.href); } catch(e){}
+
+/* ---------- modal ----------
+   abrirModal(titulo, html, botoes) — botoes: [{rotulo, cls, fn}] (fn devolve false = não fecha).
+   Trocar o conteúdo com o modal aberto não empilha outra camada. */
+var _camada = null, _aoFechar = null, _ocupado = false;
+function abrirModal(titulo, html, botoes, aoFechar){
+  pararMic();
+  $('modalTitle').textContent = titulo;
+  $('modalBody').innerHTML = html;
+  _aoFechar = aoFechar || null;
+  var f = $('modalFooter'); f.innerHTML = '';
+  (botoes || []).forEach(function(b){
+    var el = document.createElement('button'); el.type = 'button'; el.className = 'btn ' + (b.cls || 'btn-secondary'); el.textContent = b.rotulo;
+    el.addEventListener('click', function(){
+      if(_ocupado) return;
+      if(!b.fn){ fecharModal(); return; }
+      _ocupado = true; var bts = f.querySelectorAll('button'); bts.forEach(function(x){ x.disabled = true; });
+      var rot = el.textContent; if(b.salvando) el.textContent = b.salvando;
+      Promise.resolve().then(b.fn).then(function(r){ if(r !== false && r !== 'manter') fecharModal(); },
+                                        function(e){ toast(msgErro(e), 'err'); })
+        .then(function(){ _ocupado = false; bts.forEach(function(x){ x.disabled = false; }); el.textContent = rot; });
+    });
+    f.appendChild(el);
+  });
+  var ja = $('modal').classList.contains('show');
+  $('modal').classList.add('show');
+  $('modalEl').scrollTop = 0;
+  if(!ja || !_camada) _camada = Volta.abrir('modal', function(){ _camada = null; _fecharTela(); });
+}
+function _fecharTela(){
+  pararMic();
+  $('modal').classList.remove('show');
+  var f = _aoFechar; _aoFechar = null; if(f) try { f(); } catch(e){}
+}
+function fecharModal(){
+  _fecharTela();
+  if(_camada){ var c = _camada; _camada = null; Volta.fechou(c); }
+}
+$('modalX').addEventListener('click', function(){ if(!_ocupado) fecharModal(); });
+$('modal').addEventListener('click', function(e){ if(e.target === $('modal') && !_ocupado) fecharModal(); });
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && $('modal').classList.contains('show') && !_ocupado) fecharModal(); });
+
+/* ---------- ditado por voz (Chrome/Android; no iPhone, o teclado já tem o microfone) ---------- */
+var _mic = null;
+function temVoz(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+function botaoMic(alvo){
+  return temVoz() ? '<button type="button" class="mic" data-mic="' + alvo + '" title="Falar em vez de digitar" aria-label="Falar em vez de digitar">'
+    + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>' : '';
+}
+function pararMic(){ if(_mic){ try { _mic.parar = true; _mic.rec.stop(); } catch(e){} if(_mic.bt) _mic.bt.classList.remove('gravando'); _mic = null; } }
+function ligarMic(bt){
+  if(_mic){ var era = _mic.bt; pararMic(); if(era === bt) return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var campo = $(bt.getAttribute('data-mic')); if(!SR || !campo) return;
+  var rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = false;
+  var m = { rec:rec, bt:bt, parar:false };
+  rec.onresult = function(ev){
+    for(var i = ev.resultIndex; i < ev.results.length; i++){
+      if(!ev.results[i].isFinal) continue;
+      var t = ev.results[i][0].transcript.trim(); if(!t) continue;
+      campo.value = (campo.value && !/\s$/.test(campo.value) ? campo.value + ' ' : campo.value) + t;
+      campo.dispatchEvent(new Event('input', { bubbles:true }));
+    }
+  };
+  rec.onerror = function(ev){ if(ev.error === 'not-allowed') toast('Libere o microfone para este site.', 'err'); };
+  rec.onend = function(){ if(!m.parar && _mic === m){ try { rec.start(); } catch(e){ pararMic(); } } };
+  try { rec.start(); } catch(e){ toast('Não deu para ligar o microfone.', 'err'); return; }
+  _mic = m; bt.classList.add('gravando'); toast('Pode falar. Toque de novo para parar.');
+}
+document.addEventListener('click', function(e){ var b = e.target.closest('[data-mic]'); if(b){ e.preventDefault(); ligarMic(b); } });
+
+/* ---------- fotos: escolher, reduzir (~1600 px) e subir ---------- */
+var FOTOS = [];   // [{id, file, url}] escolhidas no formulário aberto
+function gradeFotos(){
+  return '<div class="fotos" id="grade-fotos">' + FOTOS.map(function(f){
+    return '<div class="prev"><img src="' + f.url + '" alt=""><button type="button" class="tirar" data-tirar="' + f.id + '" aria-label="Tirar foto">×</button></div>';
+  }).join('') + '<button type="button" class="add-foto" data-add-foto="1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto</button></div>';
+}
+function limparFotos(){ FOTOS.forEach(function(f){ try { URL.revokeObjectURL(f.url); } catch(e){} }); FOTOS = []; }
+function redesenharFotos(){ var g = $('grade-fotos'); if(g) g.outerHTML = gradeFotos(); }
+document.addEventListener('click', function(e){
+  if(e.target.closest('[data-add-foto]')){ $('arq-fotos').click(); return; }
+  var t = e.target.closest('[data-tirar]');
+  if(t){ var id = t.getAttribute('data-tirar'); FOTOS = FOTOS.filter(function(f){ if(f.id === id) URL.revokeObjectURL(f.url); return f.id !== id; }); redesenharFotos(); }
+});
+$('arq-fotos').addEventListener('change', function(){
+  Array.prototype.forEach.call(this.files || [], function(f){
+    if(!/^image\//.test(f.type)){ toast(f.name + ': não é foto.', 'err'); return; }
+    if(FOTOS.length >= 12){ toast('Máximo de 12 fotos por vez.', 'err'); return; }
+    FOTOS.push({ id:uuid(), file:f, url:URL.createObjectURL(f) });
+  });
+  this.value = '';
+  redesenharFotos();
+});
+function reduzir(file){
+  return new Promise(function(res, rej){
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function(){
+      var k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      var w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url);
+      cv.toBlob(function(b){ b ? res(b) : rej(new Error('Não deu para ler a foto.')); }, 'image/jpeg', 0.82);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('Não deu para ler a foto.')); };
+    img.src = url;
+  });
+}
+async function subirFotos(chamadoId, visitaId){
+  var ok = 0, falha = 0;
+  for(var i = 0; i < FOTOS.length; i++){
+    try {
+      var blob = await reduzir(FOTOS[i].file);
+      var nome = chamadoId + '/' + uuid() + '.jpg';
+      var up = await sb.storage.from('manutencao').upload(nome, blob, { contentType:'image/jpeg', upsert:false });
+      if(up.error) throw up.error;
+      var r = await M().from('fotos').insert({ chamado_id:chamadoId, visita_id:visitaId || null, caminho:nome, enviado_por:EU.id });
+      if(r.error) throw r.error;
+      ok++;
+    } catch(e){ falha++; console.warn('[foto]', e); }
+  }
+  limparFotos();
+  if(falha) toast(falha + ' foto(s) não subiram. Use "+ Fotos" no chamado para mandar de novo.', 'err');
+  return ok;
+}
+async function linksFotos(lista){
+  var mapa = {}; if(!lista.length) return mapa;
+  var r = await sb.storage.from('manutencao').createSignedUrls(lista.map(function(f){ return f.caminho; }), 3600);
+  (r.data || []).forEach(function(x){ if(x.signedUrl) mapa[x.path] = x.signedUrl; });
+  return mapa;
+}
+
+/* ---------- rascunho: o que foi digitado fica no aparelho até enviar ---------- */
+function chaveRasc(k){ return 'man_rasc_' + (EU ? EU.id : '') + '_' + k; }
+function lerRasc(k){ try { return JSON.parse(localStorage.getItem(chaveRasc(k)) || 'null'); } catch(e){ return null; } }
+function gravarRasc(k, v){ try { localStorage.setItem(chaveRasc(k), JSON.stringify(v)); } catch(e){} }
+function apagarRasc(k){ try { localStorage.removeItem(chaveRasc(k)); } catch(e){} }
+function limparRascunhos(){ try { Object.keys(localStorage).forEach(function(k){ if(k.indexOf('man_rasc_') === 0) localStorage.removeItem(k); }); } catch(e){} }
+function lerCampos(ids){ var o = {}; ids.forEach(function(id){ var el = $(id); if(el) o[id] = el.type === 'checkbox' ? el.checked : el.value; }); return o; }
+function vigiarRasc(k, ids){
+  ids.forEach(function(id){ var el = $(id); if(!el) return;
+    el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date' ? 'change' : 'input', function(){ gravarRasc(k, lerCampos(ids)); }); });
+}
+
+/* =====================================================================
+   DADOS
+   ===================================================================== */
+async function carregar(){
+  var rs = await Promise.all([
+    M().from('obras').select('*').order('nome'),
+    M().from('chamados').select('*').order('numero', { ascending:false }),
+    M().rpc('pessoas')
+  ]);
+  rs.forEach(function(r){ if(r.error) throw r.error; });
+  D.obras = rs[0].data || []; D.chamados = rs[1].data || []; D.pessoas = rs[2].data || []; D.carregadoEm = Date.now();
+}
+async function recarregarChamado(id){
+  var r = await M().from('chamados').select('*').eq('id', id).maybeSingle();
+  if(r.error) throw r.error;
+  var i = D.chamados.findIndex(function(c){ return c.id === id; });
+  if(r.data){ if(i >= 0) D.chamados[i] = r.data; else D.chamados.unshift(r.data); }
+  return r.data;
+}
+
+/* =====================================================================
+   TELAS
+   ===================================================================== */
+function irAba(a){
+  ABA = a;
+  document.querySelectorAll('nav.abas button').forEach(function(b){ b.classList.toggle('ativa', b.getAttribute('data-aba') === a); });
+  try { history.replaceState(history.state, '', '#' + a); } catch(e){}
+  $('fab').classList.toggle('oculto', !(a === 'chamados' && PODE.abrir));
+  desenhar();
+}
+document.querySelectorAll('nav.abas button').forEach(function(b){ b.addEventListener('click', function(){ irAba(b.getAttribute('data-aba')); }); });
+function desenhar(){ if(ABA === 'obras') telaObras(); else if(ABA === 'relatorio') telaRelatorio(); else telaChamados(); }
+
+/* ---------- CHAMADOS ---------- */
+function seloStatus(c){ return '<span class="selo st-' + c.status + '">' + STATUS[c.status] + '</span>'; }
+function selosChamado(c, curto){
+  var s = [];
+  if(c.urgente && aberto(c)) s.push('<span class="selo urgente">Urgente</span>');
+  if(atrasado(c)) s.push('<span class="selo atrasado">Atrasado · prazo ' + fmtData(c.prazo) + '</span>');
+  else if(c.prazo && aberto(c)) s.push('<span class="selo cinza">Prazo ' + fmtData(c.prazo) + '</span>');
+  var g = naGarantia(c);
+  if(g === true) s.push('<span class="selo garantia">Na garantia</span>');
+  else if(g === false) s.push('<span class="selo fora">Fora da garantia</span>');
+  if(c.responsavel_id) s.push('<span class="selo cinza">' + esc(nomePessoa(c.responsavel_id) || 'Responsável') + '</span>');
+  else if(aberto(c)) s.push('<span class="selo cinza">Sem responsável</span>');
+  if(curto && aberto(c)){ var n = dias(c.aberto_em, hoje()); s.push('<span class="selo cinza">' + (n <= 0 ? 'aberto hoje' : 'há ' + n + (n === 1 ? ' dia' : ' dias')) + '</span>'); }
+  return s.join('');
+}
+function filtrados(){
+  var b = sem(FILTRO.busca);
+  return D.chamados.filter(function(c){
+    if(FILTRO.status === 'abertos' && !aberto(c)) return false;
+    if(FILTRO.status === 'comigo' && !(aberto(c) && c.responsavel_id === EU.id)) return false;
+    if(FILTRO.status === 'atrasados' && !atrasado(c)) return false;
+    if(FILTRO.status === 'resolvido' && c.status !== 'resolvido') return false;
+    if(FILTRO.status === 'cancelado' && c.status !== 'cancelado') return false;
+    if(FILTRO.obra && c.obra_id !== FILTRO.obra) return false;
+    if(b){
+      var o = obraDe(c.obra_id);
+      if(sem(['#' + c.numero, c.descricao, c.solicitante, c.categoria, o && o.nome, o && o.cliente].join(' ')).indexOf(b) < 0) return false;
+    }
+    return true;
+  });
+}
+function telaChamados(){
+  var n = {
+    abertos: D.chamados.filter(aberto).length,
+    comigo: D.chamados.filter(function(c){ return aberto(c) && c.responsavel_id === EU.id; }).length,
+    atrasados: D.chamados.filter(atrasado).length
+  };
+  var chips = [['abertos', 'Abertos', n.abertos], ['comigo', 'Comigo', n.comigo], ['atrasados', 'Atrasados', n.atrasados],
+               ['resolvido', 'Resolvidos'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
+  var obrasUsadas = D.obras.filter(function(o){ return o.ativa || D.chamados.some(function(c){ return c.obra_id === o.id; }); });
+  $('main').innerHTML =
+      '<div class="cab"><h1>Chamados</h1>' + (PODE.abrir ? '<button type="button" class="btn btn-laranja so-pc" data-novo="1">+ Novo chamado</button>' : '') + '</div>'
+    + '<div class="filtros" role="tablist">' + chips.map(function(c){
+        return '<button type="button" class="chip' + (FILTRO.status === c[0] ? ' ativo' : '') + '" data-filtro="' + c[0] + '">' + c[1]
+             + (c[2] != null ? '<span class="n">' + c[2] + '</span>' : '') + '</button>'; }).join('') + '</div>'
+    + '<div class="busca"><select id="f-obra" aria-label="Obra"><option value="">Todas as obras</option>'
+    + obrasUsadas.map(function(o){ return '<option value="' + o.id + '"' + (FILTRO.obra === o.id ? ' selected' : '') + '>' + esc(o.nome) + '</option>'; }).join('')
+    + '</select><input id="f-busca" type="search" placeholder="Buscar nº, cliente, problema…" value="' + esc(FILTRO.busca) + '" aria-label="Buscar"></div>'
+    + '<div id="lista-ch"></div>';
+  desenharLista();
+  $('f-obra').addEventListener('change', function(){ FILTRO.obra = this.value; telaChamados(); });
+  $('f-busca').addEventListener('input', function(){ FILTRO.busca = this.value; desenharLista(); });
+}
+function desenharLista(){
+  var lista = filtrados();
+  $('lista-ch').innerHTML = lista.length ? '<div class="lista">' + lista.map(function(c){
+      var o = obraDe(c.obra_id);
+      return '<button type="button" class="ch st-' + c.status + '" data-ch="' + c.id + '">'
+        + '<div class="ch-top"><span class="num">#' + c.numero + '</span><span class="obra-nome">' + esc(o ? o.nome : '—') + '</span>' + seloStatus(c) + '</div>'
+        + '<div class="ch-desc">' + esc(c.descricao) + '</div>'
+        + '<div class="selos"><span class="selo">' + esc(c.categoria) + '</span>' + selosChamado(c, true) + '</div></button>';
+    }).join('') + '</div>'
+    : '<div class="vazio">' + (D.chamados.length ? 'Nenhum chamado neste filtro.'
+        : (D.obras.length ? 'Nenhum chamado ainda.' + (PODE.abrir ? ' Toque em <b>+ Novo chamado</b>.' : '')
+                          : 'Nenhuma obra cadastrada ainda.' + (PODE.obras ? ' Comece pela aba <b>Obras</b>.' : ' Peça a quem cadastra obras.'))) + '</div>';
+}
+$('main').addEventListener('click', function(e){
+  var f = e.target.closest('[data-filtro]'); if(f){ FILTRO.status = f.getAttribute('data-filtro'); telaChamados(); return; }
+  var c = e.target.closest('[data-ch]'); if(c){ abrirChamado(c.getAttribute('data-ch')); return; }
+  if(e.target.closest('[data-novo]')){ formChamado(null); return; }
+  var o = e.target.closest('[data-obra]'); if(o){ formObra(obraDe(o.getAttribute('data-obra'))); return; }
+  if(e.target.closest('[data-nova-obra]')){ formObra(null); return; }
+  if(e.target.closest('[data-exportar]')){ exportarExcel(); return; }
+});
+$('fab').addEventListener('click', function(){ formChamado(null); });
+
+/* ---------- NOVO / EDITAR CHAMADO ---------- */
+function opcoesObras(sel){
+  return '<option value="">— escolha a obra —</option>' + D.obras.filter(function(o){ return o.ativa || o.id === sel; }).map(function(o){
+    return '<option value="' + o.id + '"' + (o.id === sel ? ' selected' : '') + '>' + esc(o.nome) + (o.cliente ? ' · ' + esc(o.cliente) : '') + '</option>'; }).join('');
+}
+function opcoesResp(sel){
+  return '<option value="">— ninguém ainda —</option>' + D.pessoas.filter(function(p){ return p.pode_ser_responsavel || p.id === sel; }).map(function(p){
+    return '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + '>' + esc(p.nome) + (p.id === EU.id ? ' (eu)' : '') + '</option>'; }).join('');
+}
+function avisoGarantia(obraId){
+  var o = obraDe(obraId); if(!o) return '';
+  var f = fimGarantia(o);
+  if(!f) return '<div class="dica">Obra sem data de entrega: não dá para saber se está na garantia.</div>';
+  return f >= hoje() ? '<span class="selo garantia">Na garantia até ' + fmtData(f) + '</span>' : '<span class="selo fora">Garantia vencida em ' + fmtData(f) + '</span>';
+}
+var CAMPOS_CH = ['c-obra', 'c-desc', 'c-solic', 'c-tel', 'c-cat', 'c-urg', 'c-resp', 'c-prazo'];
+function formChamado(c){
+  if(!c && !D.obras.some(function(o){ return o.ativa; })){
+    abrirModal('Novo chamado', '<p>Nenhuma obra cadastrada ainda.</p><p class="dica" style="margin-top:6px">' + (PODE.obras ? 'Cadastre a obra entregue na aba Obras e volte aqui.' : 'Peça a quem cadastra obras para incluir a obra entregue.') + '</p>', [{ rotulo:'Fechar' }]);
+    return;
+  }
+  var r = c ? null : lerRasc('novo');
+  var v = c ? { 'c-obra':c.obra_id, 'c-desc':c.descricao, 'c-solic':c.solicitante || '', 'c-tel':c.telefone || '', 'c-cat':c.categoria,
+                'c-urg':c.urgente, 'c-resp':c.responsavel_id || '', 'c-prazo':c.prazo || '' }
+            : Object.assign({ 'c-obra':FILTRO.obra || '', 'c-cat':'', 'c-urg':false, 'c-resp':'', 'c-prazo':'' }, r || {});
+  limparFotos();
+  var html =
+      (r ? '<div class="card" style="background:var(--laranja-claro);border-color:#F5D9A8;padding:10px 12px">Rascunho recuperado deste aparelho. <button type="button" class="btn btn-sm btn-secondary" id="c-descartar" style="margin-left:6px">Começar do zero</button></div>' : '')
+    + '<div class="campo"><label class="rot" for="c-obra">Obra *</label><select id="c-obra">' + opcoesObras(v['c-obra']) + '</select><div id="c-gar" style="margin-top:6px">' + avisoGarantia(v['c-obra']) + '</div></div>'
+    + '<div class="campo"><label class="rot" for="c-desc">O que está acontecendo? *</label><div class="com-mic"><textarea id="c-desc" maxlength="4000" placeholder="Ex.: infiltração no teto do banheiro do apto 32, mancha aumentando depois da chuva">' + esc(v['c-desc'] || '') + '</textarea>' + botaoMic('c-desc') + '</div></div>'
+    + (c ? '' : '<div class="campo"><label class="rot">Fotos</label>' + gradeFotos() + '</div>')
+    + '<div class="lado"><div class="campo"><label class="rot" for="c-solic">Quem pediu</label><input id="c-solic" maxlength="200" placeholder="Nome do cliente / síndico" value="' + esc(v['c-solic'] || '') + '"></div>'
+    + '<div class="campo"><label class="rot" for="c-tel">Telefone</label><input id="c-tel" type="tel" inputmode="tel" maxlength="40" placeholder="(11) 9…" value="' + esc(v['c-tel'] || '') + '"></div></div>'
+    + '<div class="lado"><div class="campo"><label class="rot" for="c-cat">Tipo de serviço</label><select id="c-cat"><option value="">— escolha —</option>'
+    + CATEGORIAS.map(function(k){ return '<option' + (k === v['c-cat'] ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="campo"><label class="rot">&nbsp;</label><label class="marcar"><input type="checkbox" id="c-urg"' + (v['c-urg'] ? ' checked' : '') + '> Urgente</label></div></div>'
+    + '<div class="lado"><div class="campo"><label class="rot" for="c-resp">Responsável</label><select id="c-resp">' + opcoesResp(v['c-resp']) + '</select></div>'
+    + '<div class="campo"><label class="rot" for="c-prazo">Prazo</label><input id="c-prazo" type="date" value="' + esc(v['c-prazo'] || '') + '"></div></div>'
+    + '<div class="erro-txt" id="c-erro"></div>';
+  abrirModal(c ? 'Editar chamado #' + c.numero : 'Novo chamado', html, [
+    { rotulo:c ? 'Voltar' : 'Cancelar', fn:c ? function(){ abrirChamado(c.id); return 'manter'; } : null },
+    { rotulo:c ? 'Salvar' : 'Abrir chamado', cls:'btn-primary', salvando:'Salvando…', fn:function(){ return salvarChamado(c); } }
+  ], function(){ limparFotos(); });
+  $('c-obra').addEventListener('change', function(){ $('c-gar').innerHTML = avisoGarantia(this.value); });
+  if(!c) vigiarRasc('novo', CAMPOS_CH);
+  if($('c-descartar')) $('c-descartar').addEventListener('click', function(){
+    apagarRasc('novo');
+    CAMPOS_CH.forEach(function(id){ var el = $(id); if(el.type === 'checkbox') el.checked = false; else el.value = ''; });
+    $('c-gar').innerHTML = ''; this.parentNode.remove();
+  });
+}
+async function salvarChamado(c){
+  var v = lerCampos(CAMPOS_CH);
+  var erro = !v['c-obra'] ? 'Escolha a obra.' : (v['c-desc'].trim().length < 3 ? 'Descreva o problema.' : '');
+  if(erro){ $('c-erro').textContent = erro; return false; }
+  var p = { obra_id:v['c-obra'], descricao:v['c-desc'].trim(), solicitante:v['c-solic'], telefone:v['c-tel'],
+            categoria:v['c-cat'] || 'Outros', urgente:!!v['c-urg'], responsavel_id:v['c-resp'] || '', prazo:v['c-prazo'] || '' };
+  if(c){
+    var e = await M().rpc('editar_chamado', { p_id:c.id, p:p });
+    if(e.error) throw e.error;
+    await recarregarChamado(c.id);
+    toast('Chamado salvo.');
+    desenhar(); abrirChamado(c.id);
+    return 'manter';
+  }
+  var r = await M().rpc('abrir_chamado', { p:p });
+  if(r.error) throw r.error;
+  apagarRasc('novo');
+  var n = FOTOS.length ? await subirFotos(r.data.id, null) : 0;
+  await recarregarChamado(r.data.id);
+  toast('Chamado #' + r.data.numero + ' aberto' + (n ? ' com ' + n + ' foto(s)' : '') + '.');
+  FILTRO.status = 'abertos'; desenhar(); abrirChamado(r.data.id);
+  return 'manter';
+}
+
+/* ---------- DETALHE DO CHAMADO ---------- */
+async function abrirChamado(id){
+  var c = D.chamados.find(function(x){ return x.id === id; }); if(!c) return;
+  abrirModal('Chamado #' + c.numero, '<div class="carregando">Carregando…</div>', []);
+  try {
+    var rs = await Promise.all([
+      recarregarChamado(id),
+      M().from('visitas').select('*').eq('chamado_id', id).order('registrado_em'),
+      M().from('fotos').select('*').eq('chamado_id', id).order('enviado_em'),
+      M().from('eventos').select('*').eq('chamado_id', id).order('id')
+    ]);
+    for(var i = 1; i < rs.length; i++) if(rs[i].error) throw rs[i].error;
+    c = rs[0] || c;
+    var vis = rs[1].data || [], fotos = rs[2].data || [], evs = rs[3].data || [];
+    var links = await linksFotos(fotos);
+    desenharChamado(c, vis, fotos, evs, links);
+  } catch(e){ $('modalBody').innerHTML = '<p class="erro-txt">' + esc(msgErro(e)) + '</p>'; }
+}
+function htmlFotos(lista, links){
+  if(!lista.length) return '';
+  return '<div class="fotos">' + lista.map(function(f){
+    var u = links[f.caminho]; return u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt="Foto" loading="lazy"></a>' : '';
+  }).join('') + '</div>';
+}
+function desenharChamado(c, vis, fotos, evs, links){
+  var o = obraDe(c.obra_id), eu = EU.id;
+  var podeVisita = aberto(c) && (PODE.atender || c.responsavel_id === eu);
+  var podeEditar = aberto(c) && (PODE.atender || (c.aberto_por === eu && c.status === 'aberto' && PODE.abrir));
+  var podeReabrir = !aberto(c) && PODE.atender;
+  var podeFoto = PODE.atender || (aberto(c) && (PODE.abrir || c.responsavel_id === eu));
+  var gar = naGarantia(c), fg = fimGarantia(o);
+  /* linha do tempo: os eventos + cada visita no lugar do seu evento */
+  var itens = [], vi = 0;
+  evs.forEach(function(ev){
+    if(ev.tipo === 'visita'){ var v = vis[vi++]; if(v) itens.push({ v:v }); return; }
+    itens.push({ e:ev });
+  });
+  for(; vi < vis.length; vi++) itens.push({ v:vis[vi] });
+  var NOMES = { aberto:'Abriu o chamado', editado:'Editou', resolvido:'Resolvido', cancelado:'Cancelou', reaberto:'Reabriu' };
+  var tempo = itens.map(function(it){
+    if(it.v){
+      var v = it.v, fv = fotos.filter(function(f){ return f.visita_id === v.id; });
+      return '<li class="visita"><div class="qd">Visita em ' + fmtData(v.data) + ' · ' + esc(nomePessoa(v.registrado_por)) + '</div>'
+        + '<div class="tx">' + esc(v.relato) + '</div>'
+        + (v.feito ? '<div class="tx"><b>Feito:</b> ' + esc(v.feito) + '</div>' : '')
+        + (v.resolveu ? '<div class="selos" style="margin-top:4px"><span class="selo st-resolvido">Resolveu</span></div>' : '')
+        + htmlFotos(fv, links) + '</li>';
+    }
+    var e = it.e;
+    return '<li class="' + esc(e.tipo) + '"><div class="qd">' + fmtDataHora(e.em) + ' · ' + esc(nomePessoa(e.quem)) + '</div>'
+      + '<div class="tx"><b>' + esc(NOMES[e.tipo] || e.tipo) + '</b>' + (e.detalhe ? ': ' + esc(e.detalhe) : '') + '</div></li>';
+  }).join('');
+  var fotosCh = fotos.filter(function(f){ return !f.visita_id; });
+  var html =
+      '<div class="selos" style="margin-bottom:8px">' + seloStatus(c) + '<span class="selo">' + esc(c.categoria) + '</span>' + selosChamado(c, false) + '</div>'
+    + '<div class="desc-grande">' + esc(c.descricao) + '</div>'
+    + htmlFotos(fotosCh, links)
+    + '<div class="card" style="margin-top:12px;padding:8px 12px">'
+    + '<div class="det-linha"><b>Obra</b><span>' + esc(o ? o.nome : '—') + (o && o.cliente ? ' · ' + esc(o.cliente) : '') + (o && o.endereco ? '<br><span class="dica">' + esc(o.endereco) + (o.cidade ? ', ' + esc(o.cidade) : '') + '</span>' : '') + '</span></div>'
+    + '<div class="det-linha"><b>Garantia</b><span>' + (fg ? (gar ? 'Na garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : 'Obra sem data de entrega') + '</span></div>'
+    + (c.solicitante || c.telefone ? '<div class="det-linha"><b>Quem pediu</b><span>' + esc(c.solicitante || '') + (c.telefone ? '<br>' + telLinks(c.telefone) : '') + '</span></div>' : '')
+    + '<div class="det-linha"><b>Responsável</b><span>' + esc(nomePessoa(c.responsavel_id) || '—') + '</span></div>'
+    + '<div class="det-linha"><b>Prazo</b><span>' + (c.prazo ? fmtData(c.prazo) : '—') + '</span></div>'
+    + '<div class="det-linha"><b>Aberto</b><span>' + fmtDataHora(c.aberto_em) + ' · ' + esc(nomePessoa(c.aberto_por)) + '</span></div>'
+    + (c.motivo && !aberto(c) ? '<div class="det-linha"><b>Motivo</b><span>' + esc(c.motivo) + '</span></div>' : '')
+    + '</div>'
+    + '<h2 style="font-size:15px;color:var(--azul);margin:14px 0 8px">Histórico</h2><ul class="linha-tempo">' + tempo + '</ul>';
+  var bts = [];
+  if(podeEditar) bts.push({ rotulo:'Cancelar chamado', cls:'btn-danger', fn:function(){ formMotivo(c, 'cancelar'); return 'manter'; } });
+  if(podeReabrir) bts.push({ rotulo:'Reabrir', fn:function(){ formMotivo(c, 'reabrir'); return 'manter'; } });
+  if(podeEditar) bts.push({ rotulo:'Editar', fn:function(){ formChamado(c); return 'manter'; } });
+  if(podeFoto) bts.push({ rotulo:'+ Fotos', fn:function(){ formFotos(c); return 'manter'; } });
+  if(podeVisita) bts.push({ rotulo:'+ Registrar visita', cls:'btn-laranja', fn:function(){ formVisita(c); return 'manter'; } });
+  if(!bts.length) bts.push({ rotulo:'Fechar' });
+  abrirModal('Chamado #' + c.numero, html, bts);
+}
+
+/* ---------- VISITA ---------- */
+function formVisita(c){
+  var k = 'visita_' + c.id, r = lerRasc(k) || {};
+  limparFotos();
+  var html =
+      '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc((obraDe(c.obra_id) || {}).nome || '') + '</div>'
+    + '<div class="campo"><label class="rot" for="v-data">Data da visita</label><input id="v-data" type="date" max="' + hoje() + '" value="' + esc(r['v-data'] || hoje()) + '"></div>'
+    + '<div class="campo"><label class="rot" for="v-relato">O que foi visto? *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" placeholder="Ex.: ralo da laje sem caimento, manta descolada">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + '</div></div>'
+    + '<div class="campo"><label class="rot" for="v-feito">O que foi feito</label><div class="com-mic"><textarea id="v-feito" maxlength="2000" style="min-height:80px" placeholder="Ex.: refeita a impermeabilização do ralo">' + esc(r['v-feito'] || '') + '</textarea>' + botaoMic('v-feito') + '</div></div>'
+    + '<div class="campo"><label class="rot">Fotos</label>' + gradeFotos() + '</div>'
+    + '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>'
+    + '<div class="erro-txt" id="v-erro"></div>';
+  abrirModal('Registrar visita', html, [
+    { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
+    { rotulo:'Salvar visita', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
+        var v = lerCampos(['v-data', 'v-relato', 'v-feito', 'v-resolveu']);
+        if(v['v-relato'].trim().length < 3){ $('v-erro').textContent = 'Escreva o que foi visto.'; return false; }
+        var x = await M().rpc('registrar_visita', { p_chamado:c.id, p_data:v['v-data'] || hoje(), p_relato:v['v-relato'].trim(),
+                                                    p_feito:v['v-feito'].trim(), p_resolveu:!!v['v-resolveu'] });
+        if(x.error) throw x.error;
+        apagarRasc(k);
+        var n = FOTOS.length ? await subirFotos(c.id, x.data) : 0;
+        toast(v['v-resolveu'] ? 'Visita salva e chamado resolvido.' : 'Visita salva' + (n ? ' com ' + n + ' foto(s)' : '') + '.');
+        await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
+        return 'manter';
+      } }
+  ], function(){ limparFotos(); });
+  vigiarRasc(k, ['v-data', 'v-relato', 'v-feito', 'v-resolveu']);
+}
+
+/* ---------- + FOTOS (no chamado, fora de visita) ---------- */
+function formFotos(c){
+  limparFotos();
+  abrirModal('Fotos do chamado #' + c.numero, '<p class="dica" style="margin-bottom:8px">Toque em Foto para tirar ou escolher.</p>' + gradeFotos(), [
+    { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
+    { rotulo:'Enviar fotos', cls:'btn-primary', salvando:'Enviando…', fn:async function(){
+        if(!FOTOS.length){ toast('Escolha ao menos uma foto.', 'err'); return false; }
+        var n = await subirFotos(c.id, null);
+        if(n) toast(n + ' foto(s) enviada(s).');
+        abrirChamado(c.id); return 'manter';
+      } }
+  ], function(){ limparFotos(); });
+}
+
+/* ---------- CANCELAR / REABRIR ---------- */
+function formMotivo(c, acao){
+  var canc = acao === 'cancelar';
+  abrirModal((canc ? 'Cancelar' : 'Reabrir') + ' chamado #' + c.numero,
+    '<div class="campo"><label class="rot" for="m-motivo">' + (canc ? 'Por que cancelar? *' : 'Por que reabrir? *') + '</label>'
+    + '<textarea id="m-motivo" maxlength="1000" style="min-height:80px" placeholder="' + (canc ? 'Ex.: aberto em duplicidade; não é da garantia; cliente desistiu' : 'Ex.: cliente diz que voltou a pingar') + '"></textarea></div><div class="erro-txt" id="m-erro"></div>', [
+    { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
+    { rotulo:canc ? 'Cancelar chamado' : 'Reabrir', cls:canc ? 'btn-danger' : 'btn-primary', fn:async function(){
+        var m = $('m-motivo').value.trim();
+        if(m.length < 3){ $('m-erro').textContent = 'Escreva o motivo.'; return false; }
+        var r = await M().rpc(canc ? 'cancelar_chamado' : 'reabrir_chamado', { p_id:c.id, p_motivo:m });
+        if(r.error) throw r.error;
+        toast(canc ? 'Chamado cancelado.' : 'Chamado reaberto.');
+        await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
+        return 'manter';
+      } }
+  ]);
+}
+
+/* ---------- OBRAS ---------- */
+function telaObras(){
+  var lista = D.obras.slice().sort(function(a, b){ return (b.ativa - a.ativa) || a.nome.localeCompare(b.nome, 'pt-BR'); });
+  $('main').innerHTML =
+      '<div class="cab"><h1>Obras entregues</h1>' + (PODE.obras ? '<button type="button" class="btn btn-laranja" data-nova-obra="1">+ Nova obra</button>' : '') + '</div>'
+    + (lista.length ? lista.map(function(o){
+        var f = fimGarantia(o), ab = D.chamados.filter(function(c){ return c.obra_id === o.id && aberto(c); }).length;
+        var tot = D.chamados.filter(function(c){ return c.obra_id === o.id; }).length;
+        return '<button type="button" class="card ch obra' + (o.ativa ? '' : ' inativa') + '" data-obra="' + o.id + '">'
+          + '<div><div class="nm">' + esc(o.nome) + (o.ativa ? '' : ' <span class="selo fora">Desativada</span>') + '</div>'
+          + '<div class="dica">' + [o.cliente, o.cidade].filter(Boolean).map(esc).join(' · ') + '</div>'
+          + '<div class="selos" style="margin-top:6px">' + (f ? (f >= hoje() ? '<span class="selo garantia">Garantia até ' + fmtData(f) + '</span>' : '<span class="selo fora">Garantia vencida em ' + fmtData(f) + '</span>')
+                                                    : '<span class="selo cinza">Sem data de entrega</span>')
+          + (o.entrega ? '<span class="selo cinza">Entregue em ' + fmtData(o.entrega) + '</span>' : '') + '</div></div>'
+          + '<div style="text-align:right;white-space:nowrap"><div class="v" style="font-weight:700;color:var(--azul);font-size:18px">' + ab + '</div><div class="dica">abertos<br>de ' + tot + '</div></div></button>';
+      }).join('')
+      : '<div class="vazio">Nenhuma obra cadastrada.' + (PODE.obras ? ' Toque em <b>+ Nova obra</b>.' : '') + '</div>');
+}
+function formObra(o){
+  var so = !PODE.obras, v = o || { garantia_meses:60, ativa:true };
+  function cp(id, rot, val, extra){ return '<div class="campo"><label class="rot" for="' + id + '">' + rot + '</label><input id="' + id + '" value="' + esc(val == null ? '' : val) + '"' + (extra || '') + (so ? ' disabled' : '') + '></div>'; }
+  var html =
+      cp('o-nome', 'Nome da obra *', v.nome, ' maxlength="200" placeholder="Ex.: Residencial Alfa — Torre B"')
+    + '<div class="lado">' + cp('o-cliente', 'Cliente', v.cliente, ' maxlength="200"') + cp('o-contato', 'Contato no cliente', v.contato, ' maxlength="200" placeholder="Síndico, zelador…"') + '</div>'
+    + '<div class="lado">' + cp('o-tel', 'Telefone', v.telefone, ' type="tel" inputmode="tel" maxlength="40"') + cp('o-email', 'E-mail', v.email, ' type="email" maxlength="200"') + '</div>'
+    + '<div class="lado">' + cp('o-end', 'Endereço', v.endereco, ' maxlength="300"') + cp('o-cidade', 'Cidade', v.cidade, ' maxlength="100"') + '</div>'
+    + '<div class="lado">' + cp('o-entrega', 'Data de entrega', v.entrega, ' type="date"') + cp('o-gar', 'Garantia (meses)', v.garantia_meses, ' type="number" min="0" max="240" inputmode="numeric"') + '</div>'
+    + '<div class="campo"><label class="rot" for="o-obs">Observações</label><textarea id="o-obs" maxlength="2000" style="min-height:70px"' + (so ? ' disabled' : '') + '>' + esc(v.observacoes || '') + '</textarea></div>'
+    + '<div class="dica">A garantia conta a partir da entrega. O chamado mostra sozinho se está dentro ou fora.</div>'
+    + '<div class="erro-txt" id="o-erro"></div>';
+  var bts = [{ rotulo:so ? 'Fechar' : 'Cancelar' }];
+  if(!so && o) bts.unshift({ rotulo:o.ativa ? 'Desativar' : 'Reativar', cls:o.ativa ? 'btn-danger' : 'btn-secondary', fn:async function(){
+    if(o.ativa && !confirm('Desativar "' + o.nome + '"? Ela some da lista de obras do Novo chamado. Os chamados dela continuam.')) return false;
+    var r = await M().from('obras').update({ ativa:!o.ativa }).eq('id', o.id);
+    if(r.error) throw r.error;
+    await carregar(); desenhar(); toast(o.ativa ? 'Obra desativada.' : 'Obra reativada.');
+  } });
+  if(!so) bts.push({ rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
+    var p = { nome:$('o-nome').value.trim(), cliente:$('o-cliente').value.trim() || null, contato:$('o-contato').value.trim() || null,
+              telefone:$('o-tel').value.trim() || null, email:$('o-email').value.trim() || null, endereco:$('o-end').value.trim() || null,
+              cidade:$('o-cidade').value.trim() || null, entrega:$('o-entrega').value || null,
+              garantia_meses:parseInt($('o-gar').value, 10), observacoes:$('o-obs').value.trim() || null };
+    if(p.nome.length < 2){ $('o-erro').textContent = 'Dê um nome à obra.'; return false; }
+    if(!(p.garantia_meses >= 0 && p.garantia_meses <= 240)){ $('o-erro').textContent = 'Garantia: de 0 a 240 meses.'; return false; }
+    var r = o ? await M().from('obras').update(p).eq('id', o.id) : await M().from('obras').insert(p);
+    if(r.error) throw r.error;
+    await carregar(); desenhar(); toast('Obra salva.');
+  } });
+  abrirModal(o ? (so ? o.nome : 'Editar obra') : 'Nova obra', html, bts);
+}
+
+/* ---------- RELATÓRIO ---------- */
+function doRelatorio(){
+  return D.chamados.filter(function(c){
+    var d = dataDe(c.aberto_em);
+    return (!REL.obra || c.obra_id === REL.obra) && (!REL.de || d >= REL.de) && (!REL.ate || d <= REL.ate);
+  });
+}
+function telaRelatorio(){
+  var L = doRelatorio();
+  var res = L.filter(function(c){ return c.status === 'resolvido' && c.resolvido_em; });
+  var medio = res.length ? (res.reduce(function(s, c){ return s + Math.max(0, dias(c.aberto_em, c.resolvido_em)); }, 0) / res.length) : null;
+  var ab = L.filter(aberto), atr = L.filter(atrasado), velhos = ab.filter(function(c){ return dias(c.aberto_em, hoje()) > 30; });
+  function agrupar(chave, nome){
+    var m = {};
+    L.forEach(function(c){ var k = chave(c); var g = m[k] || (m[k] = { nome:nome(c), t:0, a:0, r:0 }); g.t++; if(aberto(c)) g.a++; if(c.status === 'resolvido') g.r++; });
+    return Object.keys(m).map(function(k){ return m[k]; }).sort(function(a, b){ return b.t - a.t || a.nome.localeCompare(b.nome, 'pt-BR'); });
+  }
+  function tabela(tit, linhas){
+    return '<div class="card"><h2>' + tit + '</h2>' + (linhas.length ? '<div class="rolar"><table><thead><tr><th></th><th class="n">Total</th><th class="n">Abertos</th><th class="n">Resolvidos</th></tr></thead><tbody>'
+      + linhas.map(function(g){ return '<tr><td>' + esc(g.nome) + '</td><td class="n">' + g.t + '</td><td class="n">' + g.a + '</td><td class="n">' + g.r + '</td></tr>'; }).join('')
+      + '</tbody></table></div>' : '<div class="dica">Sem chamados no período.</div>') + '</div>';
+  }
+  $('main').innerHTML =
+      '<div class="cab"><h1>Relatório</h1><button type="button" class="btn btn-secondary" data-exportar="1"' + (L.length ? '' : ' disabled') + '>Exportar Excel</button></div>'
+    + '<div class="card"><div class="lado" style="grid-template-columns:2fr 1fr 1fr">'
+    + '<div class="campo"><label class="rot" for="r-obra">Obra</label><select id="r-obra"><option value="">Todas</option>' + D.obras.map(function(o){ return '<option value="' + o.id + '"' + (REL.obra === o.id ? ' selected' : '') + '>' + esc(o.nome) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="campo"><label class="rot" for="r-de">Aberto de</label><input id="r-de" type="date" value="' + esc(REL.de) + '"></div>'
+    + '<div class="campo"><label class="rot" for="r-ate">até</label><input id="r-ate" type="date" value="' + esc(REL.ate) + '"></div></div></div>'
+    + '<div class="blocos">'
+    + '<div class="bloco"><div class="v">' + L.length + '</div><div class="r">chamados</div></div>'
+    + '<div class="bloco"><div class="v">' + ab.length + '</div><div class="r">em aberto</div></div>'
+    + '<div class="bloco' + (atr.length ? ' alerta' : '') + '"><div class="v">' + atr.length + '</div><div class="r">atrasados</div></div>'
+    + '<div class="bloco"><div class="v">' + (medio == null ? '—' : medio.toFixed(1).replace('.', ',')) + '</div><div class="r">dias, em média, para resolver</div></div>'
+    + '</div>'
+    + tabela('Por tipo de serviço', agrupar(function(c){ return c.categoria; }, function(c){ return c.categoria; }))
+    + tabela('Por obra', agrupar(function(c){ return c.obra_id; }, function(c){ return (obraDe(c.obra_id) || {}).nome || '—'; }))
+    + '<div class="card"><h2>Abertos há mais de 30 dias (' + velhos.length + ')</h2>' + (velhos.length ? '<div class="lista">' + velhos.map(function(c){
+        return '<button type="button" class="ch st-' + c.status + '" data-ch="' + c.id + '"><div class="ch-top"><span class="num">#' + c.numero + '</span><span class="obra-nome">' + esc((obraDe(c.obra_id) || {}).nome || '') + '</span><span class="selo atrasado">' + dias(c.aberto_em, hoje()) + ' dias</span></div><div class="ch-desc">' + esc(c.descricao) + '</div></button>';
+      }).join('') + '</div>' : '<div class="dica">Nenhum.</div>') + '</div>';
+  $('r-obra').addEventListener('change', function(){ REL.obra = this.value; telaRelatorio(); });
+  $('r-de').addEventListener('change', function(){ REL.de = this.value; telaRelatorio(); });
+  $('r-ate').addEventListener('change', function(){ REL.ate = this.value; telaRelatorio(); });
+}
+function carregarScript(url){
+  return new Promise(function(res, rej){ var s = document.createElement('script'); s.src = url; s.onload = res; s.onerror = function(){ rej(new Error('Não deu para carregar o gerador de Excel.')); }; document.head.appendChild(s); });
+}
+async function exportarExcel(){
+  try {
+    if(!window.XLSX) await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    var linhas = doRelatorio().map(function(c){
+      var o = obraDe(c.obra_id) || {}, g = naGarantia(c);
+      return { 'Nº':c.numero, 'Obra':o.nome || '', 'Cliente':o.cliente || '', 'Tipo de serviço':c.categoria, 'Problema':c.descricao,
+               'Quem pediu':c.solicitante || '', 'Telefone':c.telefone || '', 'Urgente':c.urgente ? 'sim' : '', 'Status':STATUS[c.status],
+               'Garantia':g == null ? '' : (g ? 'dentro' : 'fora'), 'Responsável':nomePessoa(c.responsavel_id), 'Prazo':fmtData(c.prazo),
+               'Aberto em':fmtData(c.aberto_em), 'Aberto por':nomePessoa(c.aberto_por), 'Resolvido em':fmtData(c.resolvido_em),
+               'Dias para resolver':c.resolvido_em ? dias(c.aberto_em, c.resolvido_em) : '', 'Motivo (cancel./reab.)':c.motivo || '' };
+    });
+    var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(linhas);
+    ws['!cols'] = [6, 28, 22, 22, 60, 20, 16, 8, 14, 9, 22, 11, 11, 22, 12, 10, 30].map(function(w){ return { wch:w }; });
+    XLSX.utils.book_append_sheet(wb, ws, 'Chamados');
+    XLSX.writeFile(wb, 'manutencao-chamados-' + hoje() + '.xlsx');
+  } catch(e){ toast(msgErro(e), 'err'); }
+}
+
+/* =====================================================================
+   ENTRADA — quem autentica é o portal (mesmo padrão de Cadastros/Flow/Folha)
+   ===================================================================== */
+function semAcesso(titulo, texto){
+  $('abas').classList.add('oculto'); $('fab').classList.add('oculto');
+  $('main').innerHTML = '<div class="cartao-aviso"><h1>' + esc(titulo) + '</h1><p>' + texto + '</p><p style="margin-top:14px"><a href="../">Voltar ao portal</a></p></div>';
+}
+async function iniciar(){
+  try {
+    var s = await sb.auth.getSession();
+    var sessao = s.data && s.data.session;
+    if(!sessao){ location.replace('../'); return; }
+    var r = await sb.schema('core').from('pessoas').select('id,nome,perfil,tipo,ativo').eq('id', sessao.user.id).maybeSingle();
+    if(r.error) throw r.error;
+    if(!r.data || !r.data.ativo || r.data.tipo !== 'colaborador'){ location.replace('../'); return; }
+    /* entrou por link e ainda não criou a senha? -> portal ("Criar senha nova") */
+    var semSenha = false;
+    try { semSenha = !!(JSON.parse(localStorage.getItem('bemer_definir_senha') || '{}') || {})[sessao.user.id]; } catch(e){}
+    if(!semSenha){ var x = await sb.schema('core').rpc('senha_pendente').then(function(v){ return v; }, function(){ return { error:1 }; }); semSenha = !x.error && x.data === true; }
+    if(semSenha){ location.replace('../'); return; }
+    /* 2FA do dia (0041): pendente -> portal pede o código */
+    var p2 = await sb.schema('core').rpc('dois_fatores_pendente').then(function(v){ return v; }, function(){ return { error:1 }; });
+    if(!p2.error && p2.data === true){ location.replace('../'); return; }
+
+    EU = { id:sessao.user.id, nome:r.data.nome || '' };
+    var a = await M().rpc('minhas_acoes');
+    if(a.error){
+      if(/schema|not found|PGRST106|Invalid schema/i.test(a.error.message || '')) {
+        semAcesso('Manutenção ainda não ligada', 'O banco ainda não expõe o módulo (Settings › API › Exposed schemas → <b>manutencao</b>).'); return;
+      }
+      throw a.error;
+    }
+    PODE = { ver:!!a.data.ver, abrir:!!a.data.abrir, atender:!!a.data.atender, obras:!!a.data.obras };
+    if(!PODE.ver){
+      semAcesso('Sem acesso à Manutenção', 'A Manutenção é liberada por perfil (Cadastros › Permissões). Se você precisa dela, peça à diretoria.');
+      return;
+    }
+    await carregar();
+    $('abas').classList.remove('oculto');
+    var alvo = (location.hash || '').replace('#', '');
+    irAba(['chamados', 'obras', 'relatorio'].indexOf(alvo) >= 0 ? alvo : 'chamados');
+  } catch(e){
+    $('main').innerHTML = '<div class="cartao-aviso"><h1>Não foi possível carregar</h1><p>' + esc(msgErro(e)) + '</p><p style="margin-top:14px"><a href="../">Voltar ao portal</a></p></div>';
+  }
+}
+
+/* voltou para a aba depois de um tempo: atualiza a lista (se não há janela aberta) */
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden || !PODE.ver || $('modal').classList.contains('show') || Date.now() - D.carregadoEm < 60000) return;
+  carregar().then(desenhar, function(){});
+});
+
+/* ---------- aviso de nova versão (mesmo padrão do portal e dos módulos) ---------- */
+(function(){
+  var avisando = false, emVoo = false;
+  function conferir(){
+    if(avisando || emVoo || document.hidden) return;
+    emVoo = true;
+    fetch('version.json?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if(!v || !v.versao || v.versao === APP_VERSION || avisando) return;
+        avisando = true;
+        var f = document.createElement('div');
+        f.className = 'faixa-atualizar'; f.setAttribute('role', 'status');
+        f.innerHTML = '<span>Nova versão da Manutenção disponível</span><button type="button">Atualizar agora</button>';
+        document.body.appendChild(f);
+        f.querySelector('button').addEventListener('click', function(){
+          if($('modal').classList.contains('show') && !confirm('Há uma janela aberta. O que foi digitado fica guardado neste aparelho. Atualizar agora?')) return;
+          location.reload();
+        });
+      })
+      .catch(function(){})
+      .then(function(){ emVoo = false; });
+  }
+  setInterval(conferir, 120000);
+  document.addEventListener('visibilitychange', conferir);
+  setTimeout(conferir, 8000);
+})();
+
+iniciar();
+</script>
+</body>
+</html>
