@@ -16085,7 +16085,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.10.27.1';
+var APP_VERSION = '2026.10.27.2';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -19483,12 +19483,5 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
 })();
 
 </script>
-<div id="bm-faixa-testes" aria-hidden="true">Módulo inativo: em testes</div>
-<style>
-  #bm-faixa-testes{position:fixed;right:-96px;bottom:72px;z-index:40;width:400px;transform:rotate(-45deg);
-    background:#FE9400;color:#00296B;font:700 14px/1 Poppins,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;
-    text-align:center;padding:11px 0;box-shadow:0 4px 14px rgba(0,41,107,.28);pointer-events:none;user-select:none}
-  @media print{#bm-faixa-testes{display:none}}
-</style>
 </body>
 </html>

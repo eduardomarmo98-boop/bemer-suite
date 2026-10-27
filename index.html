@@ -136,7 +136,11 @@ input:focus{outline:none;border-color:var(--azul);background:#fff;box-shadow:0 0
 .card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:28px;min-height:252px;
       display:flex;flex-direction:column;gap:18px;color:var(--texto);text-decoration:none;text-align:left;
       font:inherit;box-shadow:0 12px 32px rgba(0,27,77,.10);cursor:pointer;
-      transition:transform .15s,box-shadow .15s,border-color .15s}
+      transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden}
+/* 27/10/2026 (pedido do dono): faixa diagonal no cartão de módulo em testes (MODULO_EM_TESTE) */
+.faixa-teste{position:absolute;top:64px;right:-74px;width:330px;transform:rotate(45deg);background:var(--laranja);color:var(--azul);
+  font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:9px 0;line-height:1.25;
+  box-shadow:0 4px 12px rgba(0,27,77,.22);pointer-events:none}
 a.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,27,77,.16);border-color:#C4D2EA}
 /* apagado por dentro, não o cartão: com opacidade no cartão a faixa azul
    aparece através dele */
@@ -509,7 +513,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.23.1';
+var VERSAO   = '2026.10.27.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -1278,6 +1282,7 @@ function montarPortal(pessoa){
       var inicio = abre ? '<a class="card" href="'+esc(mod.url)+'">' : '<div class="card" aria-disabled="true">';
       var fim    = abre ? '</a>' : '</div>';
       return inicio
+           +   (MODULO_EM_TESTE[m] ? '<span class="faixa-teste">'+esc(MODULO_EM_TESTE[m])+'</span>' : '')
            +   '<span class="tile">'+svg(mod.icone)+'</span>'
            +   '<div class="texto-card"><h2>'+esc(mod.nome)+'</h2><p>'+esc(mod.desc)+'</p></div>'
            +   '<div class="rodape-card">'
@@ -1299,6 +1304,8 @@ function montarPortal(pessoa){
    depois que a pessoa ativa no celular (o Flow inscreve o aparelho).
    ===================================================================== */
 var CONVITE_ATE = '2026-11-15';
+/* 27/10/2026: faixa diagonal no cartão do módulo (tirar a linha = tirar a faixa) */
+var MODULO_EM_TESTE = { financeiro: 'Módulo inativo: em testes' };
 function conviteCelular(){
   if(new Date() > new Date(CONVITE_ATE+'T23:59:59')) return;
   var hojeK = new Date().toISOString().slice(0,10);
