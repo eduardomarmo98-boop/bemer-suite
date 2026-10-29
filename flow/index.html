@@ -921,7 +921,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.7</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.29.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -942,7 +942,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.7</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.29.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -959,7 +959,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.10.23.7</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.10.29.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1084,7 +1084,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.10.23.7';
+var APP_VERSAO = '2026.10.29.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1931,7 +1931,9 @@ function textoBusca(p){
   var o = obra(p.obra_id);
   /* 09/10: a categoria também ("TI", "Insumos"…) */
   return normalizar('#'+p.id+' '+p.id+' '+p.titulo+' '+p.descricao+' '+p.frente+' '+(o?o.nome:'interno')+' '+
-    pessoa(p.criado_por).nome+' '+pessoa(p.responsavel_id).nome+' '+(p.categoria||'')+(p.sigiloso?' sigilosa':''));
+    pessoa(p.criado_por).nome+' '+pessoa(p.responsavel_id).nome+' '+(p.categoria||'')+(p.sigiloso?' sigilosa':'')+
+    /* 29/10/2026 (pedido do dono): buscar a pessoa acha também o que ela ACOMPANHA */
+    ' '+(p.envolvidos||[]).map(function(id){ return pessoa(id).nome; }).join(' '));
 }
 
 /* =====================================================================
@@ -2271,12 +2273,15 @@ var Registro = {
         if(dd !== dia){ dia = dd; h += '<div class="rot" style="margin:12px 0 4px">'+esc(DIA_LONGO[d.getDay()]+', '+dd)+'</div>'; }
         h += '<button type="button" class="dep-item" data-reg="'+esc(e.pendencia_id)+'" style="width:100%">'+
           '<span style="flex:1;min-width:0"><b>'+esc(hhmm(e.em))+'</b> · '+esc(nomeCurto(e.autor||'Sistema'))+' '+esc(REG_VERBO[e.tipo]||'atualizou')+
-          ' <b>#'+esc(e.pendencia_id)+'</b> '+esc(e.titulo||'')+(e.alvo && e.tipo !== 'nova' ? ' → '+esc(nomeCurto(e.alvo)) : '')+'</span>'+
+          ' <b>#'+esc(e.pendencia_id)+'</b> '+esc(e.titulo||'')+(e.alvo && e.tipo !== 'nova' ? ' → '+esc(nomeCurto(e.alvo)) : '')+
+          /* 29/10/2026: o que foi feito, nas palavras do registro ("Assumiu o prazo: 30/10/2026.") */
+          (e.texto && e.tipo !== 'comentario' ? '<small style="display:block;white-space:normal;margin-top:2px">'+esc(String(e.texto).slice(0, 160))+'</small>' : '')+'</span>'+
           '<small>'+esc(e.obra||'Interno')+'</small></button>';
       });
       f.querySelector('#reg-lista').innerHTML = h || '<div class="dica">Nada neste período.</div>';
       Array.prototype.forEach.call(f.querySelectorAll('[data-reg]'), function(b){
-        b.addEventListener('click', function(){ var p = pend(Number(this.dataset.reg)); if(p) Detalhe.abrir(p.id, { topo:true }); else aviso('Esta pendência não está mais na sua lista.', 'erro'); });
+        /* 29/10/2026: fecha o Registro antes de abrir a pendência (no celular uma tela entrava por cima da outra) */
+        b.addEventListener('click', function(){ var p = pend(Number(this.dataset.reg)); if(!p){ aviso('Esta pendência não está mais na sua lista.', 'erro'); return; } f.remove(); Detalhe.abrir(p.id, { topo:true }); });
       });
     }
     function carregar(){
@@ -3559,6 +3564,10 @@ var Detalhe = {
     var escrito = mesma && existente.querySelector('#d-nota') ? existente.querySelector('#d-nota').value : '';
     /* redesenhar (ou trocar de pendência) reaproveita o passo da que estava aberta */
     var camada = existente ? existente._camada : null;
+    /* 29/10/2026 (print do dono: "a tela do Adiar some do nada"): o redesenho vindo do
+       tempo real punha a pendência por CIMA da folha aberta sobre ela (Adiar, Prazo…),
+       que ficava escondida atrás. Agora ela volta no mesmo lugar da pilha. */
+    var depois = existente ? existente.nextElementSibling : null;
     if(existente){ existente._camada = null; existente.remove(); }
     Rota.entrar(p.id);
 
@@ -3576,6 +3585,7 @@ var Detalhe = {
       Detalhe.menu(p, pp);
 
     var m = abrirModal(html, true, false, { fundo:'f-detalhe', modal:'detalhe', camada:camada, url:Rota.url(p.id) });
+    if(depois && depois.parentNode === m.parentNode) m.parentNode.insertBefore(m, depois);
     m.dataset.p = String(p.id);
     Detalhe.pintarNotas(m, p, novas);
     Detalhe.ligar(m, p, pp.souCriador, pp.souResp, []);
