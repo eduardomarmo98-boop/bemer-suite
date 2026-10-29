@@ -8853,6 +8853,7 @@ window.abrirFormObra=function(id){
   window._obraEmails=o?clone(o.emailsEngenharia||[]):[];
   window._obraInsumos=ensureInsumoGeral(o?clone(o.insumosEstimados||[]):[]);
   window._obraDocs=o?clone(o.documentosPadrao||[]):[];
+  window._obraVenda=window.bmVenda?window.bmVenda.copia(o?o.contratoReceber:null):{valor:0,anexo:null,itens:[]};
   const obraEnd=o?.endObra||(o?.endereco?(typeof parseEndStr==="function"?parseEndStr(o.endereco):{rua:o.endereco}):{});
   const cliEnd=o?.endCliente||(o?.clienteEndereco?(typeof parseEndStr==="function"?parseEndStr(o.clienteEndereco):{rua:o.clienteEndereco}):{});
   document.getElementById("obra-form-area").innerHTML=`
@@ -8870,6 +8871,7 @@ window.abrirFormObra=function(id){
       <button data-otab="fat" class="ot-tab px-3 py-2 rounded-t-lg font-semibold text-slate-600 hover:bg-slate-100">💰 Verba & Faturamento</button>
       <button data-otab="sienge" class="ot-tab px-3 py-2 rounded-t-lg font-semibold text-slate-600 hover:bg-slate-100">💰 Orçamento — verba (${window._obraOrc.length})</button>
       <button data-otab="insumos" class="ot-tab px-3 py-2 rounded-t-lg font-semibold text-slate-600 hover:bg-slate-100">📦 Insumos Sienge — qtd (${window._obraInsumos.length})</button>
+      <button data-otab="venda" class="ot-tab px-3 py-2 rounded-t-lg font-semibold text-slate-600 hover:bg-slate-100">🧾 Planilha de venda (${window._obraVenda.itens.length})</button>
       <button data-otab="emails" class="ot-tab px-3 py-2 rounded-t-lg font-semibold text-slate-600 hover:bg-slate-100">📧 E-mails eng. (${window._obraEmails.length})</button>
       <button data-otab="docs" class="ot-tab px-3 py-2 rounded-t-lg font-semibold text-slate-600 hover:bg-slate-100">📎 Documentos padrão (${window._obraDocs.length})</button>
     </div>
@@ -8952,6 +8954,8 @@ window.abrirFormObra=function(id){
         <textarea id="of-ins-paste" rows="4" placeholder="Cole aqui (TAB-separado): Item	Unidade	Qtd" class="w-full border rounded-lg px-3 py-2 text-xs hidden mb-2"></textarea>
         <div id="of-ins-list"></div>
       </div>
+
+      <div data-otabp="venda" class="ot-pane hidden"><div id="of-venda"></div></div>
 
       <div data-otabp="emails" class="ot-pane hidden">
         <p class="text-sm text-slate-600 mb-2">E-mails que receberão CC na formalização das contratações.</p>
@@ -9117,6 +9121,8 @@ window.abrirFormObra=function(id){
 
   // Documentos padrao da obra (v2026.07.21.49) — o campo ja era salvo e usado nos
   // e-mails de formalizacao, mas nao havia lugar para cadastrar. Agora ha.
+  if(window.bmVendaForm)window.bmVendaForm(o);
+  if(window._obraTabIni){const _k=window._obraTabIni;window._obraTabIni=null;switchTab(_k);}
   renderObraDocsList();
   const ofDocF=document.getElementById("of-doc-file");
   if(ofDocF) ofDocF.onchange=e=>{
@@ -9160,6 +9166,7 @@ window.abrirFormObra=function(id){
     (window._obraOrc||[]).forEach(it=>{const _ov=(window._obraOrcOrig||{})[it.id];if(_ov!==undefined&&(+it.valorPrevisto||0)!==_ov){it.historicoVerba=it.historicoVerba||[];it.historicoVerba.push({em:Date.now(),por:(usuarioLogado&&usuarioLogado()?usuarioLogado().nome:(S.usuarioAtual||"—")),de:_ov,para:(+it.valorPrevisto||0)});}});
     obj.orcamentoItens=window._obraOrc;
     obj.insumosEstimados=window._obraInsumos;
+    if(window.bmVendaSalvar)obj.contratoReceber=window.bmVendaSalvar(obj.contratoReceber,window._obraVenda);
     obj.emailsEngenharia=window._obraEmails;
     obj.coordenadorId=document.getElementById("of-coord")?.value||"";
     obj.documentosPadrao=window._obraDocs||[];
@@ -16091,7 +16098,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.10.29.2';
+var APP_VERSION = '2026.10.29.3';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -19501,6 +19508,422 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
   }
   new MutationObserver(function(){ if(!pend){ pend = true; setTimeout(aplicar, 0); } })
     .observe(document.body, { childList:true, subtree:true });
+})();
+
+</script>
+<script>
+/* =====================================================================
+   29/10/2026 (noite) — PLANILHA DE VENDA no cadastro da obra + medição de receita
+   por VALOR em cada item (pedido do dono, 29/10; entra no fim do <body>
+   pelo montar.js)
+
+   1) Obras › Editar › aba "🧾 Planilha de venda": item, descrição, unidade,
+      quantidade e preço unitário (o total é calculado). Cola do Excel
+      (Item | Descrição | Un | Qtd | Preço unit. [| Total]). O arquivo da
+      planilha e o valor manual (obra sem itens) também ficam ali. Grava em
+      obra.contratoReceber (mesma coluna contrato_receber de antes).
+   2) Contas a Receber: a medição de receita passa a ser em R$ por item,
+      igual às medições de fornecedor. A quantidade sai do preço unitário,
+      cada item mostra o saldo e TRAVA quando acaba (antes: % com aviso).
+   3) O que já foi lançado continua valendo: os itens de antes (só valor)
+      viram "1 vb × valor", e o medido de cada item soma o R$ das medições
+      antigas (que já guardavam o valor além do %).
+   4) Editar a planilha agora é no cadastro da obra (diretoria, orçamento e
+      gerente financeiro — quem edita obra). O Contas a Receber só mostra.
+   ===================================================================== */
+(function(){
+  "use strict";
+  function el(id){ return document.getElementById(id); }
+  function r2(v){ return Math.round((+v || 0) * 100) / 100; }
+  /* "1.234,56" · "12,5" · "R$ 10,00" · "1234.5" */
+  function num(v){
+    var s = String(v == null ? "" : v).replace(/[^0-9.,-]/g, "");
+    if(!s) return 0;
+    if(s.indexOf(",") >= 0) s = s.replace(/\./g, "").replace(",", ".");
+    else if((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, "");
+    return parseFloat(s) || 0;
+  }
+  function fq(v){ return (+v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 }); }
+  function fpu(v){ return (+v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
+  function brl(v){ return fmtBRL(v) || "R$ 0,00"; }
+
+  /* item antigo {referencia, descricao, valor} → 1 vb × valor */
+  function norm(it){
+    it = it || {};
+    var x = { id: it.id || uid(), referencia: String(it.referencia || ""), descricao: String(it.descricao || ""), unidade: String(it.unidade || "vb") };
+    if(it.qtd == null && it.valorUnit == null){ x.qtd = 1; x.valorUnit = r2(it.valor); }
+    else { x.qtd = +it.qtd || 0; x.valorUnit = +it.valorUnit || 0; }
+    x.valor = r2(x.qtd * x.valorUnit);
+    return x;
+  }
+  function total(itens){ return r2((itens || []).reduce(function(a, it){ return a + (+it.valor || 0); }, 0)); }
+  /* R$ já medido do item (medições de receita lançadas) */
+  function medido(obraId, itemId){
+    return r2((S.contasReceber || []).filter(function(l){ return l.obraId === obraId; }).reduce(function(a, l){
+      (l.itensMed || []).forEach(function(x){ if(x.itemId === itemId) a += (+x.valor || 0); });
+      return a;
+    }, 0));
+  }
+  function copia(cr){
+    cr = cr || {};
+    return { valor: +cr.valor || 0, anexo: cr.anexo ? clone(cr.anexo) : null, itens: (cr.itens || []).map(norm) };
+  }
+  window.bmVenda = { norm: norm, total: total, medido: medido, copia: copia, num: num };
+
+  /* ---- colar do Excel ---- */
+  function colar(txt){
+    var out = [];
+    String(txt || "").split(/\r?\n/).forEach(function(line){
+      if(!line.trim()) return;
+      var sep = line.indexOf("\t") >= 0 ? "\t" : ";";
+      var c = line.split(sep).map(function(s){ return String(s || "").replace(/^"|"$/g, "").trim(); });
+      while(c.length && c[c.length - 1] === "") c.pop();
+      if(c.length < 2) return;
+      var it;
+      if(c.length >= 5){
+        it = { referencia: c[0], descricao: c[1], unidade: c[2] || "vb", qtd: num(c[3]), valorUnit: num(c[4]) };
+        var tot = c.length >= 6 ? num(c[5]) : 0;
+        if(!it.valorUnit && tot && it.qtd) it.valorUnit = tot / it.qtd;
+      }
+      else if(c.length === 4) it = { referencia: "", descricao: c[0], unidade: c[1] || "vb", qtd: num(c[2]), valorUnit: num(c[3]) };
+      else if(c.length === 3) it = { referencia: c[0], descricao: c[1], unidade: "vb", qtd: 1, valorUnit: num(c[2]) };
+      else it = { referencia: "", descricao: c[0], unidade: "vb", qtd: 1, valorUnit: num(c[1]) };
+      /* cabeçalho e título de grupo (sem valor) ficam de fora */
+      if(!it.descricao || !(it.qtd * it.valorUnit)) return;
+      out.push(norm(it));
+    });
+    return out;
+  }
+
+  /* ---- 1) aba no cadastro da obra ---- */
+  window.bmVendaForm = function(o){
+    var box = el("of-venda"); if(!box) return;
+    var cr = window._obraVenda = window._obraVenda || { valor: 0, anexo: null, itens: [] };
+    var obraId = o ? o.id : null;
+    function rotulo(){ var b = document.querySelector('[data-otab="venda"]'); if(b) b.textContent = "🧾 Planilha de venda (" + cr.itens.length + ")"; }
+    function rodape(){ var f = el("of-venda-tot"); if(f) f.textContent = brl(total(cr.itens)); }
+    function desenha(){
+      var tem = cr.itens.length > 0;
+      var linhas = cr.itens.map(function(it, i){
+        var med = obraId ? medido(obraId, it.id) : 0;
+        return '<tr data-vi="' + i + '">' +
+          '<td class="border p-1"><input data-v="ref" value="' + esc(it.referencia) + '" class="w-full border-0 text-xs bg-transparent outline-none"/></td>' +
+          '<td class="border p-1"><input data-v="desc" value="' + esc(it.descricao) + '" class="w-full border-0 text-xs bg-transparent outline-none"/></td>' +
+          '<td class="border p-1"><input data-v="un" value="' + esc(it.unidade) + '" class="w-full border-0 text-xs bg-transparent outline-none text-center"/></td>' +
+          '<td class="border p-1"><input data-v="qtd" inputmode="decimal" value="' + fq(it.qtd) + '" class="w-full border-0 text-xs bg-transparent outline-none text-right"/></td>' +
+          '<td class="border p-1"><input data-v="vu" inputmode="decimal" value="' + fpu(it.valorUnit) + '" class="w-full border-0 text-xs bg-transparent outline-none text-right"/></td>' +
+          '<td class="border p-1 text-right text-xs font-semibold" data-vt>' + brl(it.valor) + '</td>' +
+          '<td class="border p-1 text-right text-xs ' + (med > it.valor + 0.005 ? "text-red-600 font-semibold" : "text-slate-500") + '" title="Já lançado em medições de receita">' + (med ? brl(med) : "—") + '</td>' +
+          '<td class="border p-1 text-center"><button type="button" data-v="del" class="text-red-500">✕</button></td></tr>';
+      }).join("");
+      box.innerHTML =
+        '<p class="text-sm text-slate-600 mb-2">Planilha contratada com o cliente (venda). É a base do <b>Contas a Receber</b>: cada medição de receita lança <b>R$ por item</b>, a quantidade é calculada e o item trava quando o saldo acaba.</p>' +
+        '<div class="grid sm:grid-cols-2 gap-3 mb-3">' +
+          '<div><label class="text-xs font-semibold uppercase text-slate-600">Arquivo da planilha de venda (PDF/Excel)</label>' +
+            '<div class="text-xs mt-1">' + (cr.anexo ? '<button type="button" id="of-venda-anx-ver" class="text-indigo-600 underline">📎 ' + esc(cr.anexo.nome || "anexo") + '</button> · <button type="button" id="of-venda-anx-del" class="text-red-500">remover</button>' : '<span class="text-slate-400">sem arquivo</span>') + '</div>' +
+            '<input id="of-venda-file" type="file" class="block mt-1 text-xs"/></div>' +
+          (tem ? '<div><label class="text-xs font-semibold uppercase text-slate-600">Valor do contrato</label><div class="mt-1 text-lg font-bold text-indigo-700">' + brl(total(cr.itens)) + '</div><p class="text-[11px] text-slate-500">soma dos itens</p></div>'
+               : '<div><label class="text-xs font-semibold uppercase text-slate-600">Valor do contrato (sem itens)</label><input id="of-venda-val" value="' + (cr.valor ? fmtBRLInput(String(Math.round(cr.valor * 100))) : "") + '" placeholder="R$ 0,00" class="w-full border rounded-lg px-3 py-2 mt-1"/><p class="text-[11px] text-slate-500">Sem itens, a medição de receita é lançada só por valor.</p></div>') +
+        '</div>' +
+        '<div class="flex gap-2 mb-2 flex-wrap">' +
+          '<button type="button" id="of-venda-add" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg">+ Linha</button>' +
+          '<button type="button" id="of-venda-colar" class="text-xs bg-slate-200 px-3 py-1.5 rounded-lg">📋 Colar do Excel</button>' +
+        '</div>' +
+        '<textarea id="of-venda-paste" rows="4" placeholder="Cole do Excel (TAB): Item | Descrição | Un | Qtd | Preço unit. — a coluna Total, se vier, completa o preço que faltar. Títulos de grupo (sem valor) são ignorados." class="w-full border rounded-lg px-3 py-2 text-xs hidden mb-2"></textarea>' +
+        (tem ? '<div class="overflow-x-auto"><table class="w-full text-sm border"><thead class="bg-slate-100 text-xs"><tr>' +
+            '<th class="border p-1 w-20">Item</th><th class="border p-1">Descrição</th><th class="border p-1 w-14">Un</th><th class="border p-1 w-24">Qtd</th><th class="border p-1 w-28">Preço unit.</th><th class="border p-1 w-32">Total</th><th class="border p-1 w-28">Medido</th><th class="border p-1 w-8"></th>' +
+            '</tr></thead><tbody>' + linhas + '</tbody>' +
+            '<tfoot class="bg-slate-50 text-sm"><tr><td colspan="5" class="border p-1 text-right font-semibold">Total da planilha de venda:</td><td id="of-venda-tot" class="border p-1 text-right font-bold text-indigo-700">' + brl(total(cr.itens)) + '</td><td colspan="2" class="border"></td></tr></tfoot></table></div>'
+             : '<p class="text-sm text-slate-400 text-center p-4">Sem itens. Cole a planilha de venda do Excel ou use "+ Linha".</p>');
+      var va = el("of-venda-val");
+      if(va){ maskBRLOnInput(va); va.addEventListener("input", function(){ cr.valor = parseBRL(va.value); }); }
+      rotulo();
+    }
+    desenha();
+
+    box.addEventListener("input", function(e){
+      var t = e.target, tr = t.closest && t.closest("[data-vi]"); if(!tr) return;
+      var it = cr.itens[+tr.dataset.vi]; if(!it) return;
+      var k = t.dataset.v;
+      if(k === "ref") it.referencia = t.value;
+      else if(k === "desc") it.descricao = t.value;
+      else if(k === "un") it.unidade = t.value;
+      else if(k === "qtd") it.qtd = num(t.value);
+      else if(k === "vu") it.valorUnit = num(t.value);
+      if(k === "qtd" || k === "vu"){
+        it.valor = r2(it.qtd * it.valorUnit);
+        var c = tr.querySelector("[data-vt]"); if(c) c.textContent = brl(it.valor);
+        rodape();
+      }
+    });
+    box.addEventListener("change", function(e){
+      var t = e.target, tr = t.closest && t.closest("[data-vi]"); if(!tr) return;
+      var it = cr.itens[+tr.dataset.vi]; if(!it) return;
+      if(t.dataset.v === "qtd") t.value = fq(it.qtd);
+      if(t.dataset.v === "vu") t.value = fpu(it.valorUnit);
+    });
+    box.addEventListener("click", function(e){
+      var t = e.target;
+      if(t.dataset && t.dataset.v === "del"){
+        var i = +t.closest("[data-vi]").dataset.vi, it = cr.itens[i]; if(!it) return;
+        var med = obraId ? medido(obraId, it.id) : 0;
+        if(med && !confirm("Este item já tem " + brl(med) + " medido no Contas a Receber.\nRemover mesmo assim? (as medições lançadas continuam no histórico)")) return;
+        cr.itens.splice(i, 1); desenha(); return;
+      }
+      if(t.id === "of-venda-add"){ cr.itens.push(norm({ unidade: "un", qtd: 0, valorUnit: 0 })); desenha(); var ds = box.querySelectorAll('[data-v="desc"]'); if(ds.length) ds[ds.length - 1].focus(); return; }
+      if(t.id === "of-venda-colar"){
+        var ta = el("of-venda-paste"); ta.classList.toggle("hidden");
+        if(!ta.classList.contains("hidden")){
+          ta.focus();
+          ta.onblur = function(){
+            var add = colar(ta.value);
+            if(add.length){ add.forEach(function(x){ cr.itens.push(x); }); desenha(); showToast("✅ " + add.length + " itens colados", "green"); }
+            else if(ta.value.trim()) alert("Nenhuma linha com valor. Formato: Item | Descrição | Un | Qtd | Preço unit. (separados por TAB, como sai do Excel).");
+          };
+        }
+        return;
+      }
+      if(t.id === "of-venda-anx-ver"){ var src = fileSrc(cr.anexo); if(!src) return alert("Anexo não encontrado."); var w = window.open("", "_blank"); w.document.write('<iframe src="' + src + '" style="width:100%;height:100vh;border:0"></iframe>'); w.document.close(); return; }
+      if(t.id === "of-venda-anx-del"){ if(confirm("Tirar o arquivo da planilha de venda?")){ cr.anexo = null; desenha(); } return; }
+    });
+    box.addEventListener("change", function(e){
+      if(e.target.id !== "of-venda-file") return;
+      var file = e.target.files && e.target.files[0]; if(!file) return;
+      var r = new FileReader();
+      r.onload = function(){ var u = "recct_" + uid(); idbPut(u, r.result); cr.anexo = { uid: u, nome: file.name, tipo: file.type }; desenha(); showToast("Arquivo pronto (clique em Salvar Obra)", "green"); };
+      r.readAsDataURL(file);
+    });
+  };
+
+  /* chamado pelo "Salvar Obra" */
+  window.bmVendaSalvar = function(atual, ed){
+    atual = atual || { valor: 0, anexo: null, itens: [] };
+    ed = ed || copia(atual);
+    var itens = (ed.itens || []).filter(function(it){ return String(it.descricao || "").trim() || +it.valor; }).map(norm);
+    var novo = Object.assign({}, atual, { itens: itens, anexo: ed.anexo || null, valor: itens.length ? total(itens) : r2(ed.valor) });
+    var antes = JSON.stringify([copia(atual).itens, atual.anexo || null, r2(atual.valor)]);
+    var depois = JSON.stringify([novo.itens, novo.anexo, novo.valor]);
+    if(antes !== depois){ novo.atualizadoEm = Date.now(); novo.atualizadoPor = (usuarioLogado() && usuarioLogado().nome) || "—"; }
+    return novo;
+  };
+
+  /* ---- 2) Contas a Receber (substitui a tela de 23/10) ---- */
+  function perfil(){ return (typeof perfilAtualVal === "function" ? perfilAtualVal() : ((usuarioLogado() || {}).perfil || "")); }
+  function podeVer(){ return ["diretoria", "coordenador", "gerenteFinanceiro"].includes(perfil()); }
+  function podeLancar(){ return ["ti", "diretoria", "coordenador"].includes(perfil()); }
+  function podeBaixar(){ return ["ti", "diretoria", "gerenteFinanceiro"].includes(perfil()); }
+  function podeEditarObra(){ return ["diretoria", "coordenadorOrcamento", "gerenteFinanceiro"].includes(perfil()); }
+  function proxNumero(){ S.contadorREC = (S.contadorREC || 0) + 1; return "REC-" + (new Date().getFullYear()) + "-" + String(S.contadorREC).padStart(3, "0"); }
+  function fatDiretoPago(obraId){
+    return (S.financeiro || []).filter(function(f){ return f.obraId === obraId && f.tipoFat === "cliente" && f.status === "paga"; }).map(function(f){
+      var origem = "";
+      if(f.pedidoCompraId){ var p = getPC(f.pedidoCompraId); origem = "PC " + (p ? p.numero : "—"); }
+      else { var ct = getContrato(f.contratoId), m = getMed(f.medicaoId); origem = (ct ? ct.numero : "—") + (m ? " · " + m.numero : ""); }
+      return { fin: f, valor: (+f.nfValor || +f.valor || 0), quando: f.pagoEm || f.criadoEm, origem: origem };
+    });
+  }
+  function nomeItem(it){ return (it.referencia ? esc(it.referencia) + " — " : "") + esc(it.descricao); }
+
+  window.renderReceber = function(){
+    if(!podeVer()) return '<p class="p-8 text-center text-slate-400">Seu perfil não tem acesso ao Contas a Receber.</p>';
+    var obraId = window._recObra || (S.obras.length === 1 ? S.obras[0].id : "");
+    window._recObra = obraId;
+    var o = obraId ? getObra(obraId) : null;
+    var corpo = "";
+    if(o){
+      var cr = copia(o.contratoReceber);
+      var temItens = cr.itens.length > 0;
+      var valorContrato = temItens ? total(cr.itens) : (+cr.valor || 0);
+      var meds = (S.contasReceber || []).filter(function(l){ return l.obraId === obraId; }).sort(function(a, b){ return (b.em || 0) - (a.em || 0); });
+      var fat = fatDiretoPago(obraId);
+      var totMed = meds.reduce(function(a, l){ return a + (+l.valor || 0); }, 0);
+      var totFat = fat.reduce(function(a, x){ return a + x.valor; }, 0);
+      var recebido = meds.filter(function(l){ return l.status === "recebido"; }).reduce(function(a, l){ return a + (+l.valor || 0); }, 0) + totFat;
+      var aReceber = meds.filter(function(l){ return l.status !== "recebido"; }).reduce(function(a, l){ return a + (+l.valor || 0); }, 0);
+      var saldo = valorContrato - totMed - totFat;
+      function cardR(t, v, cor){ return '<div class="bg-white rounded-xl border p-4"><div class="text-xs uppercase font-semibold text-slate-500">' + t + '</div><div class="text-lg font-bold text-' + cor + '-700 mt-1">' + brl(v) + '</div></div>'; }
+      var podeL = podeLancar();
+      var linhasItens = cr.itens.map(function(it){
+        var med = medido(obraId, it.id), sd = r2(it.valor - med), acabou = sd <= 0.005;
+        var pct = it.valor ? (med / it.valor * 100) : 0;
+        return '<tr class="border-b text-sm ' + (acabou ? "bg-slate-50 text-slate-400" : "") + '">' +
+          '<td class="px-2 py-1">' + nomeItem(it) + '</td>' +
+          '<td class="px-2 py-1 text-center text-xs">' + esc(it.unidade) + '</td>' +
+          '<td class="px-2 py-1 text-right text-xs">' + fq(it.qtd) + '</td>' +
+          '<td class="px-2 py-1 text-right">' + brl(it.valor) + '</td>' +
+          '<td class="px-2 py-1 text-right text-slate-500">' + (med ? brl(med) : "—") + ' <span class="text-[11px]">(' + pct.toFixed(1).replace(".", ",") + '%)</span></td>' +
+          '<td class="px-2 py-1 text-right font-semibold ' + (sd < -0.005 ? "text-red-600" : acabou ? "" : "text-green-700") + '">' + brl(sd) + '</td>' +
+          (podeL ? '<td class="px-2 py-1">' + (acabou ? '<span class="text-xs">medido 100%</span>' : '<input data-recv="' + it.id + '" placeholder="R$ 0,00" class="w-28 border rounded px-2 py-1 text-right text-sm"/>') + '</td>' +
+                   '<td class="px-2 py-1 text-right text-xs text-slate-500" data-recq="' + it.id + '">—</td>' : "") +
+          '</tr>';
+      }).join("");
+      var linhasMed = meds.map(function(l){ return '' +
+        '<div class="px-5 py-3 border-b last:border-0 grid grid-cols-12 gap-3 items-center text-sm">' +
+          '<div class="col-span-2 font-semibold text-indigo-700">' + esc(l.numero) + '</div>' +
+          '<div class="col-span-4"><div class="font-medium">' + esc(l.descricao || "Medição de receita") + '</div><div class="text-xs text-slate-400">' + fmtDate(l.em) + ' · ' + esc(l.criadoPorNome || "") + ((l.itensMed && l.itensMed.length) ? ' · ' + l.itensMed.length + ' item(ns) medidos' : "") + '</div></div>' +
+          '<div class="col-span-2 font-bold">' + fmtBRL(l.valor) + '</div>' +
+          '<div class="col-span-2"><span class="px-2 py-1 rounded text-xs font-semibold ' + (l.status === "recebido" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800") + '">' + (l.status === "recebido" ? "Recebido" : "A receber") + '</span></div>' +
+          '<div class="col-span-2 text-right flex gap-1 justify-end">' +
+            (l.anexo ? '<button data-rec-anx="' + l.id + '" class="text-xs px-2 py-1 rounded border">📎</button>' : "") +
+            (l.status !== "recebido" && podeBaixar() ? '<button data-rec-ok="' + l.id + '" class="text-xs px-2 py-1 rounded bg-green-600 text-white font-semibold">✓ Recebido</button>' : "") +
+            ((typeof isDir2 === "function" && isDir2()) ? '<button data-rec-del="' + l.id + '" class="text-xs px-2 py-1 rounded bg-red-100 text-red-700">✕</button>' : "") +
+          '</div></div>'; }).join("");
+      var linhasFat = fat.map(function(x){ return '' +
+        '<div class="px-5 py-3 border-b last:border-0 grid grid-cols-12 gap-3 items-center text-sm bg-violet-50/40">' +
+          '<div class="col-span-2 font-semibold text-violet-700">NF direta</div>' +
+          '<div class="col-span-4"><div class="font-medium">' + esc(x.origem) + ' — pago pelo cliente</div><div class="text-xs text-slate-400">' + fmtDate(x.quando) + '</div></div>' +
+          '<div class="col-span-2 font-bold">' + fmtBRL(x.valor) + '</div>' +
+          '<div class="col-span-2"><span class="px-2 py-1 rounded text-xs font-semibold bg-violet-100 text-violet-800">Abatido do contrato</span></div>' +
+          '<div class="col-span-2 text-right"><button data-rec-fin="' + x.fin.id + '" class="text-xs px-2 py-1 rounded border">👁 ver</button></div>' +
+        '</div>'; }).join("");
+      var tabela = temItens ?
+        '<div class="overflow-x-auto"><table class="w-full border rounded-lg overflow-hidden">' +
+          '<thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-2 py-1.5 text-left">Item</th><th class="px-2 py-1.5 w-12">Un</th><th class="px-2 py-1.5 text-right w-20">Qtd</th><th class="px-2 py-1.5 text-right w-32">Valor do item</th><th class="px-2 py-1.5 text-right w-40">Já medido</th><th class="px-2 py-1.5 text-right w-32">Saldo</th>' +
+          (podeL ? '<th class="px-2 py-1.5 w-32">R$ nesta medição</th><th class="px-2 py-1.5 text-right w-24">Qtd</th>' : "") + '</tr></thead>' +
+          '<tbody>' + linhasItens + '</tbody>' +
+          (podeL ? '<tfoot class="bg-slate-50"><tr><td colspan="6" class="px-2 py-1.5 text-right font-semibold">Total desta medição:</td><td id="rec-med-tot" class="px-2 py-1.5 text-right font-bold text-indigo-700">R$ 0,00</td><td></td></tr></tfoot>' : "") +
+        '</table></div>' : "";
+      corpo = '' +
+  '<div class="bg-white rounded-xl border p-5 mb-4">' +
+    '<div class="flex items-center justify-between flex-wrap gap-2 mb-2">' +
+      '<h3 class="font-semibold text-indigo-700">📄 Planilha de venda (contrato B&M × Cliente) — ' + esc(o.nome) + '</h3>' +
+      (podeEditarObra() ? '<button id="rec-ct-edit" class="text-xs px-3 py-1.5 rounded-lg border font-semibold hover:bg-slate-50">✏ Editar no cadastro da obra</button>' : "") +
+    '</div>' +
+    '<div class="text-sm text-slate-600">Valor do contrato: <b class="text-indigo-700">' + brl(valorContrato) + '</b>' +
+      (temItens ? ' <span class="text-xs text-slate-400">(soma dos ' + cr.itens.length + ' itens)</span>' : "") +
+      (cr.anexo ? ' · <button id="rec-ct-anx-ver" class="text-indigo-600 underline">📎 arquivo (' + esc(cr.anexo.nome || "anexo") + ')</button>' : ' · <span class="text-slate-400">sem arquivo anexado</span>') + '</div>' +
+    (temItens ? "" : '<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">⚠ Obra sem itens na planilha de venda. Cadastre em <b>Obras › Editar › 🧾 Planilha de venda</b> para medir item a item. Enquanto isso, a medição é lançada só por valor.</p>') +
+  '</div>' +
+  '<div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">' +
+    cardR("Contrato (venda)", valorContrato, "indigo") + cardR("Medido", totMed, "sky") + cardR("Recebido", recebido, "green") +
+    cardR("Em aberto (a receber)", aReceber, "amber") + cardR("Saldo a medir", saldo, saldo < 0 ? "red" : "slate") +
+  '</div>' +
+  (podeL ?
+  '<div class="bg-white rounded-xl border p-5 mb-4">' +
+    '<h3 class="font-semibold text-indigo-700 mb-1">➕ Nova medição de receita</h3>' +
+    (temItens ?
+      '<p class="text-xs text-slate-500 mb-3">Informe o <b>valor (R$) executado nesta medição</b> em cada item — a quantidade é calculada pelo preço unitário. O item trava quando o saldo acaba.</p>' + tabela +
+      '<div class="grid sm:grid-cols-3 gap-3 mt-3">' +
+        '<div class="sm:col-span-2"><label class="text-xs font-semibold uppercase text-slate-600">Descrição *</label><input id="rec-desc" placeholder="Ex.: Medição 03 — maio/2026" class="w-full border rounded-lg px-3 py-2 mt-1"/></div>' +
+        '<div><label class="text-xs font-semibold uppercase text-slate-600">Anexo (medição)</label><input id="rec-file" type="file" class="block mt-2 text-xs"/></div>' +
+      '</div>'
+    :
+      '<div class="grid sm:grid-cols-4 gap-3">' +
+        '<div class="sm:col-span-2"><label class="text-xs font-semibold uppercase text-slate-600">Descrição *</label><input id="rec-desc" class="w-full border rounded-lg px-3 py-2 mt-1"/></div>' +
+        '<div><label class="text-xs font-semibold uppercase text-slate-600">Valor *</label><input id="rec-val" placeholder="R$ 0,00" class="w-full border rounded-lg px-3 py-2 mt-1"/></div>' +
+        '<div><label class="text-xs font-semibold uppercase text-slate-600">Anexo</label><input id="rec-file" type="file" class="block mt-2 text-xs"/></div>' +
+      '</div>') +
+    '<button id="rec-add" class="mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">Lançar no contas a receber</button>' +
+  '</div>'
+  : (temItens ? '<div class="bg-white rounded-xl border p-5 mb-4"><h3 class="font-semibold text-indigo-700 mb-2">Itens da planilha de venda</h3>' + tabela + '</div>' : "")) +
+  '<div class="bg-white rounded-xl border overflow-hidden">' +
+    '<div class="px-5 py-3 border-b bg-slate-50 text-xs font-semibold uppercase text-slate-500">Lançamentos (medições de receita + faturamento direto pago)</div>' +
+    ((linhasMed + linhasFat) || '<p class="p-8 text-center text-slate-400">Nenhum lançamento ainda.</p>') +
+  '</div>';
+    } else {
+      corpo = '<p class="p-10 text-center text-slate-400">Selecione a obra para ver o contas a receber.</p>';
+    }
+    return '' +
+  '<div class="flex items-center justify-between mb-6">' +
+    '<div class="flex items-center gap-3"><button id="btn-voltar" class="text-slate-500 hover:text-slate-700">← Voltar</button><h2 class="text-2xl font-bold">💰 Contas a Receber</h2></div>' +
+  '</div>' +
+  '<div class="bg-white rounded-xl border p-4 mb-4">' +
+    '<label class="text-xs font-semibold text-slate-600 uppercase">Obra</label>' +
+    '<select id="rec-obra" class="w-full border rounded-lg px-3 py-2 mt-1 sm:w-96"><option value="">— selecione —</option>' +
+      S.obras.map(function(x){ return '<option value="' + x.id + '" ' + (obraId === x.id ? "selected" : "") + '>' + esc(x.nome) + '</option>'; }).join("") +
+    '</select>' +
+  '</div>' + corpo;
+  };
+
+  function verArquivo(a){
+    var src = fileSrc(a); if(!src) return alert("Anexo não encontrado.");
+    var w = window.open("", "_blank"); w.document.write('<iframe src="' + src + '" style="width:100%;height:100vh;border:0"></iframe>'); w.document.close();
+  }
+
+  function bindReceber(){
+    var bv = el("btn-voltar"); if(bv) bv.onclick = function(){ go("home"); };
+    var so = el("rec-obra"); if(so) so.onchange = function(e){ window._recObra = e.target.value; render(); };
+    var o = window._recObra ? getObra(window._recObra) : null; if(!o) return;
+    var cr = copia(o.contratoReceber);
+    var be = el("rec-ct-edit");
+    if(be) be.onclick = function(){
+      window._obraTabIni = "venda"; go("obras");
+      setTimeout(function(){ if(typeof abrirFormObra === "function"){ abrirFormObra(o.id); var a = el("obra-form-area"); if(a && a.scrollIntoView) a.scrollIntoView({ behavior: "smooth" }); } }, 60);
+    };
+    var bav = el("rec-ct-anx-ver"); if(bav) bav.onclick = function(){ verArquivo(cr.anexo); };
+    var rv = el("rec-val"); if(rv) maskBRLOnInput(rv);
+    var rf = el("rec-file");
+    if(rf) rf.onchange = function(e){
+      var file = e.target.files && e.target.files[0]; if(!file) return;
+      var r = new FileReader();
+      r.onload = function(){ var u = "recmed_" + uid(); idbPut(u, r.result); window._recAnx = { uid: u, nome: file.name, tipo: file.type }; showToast("Anexo pronto", "green"); };
+      r.readAsDataURL(file);
+    };
+    function item(id){ return cr.itens.find(function(x){ return x.id === id; }); }
+    function recalc(){
+      var tot = 0;
+      document.querySelectorAll("[data-recv]").forEach(function(inp){
+        var it = item(inp.dataset.recv); if(!it) return;
+        var v = parseBRL(inp.value), sd = r2(it.valor - medido(o.id, it.id)), passou = v > sd + 0.005;
+        tot += v;
+        inp.classList.toggle("ring-2", passou); inp.classList.toggle("ring-red-400", passou);
+        var q = document.querySelector('[data-recq="' + inp.dataset.recv + '"]');
+        if(q) q.innerHTML = passou ? '<span class="text-red-600 font-semibold">passa do saldo</span>' : (v && it.valorUnit ? fq(r2(v / it.valorUnit * 10000) / 10000) + " " + esc(it.unidade) : "—");
+      });
+      var tt = el("rec-med-tot"); if(tt) tt.textContent = brl(tot);
+    }
+    document.querySelectorAll("[data-recv]").forEach(function(inp){ maskBRLOnInput(inp); inp.addEventListener("input", recalc); });
+    var ba = el("rec-add");
+    if(ba) ba.onclick = function(){
+      var desc = (el("rec-desc") && el("rec-desc").value || "").trim();
+      if(!desc) return alert("Preencha a descrição da medição.");
+      var valor = 0, itensMed = [], passou = [];
+      if(cr.itens.length){
+        document.querySelectorAll("[data-recv]").forEach(function(inp){
+          var v = r2(parseBRL(inp.value)); if(!v) return;
+          var it = item(inp.dataset.recv); if(!it) return;
+          var sd = r2(it.valor - medido(o.id, it.id));
+          if(v > sd + 0.005) passou.push("• " + (it.referencia ? it.referencia + " — " : "") + it.descricao + ": saldo " + brl(sd) + ", informado " + brl(v));
+          itensMed.push({ itemId: it.id, referencia: it.referencia, descricao: it.descricao, unidade: it.unidade,
+            qtd: it.valorUnit ? Math.round(v / it.valorUnit * 10000) / 10000 : 0,
+            pct: it.valor ? Math.round(v / it.valor * 1000000) / 10000 : 0, valor: v });
+          valor += v;
+        });
+        if(!itensMed.length) return alert("Informe o valor (R$) medido em pelo menos um item.");
+        if(passou.length) return alert("Passa do saldo do item — não dá para lançar:\n\n" + passou.join("\n") + "\n\nSe o contrato com o cliente mudou, ajuste a planilha de venda no cadastro da obra.");
+        valor = r2(valor);
+      } else {
+        valor = parseBRL(el("rec-val") && el("rec-val").value);
+        if(!valor) return alert("Preencha o valor.");
+      }
+      ba.disabled = true;
+      S.contasReceber = S.contasReceber || [];
+      S.contasReceber.push({ id: uid(), numero: proxNumero(), obraId: o.id, tipo: "medicao", descricao: desc, valor: valor, itensMed: itensMed,
+        em: Date.now(), criadoPor: S.usuarioAtual, criadoPorNome: (usuarioLogado() && usuarioLogado().nome) || "—",
+        status: "a_receber", recebidoEm: null, anexo: window._recAnx || null });
+      window._recAnx = null;
+      save(); showToast("Medição lançada — " + brl(valor), "green"); render();
+    };
+    document.querySelectorAll("[data-rec-ok]").forEach(function(b){ b.onclick = function(){
+      var l = (S.contasReceber || []).find(function(x){ return x.id === b.dataset.recOk; }); if(!l) return;
+      if(!confirm("Confirmar recebimento de " + fmtBRL(l.valor) + " (" + l.numero + ")?")) return;
+      l.status = "recebido"; l.recebidoEm = Date.now(); l.recebidoPor = (usuarioLogado() && usuarioLogado().nome) || "—";
+      save(); showToast("Recebimento registrado", "green"); render();
+    }; });
+    document.querySelectorAll("[data-rec-del]").forEach(function(b){ b.onclick = function(){
+      if(!confirm("Excluir este lançamento? (ação da Diretoria)")) return;
+      S.contasReceber = (S.contasReceber || []).filter(function(x){ return x.id !== b.dataset.recDel; });
+      save(); showToast("Lançamento excluído", "red"); render();
+    }; });
+    document.querySelectorAll("[data-rec-anx]").forEach(function(b){ b.onclick = function(){
+      var l = (S.contasReceber || []).find(function(x){ return x.id === b.dataset.recAnx; }); if(l && l.anexo) verArquivo(l.anexo);
+    }; });
+    document.querySelectorAll("[data-rec-fin]").forEach(function(b){ b.onclick = function(){ go("finDet", { id: b.dataset.recFin }); }; });
+  }
+
+  var _r = window.renderRoute, _b = window.bindRoute;
+  window.renderRoute = function(){ if(R.name === "receber") return window.renderReceber(); return _r.apply(this, arguments); };
+  window.bindRoute = function(){ if(R.name === "receber"){ bindReceber(); return; } return _b.apply(this, arguments); };
 })();
 
 </script>
