@@ -5150,9 +5150,9 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
   };
   const bEnv=document.getElementById("btn-enviar-cli");
   if(bEnv) bEnv.onclick=()=>{
-    if(!confirm("Confirmar envio da NF+boleto ao Cliente para pagamento direto?"))return;
-    f.status="enviada_cliente";f.enviadoEm=Date.now();
-    f.historico.push({acao:"NF/Boleto enviados ao Cliente",por:usuarioLogado()?.nome||"—",em:Date.now()});
+    if(!confirm("Confirmar envio da NF+boleto ao Cliente?\n\nNo faturamento direto o lançamento fica como PAGO ao enviar."))return;
+    f.status="paga";f.enviadoEm=Date.now();f.pagoEm=Date.now();
+    f.historico.push({acao:"NF/Boleto enviados ao Cliente — faturamento direto: considerado PAGO",por:usuarioLogado()?.nome||"—",em:Date.now()});
     save();showToast("Enviado ao Cliente","green");render();
   };
   const bPag=document.getElementById("btn-pgto-int");
@@ -16091,7 +16091,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.10.29.1';
+var APP_VERSION = '2026.10.29.2';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -19117,7 +19117,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
           '<div class="text-xs text-slate-600">Emitente: '+esc(dd.nome_emitente||"")+' '+esc(fmtCnpj(dd.cnpj_emitente||""))+' · Tomador: '+esc(dd.nome_tomador||"")+' '+esc(fmtCnpj(dd.cnpj_tomador||""))+'</div>':"")+
         ((e.divergencias||[]).length?'<ul class="text-sm text-red-700 mt-1" style="list-style:disc;padding-left:18px">'+e.divergencias.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("")+'</ul>':"")+
         ((e.avisos||[]).length?'<ul class="text-xs text-amber-700 mt-1" style="list-style:disc;padding-left:18px">'+e.avisos.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("")+'</ul>':"")+
-        '<div class="flex gap-2 flex-wrap mt-2">'+(e.arquivos||[]).map(function(a,k){ return '<button data-nf-arq="'+i+'-'+k+'" class="text-xs border rounded px-2 py-1 hover:bg-slate-50">📎 '+esc(a.nome)+'</button>'; }).join("")+
+        '<div class="flex gap-2 flex-wrap mt-2">'+(e.arquivos||[]).map(function(a,k){ return '<button data-nf-arq="'+i+'-'+k+'" class="text-xs border rounded px-2 py-1 hover:bg-slate-50">📎 '+(a.papel==="boleto"?"Boleto · ":"")+esc(a.nome)+'</button>'; }).join("")+
         (aberto&&podeRec&&!e.aceito_em&&dd.numero?'<button data-nf-usar="'+i+'" class="text-xs bg-sky-600 hover:bg-sky-700 text-white font-semibold px-3 py-1 rounded">✓ Usar esta NF no lançamento</button>':"")+'</div></div>';
     });
     card.innerHTML=h;
@@ -19137,9 +19137,13 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       var r2=await sb.rpc("nf_envio_aceitar",{p_envio:e.id});
       if(r2.error){ b.disabled=false; return alert("Não consegui aceitar: "+r2.error.message); }
       var fa=getFin(f.id)||f;
-      var arq=(e.arquivos||[]).find(function(a){ return /pdf/.test(a.tipo); })||(e.arquivos||[])[0];
+      /* 29/10/2026: o envio traz a NF e o BOLETO (papel 'boleto'); cada um vai para o seu lugar */
+      var daNota=(e.arquivos||[]).filter(function(a){ return a.papel!=="boleto"; });
+      var arq=daNota.find(function(a){ return /pdf/.test(a.tipo); })||daNota[0];
+      var bol=(e.arquivos||[]).find(function(a){ return a.papel==="boleto"; });
       fa.nfNumero=String(dd.numero||""); fa.nfData=String(dd.data||""); fa.nfValor=+dd.valor_total||0;
       if(arq) fa.nfAnexo={uid:arq.path,name:arq.nome,type:arq.tipo,size:arq.tamanho};
+      if(bol) fa.boletoAnexo={uid:bol.path,name:bol.nome,type:bol.tipo,size:bol.tamanho};
       fa.historico=fa.historico||[];
       fa.historico.push({acao:"NF nº "+(dd.numero||"")+" enviada pelo fornecedor (link) aceita — conferência: "+(SELO[e.resultado]||SELO.ilegivel)[0].toLowerCase(),por:(usuarioLogado()&&usuarioLogado().nome)||"—",em:Date.now()});
       save(); showToast("✅ NF preenchida no lançamento — confira e clique em Confirmar NF recebida","green"); render();

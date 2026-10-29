@@ -118,7 +118,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
         ((t.ie||t.im)?'<div class="sub">'+(t.ie?'IE '+esc(t.ie):'')+(t.ie&&t.im?' · ':'')+(t.im?'IM '+esc(t.im):'')+'</div>':'')+
         (i===0&&(r.tomadores||[]).length>1?'<div class="sub" style="color:#9A5B00">Tomador principal da autorização</div>':'')+'</div>';
     }).join('');
-    var obrig=[linha('Obra',esc((o.fantasia||o.nome||'').toUpperCase())),linha('CNO',esc(o.cno)),linha('Contrato B&M',esc(ref)),linha('Texto obrigatório',esc(r.textoObrigatorio))].join('');
+    var obrig=[linha('Obra',esc((o.fantasia||o.nome||'').toUpperCase())),linha('CNO',esc(o.cno)),linha('Texto obrigatório',esc(r.textoObrigatorio))].join('');
     var h='<div class="card"><p class="sub">Autorização de faturamento'+(r.empresa?' · '+esc(r.empresa):'')+'</p>'+
       '<h1>'+esc(o.nome||'Obra')+'</h1>'+(ref?'<p class="sub">'+esc(ref)+'</p>':'')+
       '<div class="valor">'+brl(r.valor)+'<small>valor total autorizado para a NF</small></div>'+
@@ -128,18 +128,28 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
       '<h2 style="margin-top:14px">Faturar para</h2>'+(toms||'<p class="sub">—</p>')+
       (obrig?'<div class="obrig"><h2 style="color:#9A5B00;margin-bottom:6px">Dados obrigatórios na nota fiscal</h2><dl>'+obrig+'</dl></div>':'')+
       '</div>'+
-      '<div class="card" id="envio"><h2>Enviar a nota fiscal</h2>'+
-        '<p class="sub">Anexe o <b>PDF</b> e, se tiver, o <b>XML</b> da nota (com o XML a conferência é exata). Até 3 arquivos, 5 MB cada.</p>'+
-        '<label class="drop" id="drop" style="margin-top:12px"><input type="file" id="arq" multiple accept=".pdf,.xml,application/pdf,text/xml,application/xml,image/jpeg,image/png" hidden/>'+
-          '<strong>📎 Escolher arquivos</strong><span>PDF, XML ou foto da nota</span></label>'+
+      '<div class="card" id="envio"><h2>Enviar a nota fiscal e o boleto</h2>'+
+        /* 29/10/2026 (pedido do dono): o boleto é obrigatório junto com a NF */
+        '<p class="sub"><b>1. Nota fiscal</b> — o <b>PDF</b> e, se tiver, o <b>XML</b> (com o XML a conferência é exata). Até 3 arquivos, 5 MB cada.</p>'+
+        '<label class="drop" id="drop" style="margin-top:8px"><input type="file" id="arq" multiple accept=".pdf,.xml,application/pdf,text/xml,application/xml,image/jpeg,image/png" hidden/>'+
+          '<strong>📎 Escolher a nota</strong><span>PDF, XML ou foto da nota</span></label>'+
         '<ul class="arqs" id="lista"></ul>'+
-        '<button class="btn" id="enviar" disabled>Enviar NF</button><div class="erro-envio" id="erro"></div>'+
+        '<p class="sub" style="margin-top:14px"><b>2. Boleto</b> — obrigatório. PDF ou foto, 5 MB.</p>'+
+        '<label class="drop" id="dropBol" style="margin-top:8px"><input type="file" id="arqBol" accept=".pdf,application/pdf,image/jpeg,image/png" hidden/>'+
+          '<strong>📎 Escolher o boleto</strong><span>PDF ou foto do boleto</span></label>'+
+        '<ul class="arqs" id="listaBol"></ul>'+
+        '<button class="btn" id="enviar" disabled>Enviar NF e boleto</button><div class="erro-envio" id="erro"></div>'+
       '</div>'+
       '<div id="resultado"></div><div id="historico"></div>';
     app.innerHTML=h;
     if(r.emailNF) document.getElementById('rodape').innerHTML='Dúvidas: <a href="mailto:'+esc(r.emailNF)+'" style="color:inherit">'+esc(r.emailNF)+'</a> · Brandão &amp; Marmo Engenharia e Construções';
     var inp=document.getElementById('arq'), drop=document.getElementById('drop');
     inp.onchange=function(){ juntar(inp.files); inp.value=''; };
+    var inpB=document.getElementById('arqBol'), dropB=document.getElementById('dropBol');
+    inpB.onchange=function(){ juntarBoleto(inpB.files); inpB.value=''; };
+    ['dragenter','dragover'].forEach(function(ev){ dropB.addEventListener(ev,function(e){ e.preventDefault(); dropB.classList.add('ativo'); }); });
+    ['dragleave','drop'].forEach(function(ev){ dropB.addEventListener(ev,function(e){ e.preventDefault(); dropB.classList.remove('ativo'); }); });
+    dropB.addEventListener('drop',function(e){ juntarBoleto(e.dataTransfer.files); });
     ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add('ativo'); }); });
     ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.remove('ativo'); }); });
     drop.addEventListener('drop',function(e){ juntar(e.dataTransfer.files); });
@@ -166,20 +176,39 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     document.getElementById('erro').textContent=erro;
     desenharLista();
   }
+  var boleto=null;
+  function juntarBoleto(lista){
+    var f=(lista||[])[0], erro='';
+    if(f){
+      var tp=tipoDe(f);
+      if(tp!=='PDF'&&tp!=='FOTO') erro='O boleto tem que ser PDF ou foto.';
+      else if(f.size>MAX) erro='"'+f.name+'" tem mais de 5 MB.';
+      else boleto=f;
+    }
+    document.getElementById('erro').textContent=erro;
+    desenharLista();
+  }
   function desenharLista(){
     var ul=document.getElementById('lista');
     ul.innerHTML=arquivos.map(function(f,i){ return '<li><span class="t">'+tipoDe(f)+'</span><span class="n">'+esc(f.name)+'</span><span class="sub">'+Math.max(1,Math.round(f.size/1024))+' KB</span><button type="button" aria-label="Tirar" data-i="'+i+'">×</button></li>'; }).join('');
     ul.querySelectorAll('button').forEach(function(b){ b.onclick=function(){ arquivos.splice(+b.dataset.i,1); desenharLista(); }; });
-    document.getElementById('enviar').disabled=!arquivos.length||enviando;
+    var ub=document.getElementById('listaBol');
+    if(ub){
+      ub.innerHTML=boleto?'<li><span class="t">BOLETO</span><span class="n">'+esc(boleto.name)+'</span><span class="sub">'+Math.max(1,Math.round(boleto.size/1024))+' KB</span><button type="button" aria-label="Tirar" id="tiraBol">×</button></li>':'';
+      var tb=document.getElementById('tiraBol'); if(tb) tb.onclick=function(){ boleto=null; desenharLista(); };
+    }
+    document.getElementById('enviar').disabled=!arquivos.length||!boleto||enviando;
   }
   function base64(f){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result)); }; r.onerror=function(){ rej(new Error('não consegui ler '+f.name)); }; r.readAsDataURL(f); }); }
 
   function enviar(){
     if(!arquivos.length||enviando) return;
+    if(!boleto){ document.getElementById('erro').textContent='Anexe também o boleto.'; return; }
     enviando=true;
     var b=document.getElementById('enviar'); b.disabled=true; b.textContent='Enviando e conferindo…';
     document.getElementById('erro').textContent='';
-    Promise.all(arquivos.map(function(f){ return base64(f).then(function(x){ return {nome:f.name,tipo:f.type||'',base64:x}; }); }))
+    Promise.all(arquivos.map(function(f){ return base64(f).then(function(x){ return {nome:f.name,tipo:f.type||'',base64:x,papel:'nf'}; }); })
+        .concat([base64(boleto).then(function(x){ return {nome:boleto.name,tipo:boleto.type||'',base64:x,papel:'boleto'}; })]))
       .then(function(lista){ return demo?demoEnvio():chamar({acao:'enviar',token:token,arquivos:lista}); })
       .then(function(d){
         if(!d||!d.ok){
@@ -187,12 +216,12 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
           document.getElementById('erro').textContent=(d&&d.erro)||'Não consegui enviar. Tente de novo.';
           return;
         }
-        arquivos=[]; desenharLista();
+        arquivos=[]; boleto=null; desenharLista();
         telaResultado(d);
         chamarVer(true);
       })
       .catch(function(e){ document.getElementById('erro').textContent='Sem conexão: '+((e&&e.message)||e)+'. Tente de novo.'; })
-      .then(function(){ enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.textContent='Enviar NF'; b2.disabled=!arquivos.length; } });
+      .then(function(){ enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.textContent='Enviar NF e boleto'; b2.disabled=!arquivos.length||!boleto; } });
   }
 
   function telaResultado(d){
