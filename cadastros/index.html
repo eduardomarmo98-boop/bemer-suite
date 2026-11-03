@@ -213,7 +213,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.03.2';
+var APP_VERSION = '2026.11.03.3';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -917,7 +917,7 @@ var MODULOS = [
   { m:'patrimonio',    nome:'Patrimônio', dica:'Bens' },
   { m:'financeiro',    nome:'Custos',     dica:'Orçamento, compras, contratos, medições e faturamento' },
   { m:'manutencao',    nome:'Manutenção', dica:'Assistência pós-obra: chamados, visitas e garantia' },
-  { m:'perfil',        nome:'B&M Perfil', dica:'Avaliação comportamental e de raciocínio do RH (dados sensíveis de candidatos)' },
+  { m:'perfil',        nome:'Avaliações', dica:'Avaliação comportamental e de raciocínio do RH (dados sensíveis de candidatos)' },
   { m:'configuracoes', nome:'Cadastros',  dica:'A engrenagem do portal' },
   { m:'folha',         nome:'Folha',      dica:'Folha interna do DP (salários). Só a diretoria ou o DP ligam.' }
 ];
@@ -1084,8 +1084,8 @@ function resumoPerfil(c){
     if(temPerfil()){
       if(temModulo(c, 'perfil')){
         var pf = nomes('perfil', false);
-        l.push(['B&M Perfil', 'Vê as avaliações e os relatórios.' + (pf.length ? ' Pode: ' + pf.join(', ') + '.' : ' Só consulta.')]);
-      } else l.push(['B&M Perfil', 'Não entra.']);
+        l.push(['Avaliações', 'Vê as avaliações e os relatórios.' + (pf.length ? ' Pode: ' + pf.join(', ') + '.' : ' Só consulta.')]);
+      } else l.push(['Avaliações', 'Não entra.']);
     }
     if(temModulo(c, 'configuracoes')){
       var cv = nomes('configuracoes', true), cf = nomes('configuracoes', false);
@@ -1116,7 +1116,7 @@ function resumoPerfil(c){
    O banco obedece. Grava por core.definir_permissao (diretoria/TI).
    --------------------------------------------------------------------- */
 var PERM_MOD = 'geral';
-var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['financeiro', 'Custos'], ['manutencao', 'Manutenção'], ['perfil', 'B&M Perfil'], ['configuracoes', 'Cadastros'], ['docs', 'Docs'], ['folha', 'Folha']];
+var MOD_PERM = [['geral', 'Visão geral'], ['flow', 'Flow'], ['patrimonio', 'Patrimônio'], ['financeiro', 'Custos'], ['manutencao', 'Manutenção'], ['perfil', 'Avaliações'], ['configuracoes', 'Cadastros'], ['docs', 'Docs'], ['folha', 'Folha']];
 /* 28/09/2026: o Financeiro só aparece onde o banco já o tem (0033 rodada) —
    em produção ele ainda não existe, e ligar o card daria "Módulo inválido". */
 function temFin(){ return (D.acoes || []).some(function(a){ return a.modulo === 'financeiro'; }); }
@@ -1131,11 +1131,11 @@ function temPerfil(){ return (D.acoes || []).some(function(a){ return a.modulo =
 function modulosAtivos(){ return MODULOS.filter(function(mo){ return (mo.m !== 'financeiro' || temFin()) && (mo.m !== 'folha' || temFolha()) && (mo.m !== 'manutencao' || temMan()) && (mo.m !== 'perfil' || temPerfil()); }); }
 function modPerm(){ return MOD_PERM.filter(function(x){ return (x[0] !== 'financeiro' || temFin()) && (x[0] !== 'folha' || temFolha()) && (x[0] !== 'manutencao' || temMan()) && (x[0] !== 'perfil' || temPerfil()); }); }
 var NOTA_MOD = {
-  perfil: 'Quem tem o B&M Perfil vê todas as avaliações, relatórios e comparações de candidatos — dado sensível: ligue só para o RH e a gestão que decide a contratação. "Vagas e perguntas" mostra o gabarito.',
+  perfil: 'Quem tem as Avaliações vê todas as avaliações, relatórios e comparações de candidatos — dado sensível: ligue só para o RH e a gestão que decide a contratação. "Vagas e perguntas" mostra o gabarito.',
   manutencao: 'Quem tem a Manutenção vê todos os chamados, as obras entregues e o relatório. O responsável de um chamado sempre registra visita nele, mesmo sem "Atender". Nada se apaga: chamado se cancela com motivo e fica no histórico.',
   flow: 'Quem tem o Flow sempre vê e responde as pendências em que é quem criou, o responsável ou um envolvido. O que se marca aqui soma a isso.',
   patrimonio: 'Quem tem o Patrimônio e nada marcado vê só os bens que estão com ele e pede cadastro e movimentação. "Dar baixa" e "Excluir" valem só nas áreas em que o perfil cadastra e movimenta. Na Diretoria, "Excluir" e apagar só com a marca "Administrador do sistema".',
-  configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI e quem tem a marca "Administrador do sistema" têm tudo aqui. Na Diretoria sem a marca, "Cadastrar e editar pessoas" não vale (só consulta).',
+  configuracoes: 'Quem tem os Cadastros e nada marcado vê só os dados da construtora. A TI e quem tem a marca "Administrador do sistema" têm tudo aqui. Na Diretoria sem a marca, "Cadastrar e editar pessoas" não vale (só consulta). As CONFIGURAÇÕES do portal (engrenagem: 2FA, IA, Acervo) não estão nesta tabela: são só do administrador do sistema — perfil TI ou a marca "Administrador do sistema" na ficha da pessoa (aba Pessoas).',
   docs: 'Marque o que cada perfil vê e faz no Docs; vale na hora (a pessoa sai e entra de novo) — na tela e no banco. Sem "Ver todas as obras", a pessoa vê só as obras marcadas para ela (aba Pessoas). A folha interna agora fica na aba Folha. O que o fornecedor vê se cuida no Docs.',
   folha: 'Folha interna (tem salário): só a diretoria ou o DP ligam o módulo e marcam as caixas; "Cadastrar e alterar" e "Importar planilha" só para perfis da diretoria ou do DP (o banco também barra). Vale na hora, na tela e no banco, sempre com o código do dia (2FA). Cada abertura e exportação fica no registro de acessos.',
   financeiro: 'Sem "Ver todas as obras", a pessoa vê só as obras marcadas para ela em Custos — nenhuma marcada, nenhuma obra. Decidir contratação e SAE e aprovar compra acima da alçada são só da diretoria; excluir, só da diretoria com a marca "Administrador do sistema".'
