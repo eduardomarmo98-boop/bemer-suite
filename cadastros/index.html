@@ -213,7 +213,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.03.3';
+var APP_VERSION = '2026.11.03.4';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -691,7 +691,9 @@ function abrirPessoa(id){
     + campo('Situação', '<div class="seg" id="p-ativo" data-v="' + (p.ativo ? '1' : '0') + '">'
         + '<button type="button" data-v="1" class="' + (p.ativo ? 'ativo' : '') + '"' + (travaSit ? ' disabled' : '') + '>Ativo</button>'
         + '<button type="button" data-v="0" class="' + (p.ativo ? '' : 'ativo') + '"' + (travaSit ? ' disabled' : '') + '>Inativo</button></div>'
-        + (!PODE.admin && !sou && !consulta ? '<div class="sub">Ativar ou desativar: só o administrador do sistema.</div>' : ''), true)
+        + (!PODE.admin && !sou && !consulta ? '<div class="sub">Ativar ou desativar: só o administrador do sistema.</div>' : '')
+        /* 03/11/2026 (0089): quem saiu pode ter deixado pendência no Flow sem quem confirme */
+        + (PODE.admin && !p.ativo && p.tipo === 'colaborador' ? '<div class="sub"><a href="#" id="p-flow-transf">Passar as pendências do Flow desta pessoa para outra</a></div>' : ''), true)
     /* 0051: a caixa só existe para o administrador; na própria ficha, travada */
     + (PODE.admin && D.admins && p.tipo === 'colaborador' ? campo('Administrador do sistema',
         '<label class="marcar"><input type="checkbox" id="p-admin"' + (ehMarcado(p.id) ? ' checked' : '') + (sou ? ' disabled' : '') + '> Administrador do sistema</label>'
@@ -760,9 +762,12 @@ function abrirPessoa(id){
         .then(function(){ return planoDocs ? planoDocs() : null; })
         .then(function(){ return planoFin ? planoFin() : null; })
         .then(function(){ return 'ativo' in dados ? loginDocs(p.id, dados.ativo) : null; })
+        /* 03/11/2026 (0089): desativou? Se deixou pendência aberta no Flow, oferece passar */
+        .then(function(aviso){ if(dados.ativo === false && PODE.admin) setTimeout(function(){ oferecerTransferenciaFlow(p, true); }, 500); return aviso; })
         .then(function(aviso){ if(aviso) return aviso; if(!Object.keys(dados).length && !mudouObras && !mudouFin && !mudouDocs) return 'Nada mudou.'; });
     });
   segmento('p-ativo');
+  if($('p-flow-transf')) $('p-flow-transf').addEventListener('click', function(e){ e.preventDefault(); oferecerTransferenciaFlow(p, false); });
   ['p-obras', 'p-obras-docs', 'p-obras-fin'].forEach(function(pre){
     segmento(pre + '-modo', function(v){ $(pre + '-lista').classList.toggle('oculto', v !== 'estas'); });
   });
@@ -1323,6 +1328,40 @@ function salvarConstrutora(btn){
 function campo(rot, html, inteiro){
   return '<div' + (inteiro ? ' class="inteiro"' : '') + '>' + (rot ? '<label class="rot">' + esc(rot) + '</label>' : '') + html + '</div>';
 }
+/* ---------------------------------------------------------------------
+   03/11/2026 (0089, pedido do dono): quem foi desligado deixa pendência no
+   Flow — aberta por ele (ninguém confirma) ou com ele (ninguém faz). Ao
+   desativar (ou pelo link na ficha de quem já está inativo) o administrador
+   passa tudo para outra pessoa de uma vez (flow.transferir_pessoa).
+   `calado`: chamado sozinho depois de desativar — sem pendência, não diz nada.
+   --------------------------------------------------------------------- */
+function oferecerTransferenciaFlow(p, calado){
+  sb.schema('flow').rpc('pendencias_da_pessoa', { p_pessoa: p.id }).then(function(r){
+    if(r.error){ if(!calado) aviso(msgErro(r.error), true); return; }
+    var n = r.data || {}, por = Number(n.abertas_por) || 0, com = Number(n.com_ela) || 0;
+    if(!por && !com){ if(!calado) aviso((p.nome || 'Esta pessoa') + ' não tem pendência aberta no Flow.'); return; }
+    var gente = (D.pessoas || []).filter(function(x){ return x.ativo && x.tipo === 'colaborador' && x.id !== p.id && temModulo(x.perfil, 'flow'); })
+      .sort(function(a, b){ return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); });
+    var prim = String(p.nome || 'Esta pessoa').split(' ')[0];
+    modal('Pendências do Flow de ' + (p.nome || p.email),
+      '<p class="sub" style="margin:0 0 10px;line-height:1.5">' + esc(prim) + ' deixou no Flow '
+        + (por ? '<b>' + por + '</b> pendência(s) aberta(s) por ' + esc(prim) + ' (ninguém confirma)' : '')
+        + (por && com ? ' e ' : '') + (com ? '<b>' + com + '</b> com ' + esc(prim) + ' (ninguém faz)' : '') + '.</p>'
+        + '<label class="rot" for="ft-para">Passar tudo para</label>'
+        + '<select id="ft-para"><option value="">— escolha —</option>' + gente.map(function(x){ return '<option value="' + x.id + '">' + esc(x.nome || x.email) + '</option>'; }).join('') + '</select>'
+        + '<p class="sub" style="margin-top:8px">Cada pendência ganha um registro na conversa. Se a pessoa escolhida ficaria pedindo e fazendo a mesma pendência, essa fica para decidir no Flow (⋯ › Passar para outra pessoa confirmar).</p>',
+      function(){
+        var para = $('ft-para').value;
+        if(!para) throw new Error('Escolha para quem passar.');
+        return sb.schema('flow').rpc('transferir_pessoa', { p_de: p.id, p_para: para }).then(function(x){
+          if(x.error) throw x.error;
+          var t = x.data || {}, feitas = (Number(t.abertas_por) || 0) + (Number(t.com_ela) || 0);
+          return feitas + ' pendência(s) passada(s).' + (Number(t.puladas) ? ' ' + t.puladas + ' ficaram para decidir no Flow.' : '');
+        });
+      }, 'Passar');
+  }, function(e){ if(!calado) aviso(msgErro(e), true); });
+}
+
 function modal(titulo, corpo, salvar, rotulo){
   fecharModal();
   var f = document.createElement('div');

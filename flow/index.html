@@ -926,7 +926,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -947,7 +947,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -964,7 +964,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.2</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1089,7 +1089,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.03.1';
+var APP_VERSAO = '2026.11.03.2';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1725,6 +1725,25 @@ var Regras = {
       throw new Error('Só quem abriu o sub-item, ou quem abriu ou recebeu a #'+p.pai_id+', pode soltá-lo.');
     if(ABERTOS.indexOf(p.status)<0) throw new Error('A pendência #'+p.id+' já está encerrada.');
   },
+  /* 03/11/2026 (0089): quem pediu foi desligado e ninguém confirma — a diretoria
+     ou o administrador passam a confirmação para outra pessoa. Espelha
+     flow.trocar_quem_pediu. */
+  validarTrocarQuemPediu: function(p, para, ator){
+    var a = pessoa(ator), cri = pessoa(p.criado_por);
+    if(!(adminSistema(ator) || (a && (a.perfil === 'diretoria' || a.papel === 'diretor'))))
+      throw new Error('Só a diretoria ou o administrador do sistema passa a confirmação para outra pessoa.');
+    if(p.status === 'resolvida' || p.status === 'cancelada') throw new Error('Esta pendência já está encerrada.');
+    if(cri && cri.ativo !== false) throw new Error(primeiro(cri.nome)+' ainda está ativo no sistema: é ele quem confirma.');
+    if(!para || mesmoId(para, p.criado_por)) throw new Error('Escolha outra pessoa.');
+    if(mesmoId(para, p.responsavel_id)) throw new Error(primeiro(pessoa(para).nome)+' é quem está fazendo esta pendência: escolha outra pessoa para confirmar.');
+    var d = pessoa(para); if(!d || d.ativo === false) throw new Error('Essa pessoa não usa o Flow.');
+  },
+  trocarQuemPediu: function(p, para, ator){
+    RegrasBase.validarTrocarQuemPediu(p, para, ator);
+    var antes = p.criado_por; p.criado_por = para;
+    Regras._nota(p.id, ator, pessoa(ator).nome+' passou a confirmação de '+pessoa(antes).nome+' (desligado) para '+pessoa(para).nome+'.');
+    return p;
+  },
   soltar: function(p, ator){
     RegrasBase.validarSoltar(p, ator);
     var eu = primeiro(pessoa(ator).nome), paiId = p.pai_id;
@@ -1908,6 +1927,9 @@ function comoInput(d){
 /* ---------------- quem eu sou nesta pendência ---------------- */
 function aberta(p){ return ABERTOS.indexOf(p.status)>=0 && UI_PEND[String(p.id)] !== 'resolver'; }
 function souResp(p){ return mesmoId(p.responsavel_id, EU.id); }
+/* 03/11/2026 (0089): quem pediu foi desligado (ninguém confirma) e quem pode resolver isso */
+function quemPediuSaiu(p){ var c = pessoa(p.criado_por); return !!(c && c.ativo === false); }
+function podeTrocarQuemPediu(){ return !!EU && (souAdminSistema() || EU.perfil === 'diretoria' || EU.papel === 'diretor'); }
 function souCriador(p){ return mesmoId(p.criado_por, EU.id); }
 function acompanho(p){ return (p.envolvidos||[]).some(function(x){ return mesmoId(x, EU.id); }); }
 /* concluí e espero quem abriu confirmar */
@@ -3553,6 +3575,10 @@ var Dados = {
     try { RegrasBase.tornarPrincipal(p, EU.id); salvar(); return Promise.resolve(); }
     catch(e){ return Promise.reject(e); }
   },
+  trocarQuemPediu: function(p, para){
+    try { RegrasBase.trocarQuemPediu(p, para, EU.id); salvar(); return Promise.resolve(); }
+    catch(e){ return Promise.reject(e); }
+  },
   /* já aplicados na tela pelo "Desfazer": aqui só se grava */
   enviarAdiamento: function(){ salvar(); return Promise.resolve(); },
   enviarRedirecionamento: function(){ salvar(); return Promise.resolve(); },
@@ -3709,7 +3735,7 @@ var Detalhe = {
       var st;
       /* 13/10/2026: quem só acompanha não confirma — diz quem falta */
       if(pp.pediu){ cls = 'ok'; st = pp.souResp ? 'Concluída · aguardando '+esc(criadorN)+' confirmar'
-        : pp.souCriador ? esc(respN)+' concluiu · falta você confirmar' : esc(respN)+' concluiu · falta '+esc(criadorN)+' confirmar'; }
+        : pp.souCriador ? esc(respN)+' concluiu · falta você confirmar' : esc(respN)+' concluiu · falta '+esc(criadorN)+' confirmar'+(quemPediuSaiu(p) ? ' (desligado)' : ''); }
       else if(p.status==='aguardando') st = 'Aguardando terceiros';
       else if(pp.atrasada){ cls = 'atr'; st = 'Atrasada'; }
       else if(n===0){ cls = 'acao'; st = 'Vence hoje'; }
@@ -3870,6 +3896,8 @@ var Detalhe = {
     /* 15/10/2026 (0068): inverte — este sub-item vira a principal */
     if(pp.aberta && p.pai_id != null && podeTornarPrincipal(p)) it.push('<button data-acao="tornarPrincipal">Tornar esta a principal</button>');
     if(pp.aberta && p.pai_id != null && podeSoltar(p)) it.push('<button data-acao="soltar">Soltar da #'+esc(p.pai_id)+'</button>');
+    /* 03/11/2026 (0089): quem pediu foi desligado — diretoria/administrador passam a confirmação */
+    if(pp.aberta && quemPediuSaiu(p) && podeTrocarQuemPediu()) it.push('<button data-acao="trocarQuemPediu">Passar para outra pessoa confirmar</button>');
     it.push('<button data-menu-d="copiar">Copiar link</button>');
     it.push('<button data-acao="linha">Linha do tempo completa</button>');
     if(pp.aberta && pp.souCriador && !subItens(p).length) it.push('<button id="d-duplicada">É duplicada de outra…</button>');   // 23/10/2026
@@ -4640,6 +4668,28 @@ var Acoes = {
       Dados.tornarPrincipal(p).then(function(){
         f.remove(); desenhar(); Detalhe.recarregarSeAberta(p.id);
         aviso('#'+p.id+' agora é a principal.', 'ok');
+      }).catch(function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
+    });
+    return f;
+  },
+  /* 03/11/2026 (0089): quem pediu saiu da empresa — outra pessoa confirma */
+  trocarQuemPediu: function(p){
+    var criN = primeiro(pessoa(p.criado_por).nome);
+    var f = folha('Quem confirma no lugar de '+criN+'?',
+      '<div class="dica" style="margin:0 0 10px">'+esc(criN)+' foi desligado. A pessoa escolhida passa a confirmar (ou devolver) esta pendência e a receber os avisos dela. Fica registrado na conversa.</div>'+
+      '<label class="primeiro">Quem confirma</label><div id="d-qp-escolha"></div>',
+      '<button class="bt-sec so" id="d-qp-nao">Voltar</button><button class="bt-pri" id="d-qp-ok">Passar</button>');
+    var escolha = Escolha.pessoas(f.querySelector('#d-qp-escolha'), { dica:'Digite o nome', excluir:[p.criado_por, p.responsavel_id] });
+    f._escolha = escolha;
+    f.querySelector('#d-qp-nao').addEventListener('click', function(){ f.remove(); });
+    f.querySelector('#d-qp-ok').addEventListener('click', function(){
+      var para = escolha.valores()[0];
+      if(!para){ aviso('Escolha quem confirma.','erro'); return; }
+      try { RegrasBase.validarTrocarQuemPediu(p, para, EU.id); } catch(e){ aviso(e.message,'erro'); return; }
+      var b = this; b.disabled = true;
+      Dados.trocarQuemPediu(p, para).then(function(){
+        f.remove(); desenhar(); Detalhe.recarregarSeAberta(p.id);
+        aviso('Agora quem confirma é '+primeiro(pessoa(para).nome)+'.', 'ok');
       }).catch(function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
     });
     return f;
@@ -7623,6 +7673,12 @@ Dados = {
   },
   tornarPrincipal: function(p){
     return Promise.resolve(sb.schema('flow').rpc('tornar_principal', { p_id:p.id }))
+      .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
+      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
+  },
+  /* 03/11/2026 (0089): quem pediu foi desligado → outra pessoa confirma */
+  trocarQuemPediu: function(p, para){
+    return Promise.resolve(sb.schema('flow').rpc('trocar_quem_pediu', { p_id:p.id, p_para:para }))
       .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
       .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
   },
