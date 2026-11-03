@@ -513,7 +513,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.11.03.3';
+var VERSAO   = '2026.11.03.4';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -1637,7 +1637,66 @@ var PDF_COMP_MIN = 3 * 1024 * 1024, PDF_COMP_DPI = 150, PDF_COMP_Q = 0.72, PDF_C
     PDF_COMP_MAXPX = 2200, PDF_COMP_GANHO = 0.30, ACV_ORFAO_IDADE_H = 24,
     FOTO_COMP_MIN = 200 * 1024, FOTO_LADO = 1024, FOTO_Q = 0.68;   // = o que o Patrimônio usa ao cadastrar
 
-function telaAcervo(){ desenharAcervo(); if(!ACV.uso && !ACV.medindo) medirUso(); }
+/* ---------------------------------------------------------------------
+   03/11/2026 (pedido do dono): compactar SEM prender a página.
+    · A lista mapeada fica guardada neste navegador (FilaAcv); o que já foi
+      feito sai dela, e o que foi pulado (assinatura, texto) não volta no
+      próximo mapear — reabrir = continuar de onde parou.
+    · "Compactar em outra aba": a confirmação é aqui; a outra aba começa
+      sozinha (recado em localStorage, vale 1 min). Enquanto uma aba roda,
+      as outras mostram o andamento e não deixam rodar junto (trava com
+      batida a cada 5 s; trava parada há 20 s é abandonada).
+   A compactação continua sendo no navegador (baixa, regrava, sobe): a aba
+   precisa ficar aberta, mas pode ficar em segundo plano.
+   --------------------------------------------------------------------- */
+var ACV_ABA = Math.random().toString(36).slice(2);
+var FilaAcv = {
+  k: function(m, o){ return 'bemer_acv_' + o + '_' + m; },
+  chave: function(c){ return String(c.id || c.caminho || '') + '|' + (Number(c.bytes) || 0); },
+  ler: function(m){ try { return JSON.parse(localStorage.getItem(FilaAcv.k(m, 'fila')) || 'null'); } catch(e){ return null; } },
+  gravar: function(m, cand){ try { localStorage.setItem(FilaAcv.k(m, 'fila'), JSON.stringify({ em: Date.now(), cand: cand })); } catch(e){} },
+  tirar: function(m, c, pulado){
+    var f = FilaAcv.ler(m); if(!f) return;
+    var k = FilaAcv.chave(c);
+    f.cand = (f.cand || []).filter(function(x){ return FilaAcv.chave(x) !== k; });
+    if(f.cand.length) FilaAcv.gravar(m, f.cand); else { try { localStorage.removeItem(FilaAcv.k(m, 'fila')); } catch(e){} }
+    if(pulado){ var p = FilaAcv.pulados(m); p[k] = 1; try { localStorage.setItem(FilaAcv.k(m, 'pul'), JSON.stringify(p)); } catch(e){} }
+  },
+  pulados: function(m){ try { return JSON.parse(localStorage.getItem(FilaAcv.k(m, 'pul')) || '{}') || {}; } catch(e){ return {}; } },
+  trava: function(){ try { var t = JSON.parse(localStorage.getItem('bemer_acv_trava') || 'null'); return t && Date.now() - t.t < 20000 ? t : null; } catch(e){ return null; } },
+  bater: function(m, prog){ try { localStorage.setItem('bemer_acv_trava', JSON.stringify({ aba: ACV_ABA, m: m, prog: prog || '', t: Date.now() })); } catch(e){} },
+  soltar: function(){ try { var t = FilaAcv.trava(); if(!t || t.aba === ACV_ABA) localStorage.removeItem('bemer_acv_trava'); } catch(e){} },
+  outraAba: function(){ var t = FilaAcv.trava(); return t && t.aba !== ACV_ABA ? t : null; }
+};
+function acvRestaurarFilas(){
+  ACV_MODS.forEach(function(d){
+    if(ACV.m[d.id].cand) return;
+    var f = FilaAcv.ler(d.id);
+    if(f && f.cand && f.cand.length){ ACV.m[d.id].cand = f.cand; ACV.m[d.id].guardadaEm = f.em; }
+  });
+}
+window.addEventListener('storage', function(e){
+  if(!e.key || e.key.indexOf('bemer_acv_') !== 0 || CFG.aba !== 'acervo' || ACV.rodando) return;
+  ACV_MODS.forEach(function(d){ var f = FilaAcv.ler(d.id); ACV.m[d.id].cand = f && f.cand && f.cand.length ? f.cand : null; ACV.m[d.id].guardadaEm = f && f.em; });
+  desenharAcervo();
+});
+window.addEventListener('beforeunload', function(e){ if(ACV.rodando){ e.preventDefault(); e.returnValue = ''; } });
+function acvEmOutraAba(m){
+  var d = acvMod(m), n = (ACV.m[m].cand || []).length; if(!d || !n) return;
+  if(!confirm(d.nome + ': compactar ' + n + ' item(ns) numa aba nova?\n\nA aba nova começa sozinha. Deixe-a aberta (pode ficar atrás das outras) e siga usando o sistema aqui. Se fechar, ela continua de onde parou da próxima vez.')) return;
+  try { localStorage.setItem('bemer_acv_auto', JSON.stringify({ m: m, t: Date.now() })); } catch(e){}
+  window.open(location.pathname + '#config/acervo', '_blank');
+}
+function acvAutoIniciar(){
+  var a = null; try { a = JSON.parse(localStorage.getItem('bemer_acv_auto') || 'null'); } catch(e){}
+  if(!a || Date.now() - a.t > 60000) return;
+  try { localStorage.removeItem('bemer_acv_auto'); } catch(e){}
+  if(ACV.rodando || FilaAcv.outraAba()) return;
+  document.title = 'Compactando… · BeMer';
+  acvRodar(a.m, false, true);
+}
+
+function telaAcervo(){ acvRestaurarFilas(); desenharAcervo(); if(!ACV.uso && !ACV.medindo) medirUso(); acvAutoIniciar(); }
 function medirUso(){
   ACV.medindo = true; ACV.erro = ''; ACV.erroMods = '';
   Promise.all([sb.schema('core').rpc('storage_uso'), sb.schema('core').rpc('banco_uso'), sb.schema('core').rpc('acervo_modulos')]).then(function(rs){
@@ -1711,7 +1770,8 @@ function desenharAcervo(){
 function acvBloco(d, porBucket){
   var info = ACV.mods ? ACV.mods[d.id] : null;
   var existe = info ? info.existe !== false : true;
-  var st = ACV.m[d.id], ocupado = !!ACV.rodando, aqui = ACV.rodando === d.id, dis = ocupado ? ' disabled' : '';
+  var outra = FilaAcv.outraAba();
+  var st = ACV.m[d.id], ocupado = !!ACV.rodando || !!outra, aqui = ACV.rodando === d.id, dis = ocupado ? ' disabled' : '';
   var bks = d.buckets.filter(function(b){ return porBucket[b]; });
   var stBytes = bks.reduce(function(a, b){ return a + porBucket[b].bytes; }, 0);
   var stN = bks.reduce(function(a, b){ return a + porBucket[b].n; }, 0);
@@ -1747,12 +1807,15 @@ function acvBloco(d, porBucket){
   h += '<div class="btns">'
     +  '<button class="btn" type="button" data-acv="mapear" data-m="' + d.id + '"' + dis + '>' + rotMapear + '</button>'
     +  (st.cand && st.cand.length ? '<button class="btn" type="button" data-acv="simular" data-m="' + d.id + '"' + dis + '>Simular os 3 maiores</button>'
-                                 + '<button class="btn forte" type="button" data-acv="compactar" data-m="' + d.id + '"' + dis + '>Compactar ' + st.cand.length + '</button>' : '')
+                                 + '<button class="btn forte" type="button" data-acv="compactar" data-m="' + d.id + '"' + dis + '>Compactar ' + st.cand.length + '</button>'
+                                 + '<button class="btn forte" type="button" data-acv="outra-aba" data-m="' + d.id + '"' + dis + ' title="Roda numa aba nova; você segue usando o sistema">Compactar em outra aba</button>' : '')
     +  (semOrf ? '' : '<button class="btn" type="button" data-acv="orfaos" data-m="' + d.id + '"' + dis + '>Procurar órfãos</button>')
     +  (st.orf && st.orf.length ? '<button class="btn perigo" type="button" data-acv="apagar" data-m="' + d.id + '"' + dis + '>Apagar ' + st.orf.length + ' órfão(s)</button>' : '')
     +  (aqui ? '<button class="btn perigo" type="button" data-acv="parar">Parar</button>' : '')
     +  '<span class="prog" id="acv-prog-' + d.id + '"></span></div>';
   if(semOrf) h += '<p class="dica" style="margin-top:8px">As fotos ficam dentro da ficha de cada bem: não existe foto órfã.</p>';
+  if(outra && outra.m === d.id) h += '<div class="aviso-cfg" style="margin-top:10px">Compactando em outra aba' + (outra.prog ? ' — ' + esc(outra.prog) : '') + '. Esta tela se atualiza sozinha.</div>';
+  if(st.cand && st.cand.length && st.guardadaEm && !aqui) h += '<p class="dica" style="margin-top:8px">Lista guardada em ' + esc(dataHora(new Date(st.guardadaEm).toISOString())) + ': o que já foi compactado ou mantido saiu dela. Para atualizar, Mapear de novo.</p>';
 
   if(st.cand){
     h += '<p class="dica" style="margin-top:14px"><b>' + st.cand.length + ' ' + (d.comp === 'foto' ? 'foto(s)' : 'PDF(s)') + ' · ' + fmtTam(acvSoma(st.cand)) + '</b>'
@@ -1780,6 +1843,7 @@ $('cfg-conteudo').addEventListener('click', function(e){
   if(a === 'mapear') acvMapear(m);
   if(a === 'simular') acvRodar(m, true);
   if(a === 'compactar') acvRodar(m, false);
+  if(a === 'outra-aba') acvEmOutraAba(m);
   if(a === 'orfaos') acvOrfaos(m);
   if(a === 'apagar') acvApagarOrfaos(m);
   if(a === 'parar'){ ACV.parar = true; acvProg('Parando depois do arquivo atual…'); }
@@ -1804,8 +1868,12 @@ async function acvMapear(m){
       if(!r.error) r.data = (r.data || []).map(function(f){ return { id: f.id, bytes: f.bytes, md5: f.md5, quem: 'Patrimônio', documento: f.rotulo }; });
     }
     if(r.error) throw r.error;
-    ACV.m[m].cand = r.data || [];
-    acvLog(d.nome + ': ' + ACV.m[m].cand.length + ' item(ns) — ' + fmtTam(acvSoma(ACV.m[m].cand)) + ' no total', 'ok');
+    /* 03/11: o que já foi pulado (assinatura, texto de verdade) não volta para a fila */
+    var pul = FilaAcv.pulados(m), todos = r.data || [];
+    ACV.m[m].cand = todos.filter(function(c){ return !pul[FilaAcv.chave(c)]; });
+    FilaAcv.gravar(m, ACV.m[m].cand); ACV.m[m].guardadaEm = Date.now();
+    acvLog(d.nome + ': ' + ACV.m[m].cand.length + ' item(ns) — ' + fmtTam(acvSoma(ACV.m[m].cand)) + ' no total'
+      + (todos.length > ACV.m[m].cand.length ? ' (' + (todos.length - ACV.m[m].cand.length) + ' já analisado(s) e mantido(s) antes)' : ''), 'ok');
   } catch(e){ acvLog('✗ ' + d.nome + ': ' + msgBanco(e), 'err'); }
   finally { ACV.rodando = ''; if(CFG.aba === 'acervo') desenharAcervo(); }
 }
@@ -1870,7 +1938,9 @@ async function pdfComprimir(file){
       cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
       var ctx = cv.getContext('2d');
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);   // transparência viraria preto no JPEG
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      /* 03/11/2026: intent 'print' — o pdf.js não usa requestAnimationFrame nesse modo,
+         que o navegador congela em aba escondida (compactar em outra aba) */
+      await page.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise;
       var jpg = cv.toDataURL('image/jpeg', PDF_COMP_Q);
       var larg = base.width, alt = base.height;                  // o papel não muda, só a resolução
       if(!doc) doc = new window.jspdf.jsPDF({ unit: 'pt', format: [larg, alt], orientation: larg > alt ? 'landscape' : 'portrait' });
@@ -1989,8 +2059,10 @@ async function acvUmaFoto(item, simular){
   return { antes: antes, depois: depois };
 }
 
-async function acvRodar(m, simular){
+async function acvRodar(m, simular, semPergunta){
   if(ACV.rodando) return;
+  var outra = FilaAcv.outraAba();
+  if(outra) return alert('Já há uma compactação rodando em outra aba. Espere terminar (ou feche aquela aba).');
   var d = acvMod(m); if(!d) return;
   var lista = ACV.m[m].cand || [];
   var fila = simular ? lista.slice(0, 3) : lista.slice();
@@ -1999,25 +2071,32 @@ async function acvRodar(m, simular){
     ? 'Cada um: sobe a versão nova, aponta o documento para ela e só então apaga a antiga.'
     : d.comp === 'pdf' ? 'Cada um é regravado compactado no mesmo lugar (o registro continua apontando para ele).'
     : 'Cada foto é regravada em ' + FOTO_LADO + ' px, como o Patrimônio faz no cadastro.';
-  if(!simular && !confirm(d.nome + ': compactar ' + fila.length + ' item(ns)?\n\n' + aviso
+  if(!simular && !semPergunta && !confirm(d.nome + ': compactar ' + fila.length + ' item(ns)?\n\n' + aviso
       + (d.comp === 'foto' ? '' : '\nPDF com assinatura digital e PDF com texto de verdade são pulados sozinhos.')
       + '\n\nDá para parar no meio — o que já foi feito fica feito.')) return;
   ACV.rodando = m; ACV.parar = false; desenharAcervo();
-  var feitos = 0, pulados = 0, antes = 0, depois = 0;
+  var feitos = 0, pulados = 0, antes = 0, depois = 0, prog = '';
+  FilaAcv.bater(m, 'começando');
+  var batida = setInterval(function(){ FilaAcv.bater(m, prog); }, 5000);
   try {
     for(var i = 0; i < fila.length; i++){
-      if(ACV.parar){ acvLog('⏸ parado a pedido — ' + feitos + ' já compactado(s)'); break; }
-      acvProg((simular ? 'Simulando ' : 'Compactando ') + (i + 1) + '/' + fila.length);
+      if(ACV.parar){ acvLog('⏸ parado a pedido — ' + feitos + ' já compactado(s); o resto continua na lista'); break; }
+      prog = (simular ? 'Simulando ' : 'Compactando ') + (i + 1) + '/' + fila.length;
+      acvProg(prog); FilaAcv.bater(m, prog);
+      if(semPergunta) document.title = '(' + (i + 1) + '/' + fila.length + ') Compactando · BeMer';
       var r = d.comp === 'docs' ? await acvUm(fila[i], simular)
             : d.comp === 'pdf'  ? await acvUmArquivo(m, fila[i], simular)
             : await acvUmaFoto(fila[i], simular);
       if(r){ feitos++; antes += r.antes; depois += r.depois; } else pulados++;
+      if(!simular) FilaAcv.tirar(m, fila[i], !r);   // feito ou mantido: sai da fila guardada
     }
   } finally {
+    clearInterval(batida); FilaAcv.soltar();
     ACV.rodando = '';
     acvLog(d.nome + (simular ? ' · simulação: ' : ' · pronto: ') + feitos + ' compactado(s), ' + pulados + ' mantido(s) · ' + fmtTam(antes) + ' → ' + fmtTam(depois)
            + (antes ? ' · economia de ' + fmtTam(antes - depois) : ''), 'ok');
-    if(!simular){ ACV.m[m].cand = null; ACV.uso = null; medirUso(); }
+    if(!simular){ var resto = FilaAcv.ler(m); ACV.m[m].cand = resto && resto.cand && resto.cand.length ? resto.cand : null; ACV.uso = null; medirUso(); }
+    if(semPergunta) document.title = 'Compactação concluída · BeMer';
     if(CFG.aba === 'acervo') desenharAcervo();
   }
 }

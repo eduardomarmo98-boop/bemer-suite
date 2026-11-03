@@ -521,6 +521,12 @@
   .det-fixa .pz.atr{color:var(--erro)}
   .det-fixa:not(.on){display:none}
 
+  /* 03/11/2026: quem pediu foi desligado — alerta no alto da pendência e selo no cartão */
+  .alerta-saiu{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin:0 0 12px;padding:12px 14px;
+    border-radius:12px;background:#FFF1DC;border:1.5px solid #FE9400;color:#7A4300;font-size:15px;line-height:1.4}
+  .alerta-saiu b{color:#7A4300}
+  .alerta-saiu .bt-pri{flex:0 0 auto}
+  .selo-saiu{display:inline-block;font-size:13px;font-weight:700;color:#7A4300;background:#FFF1DC;border:1px solid #FE9400;border-radius:8px;padding:0 7px;margin-right:4px;white-space:nowrap}
   .faixa-prazo{padding:12px 18px;background:var(--neutro-bg)}
   .faixa-prazo.atr{background:var(--erro-bg)}
   .faixa-prazo.acao{background:var(--laranja-bg)}
@@ -926,7 +932,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -947,7 +953,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -964,7 +970,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.3</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.4</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1089,7 +1095,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.03.3';
+var APP_VERSAO = '2026.11.03.4';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2562,7 +2568,10 @@ function cartao(p){
          título caía inteiro para a 2ª, cortado ("CONTRATAÇÃO:…"). Lá ela vai para
          a linha de baixo (.so-cel); o número fica junto do título. */
       '<h3><span class="selo-num">#'+esc(p.id)+'</span>'+selos(p)+esc(p.titulo)+'</h3><div class="meta">'+
-        (p.categoria || p.sigiloso ? '<span class="so-cel">'+selos(p)+'</span>' : '')+linha2(p)+'</div></div>'+
+        (p.categoria || p.sigiloso ? '<span class="so-cel">'+selos(p)+'</span>' : '')+
+        /* 03/11/2026 (pedido do dono): à vista na lista quando quem pediu foi desligado */
+        (!arq && aberta(p) && quemPediuSaiu(p) ? '<span class="selo-saiu">'+esc(primeiro(pessoa(p.criado_por).nome))+' saiu · ninguém confirma</span> ' : '')+
+        linha2(p)+'</div></div>'+
     '<div class="it-dir">'+(naoLida ? '<span class="nao-lida" title="Novidade"></span>' : '')+
       '<span class="data'+(dt.atr?' atr':'')+'">'+esc(dt.t)+'</span></div>'+
     '</div>'+cartaoSubs(p);
@@ -3753,12 +3762,23 @@ var Detalhe = {
     return '<div class="faixa-prazo '+cls+'" id="d-faixa"><div class="pz">'+l1+'</div><div class="quem">'+l2+'</div></div>';
   },
 
+  /* 03/11/2026 (pedido do dono, 0089/0090): quem pediu foi desligado — alerta no
+     alto da pendência, com o botão para quem pode resolver (quem está com ela,
+     diretoria, administrador). Os outros só leem quem pode. */
+  alertaSaiu: function(p, pp){
+    if(!pp.aberta || !quemPediuSaiu(p)) return '';
+    var n = esc(primeiro(pessoa(p.criado_por).nome));
+    return '<div class="alerta-saiu" id="d-alerta-saiu"><div><b>'+n+' foi desligado.</b> Ninguém confirma esta pendência enquanto outra pessoa não assumir.</div>'+
+      (podeTrocarQuemPediu(p)
+        ? '<button type="button" class="bt-pri" data-acao="trocarQuemPediu">Passar para outra pessoa confirmar</button>'
+        : '<div class="dica" style="margin:4px 0 0">Quem está com a pendência ou a diretoria passa para outra pessoa.</div>')+'</div>';
+  },
   /* 2-5. título, Pediu → Para, Obra, Assunto, pedido original, acompanham */
   ficha: function(p, pp){
     var o = obra(p.obra_id), cri = pessoa(p.criado_por), resp = pessoa(p.responsavel_id);
     var voce = ' <small>(você)</small>';
     var nC = esc(cri.nome)+(pp.souCriador ? voce : ''), nR = esc(resp.nome)+(pp.souResp ? voce : '');
-    return '<div class="ficha-ini" id="d-ficha"><h2>'+esc(p.titulo)+'</h2>'+
+    return '<div class="ficha-ini" id="d-ficha">'+Detalhe.alertaSaiu(p, pp)+'<h2>'+esc(p.titulo)+'</h2>'+
       '<div class="grade-ini">'+
         '<div class="larga so-cel"><span>Pediu → Para</span><b>'+nC+' → '+nR+'</b></div>'+
         '<div class="so-pc"><span>Pediu</span><b>'+nC+'</b></div>'+
