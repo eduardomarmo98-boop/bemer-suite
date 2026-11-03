@@ -926,7 +926,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -947,7 +947,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -964,7 +964,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.03.3</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1089,7 +1089,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.03.2';
+var APP_VERSAO = '2026.11.03.3';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1730,8 +1730,9 @@ var Regras = {
      flow.trocar_quem_pediu. */
   validarTrocarQuemPediu: function(p, para, ator){
     var a = pessoa(ator), cri = pessoa(p.criado_por);
-    if(!(adminSistema(ator) || (a && (a.perfil === 'diretoria' || a.papel === 'diretor'))))
-      throw new Error('Só a diretoria ou o administrador do sistema passa a confirmação para outra pessoa.');
+    /* 0090: quem está com a pendência também passa */
+    if(!(adminSistema(ator) || (a && (a.perfil === 'diretoria' || a.papel === 'diretor')) || mesmoId(ator, p.responsavel_id)))
+      throw new Error('Só quem está com a pendência, a diretoria ou o administrador do sistema passa a confirmação para outra pessoa.');
     if(p.status === 'resolvida' || p.status === 'cancelada') throw new Error('Esta pendência já está encerrada.');
     if(cri && cri.ativo !== false) throw new Error(primeiro(cri.nome)+' ainda está ativo no sistema: é ele quem confirma.');
     if(!para || mesmoId(para, p.criado_por)) throw new Error('Escolha outra pessoa.');
@@ -1929,7 +1930,8 @@ function aberta(p){ return ABERTOS.indexOf(p.status)>=0 && UI_PEND[String(p.id)]
 function souResp(p){ return mesmoId(p.responsavel_id, EU.id); }
 /* 03/11/2026 (0089): quem pediu foi desligado (ninguém confirma) e quem pode resolver isso */
 function quemPediuSaiu(p){ var c = pessoa(p.criado_por); return !!(c && c.ativo === false); }
-function podeTrocarQuemPediu(){ return !!EU && (souAdminSistema() || EU.perfil === 'diretoria' || EU.papel === 'diretor'); }
+/* 0090: quem está com a pendência (o responsável) também passa a confirmação */
+function podeTrocarQuemPediu(p){ return !!EU && (souAdminSistema() || EU.perfil === 'diretoria' || EU.papel === 'diretor' || !!(p && souResp(p))); }
 function souCriador(p){ return mesmoId(p.criado_por, EU.id); }
 function acompanho(p){ return (p.envolvidos||[]).some(function(x){ return mesmoId(x, EU.id); }); }
 /* concluí e espero quem abriu confirmar */
@@ -3897,7 +3899,7 @@ var Detalhe = {
     if(pp.aberta && p.pai_id != null && podeTornarPrincipal(p)) it.push('<button data-acao="tornarPrincipal">Tornar esta a principal</button>');
     if(pp.aberta && p.pai_id != null && podeSoltar(p)) it.push('<button data-acao="soltar">Soltar da #'+esc(p.pai_id)+'</button>');
     /* 03/11/2026 (0089): quem pediu foi desligado — diretoria/administrador passam a confirmação */
-    if(pp.aberta && quemPediuSaiu(p) && podeTrocarQuemPediu()) it.push('<button data-acao="trocarQuemPediu">Passar para outra pessoa confirmar</button>');
+    if(pp.aberta && quemPediuSaiu(p) && podeTrocarQuemPediu(p)) it.push('<button data-acao="trocarQuemPediu">Passar para outra pessoa confirmar</button>');
     it.push('<button data-menu-d="copiar">Copiar link</button>');
     it.push('<button data-acao="linha">Linha do tempo completa</button>');
     if(pp.aberta && pp.souCriador && !subItens(p).length) it.push('<button id="d-duplicada">É duplicada de outra…</button>');   // 23/10/2026

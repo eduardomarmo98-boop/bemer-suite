@@ -16098,7 +16098,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.10.29.3';
+var APP_VERSION = '2026.11.03.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -16642,7 +16642,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     if(CLOUD){
       if(!S.usuarioAtual||!usuarioLogado()){
         var root=document.getElementById("app");
-        if(root){root.innerHTML=window.renderLogin();window.bindLogin&&window.bindLogin();}
+        if(root){root.innerHTML=window._authReadyFor?'<div style="min-height:70vh;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;color:#64748b;font-size:14px">Seu acesso ao Custos não foi encontrado.<a href="../" style="color:#00296B;font-weight:600">Voltar ao portal</a></div>':'<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:14px">Carregando dados…</div>';}
         return;
       }
       if(!S.config||!S.config.nomeEmpresa){S.config=S.config||{};S.config.nomeEmpresa='Brandão & Marmo';}
@@ -16838,7 +16838,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         try{
           if(ev==='PASSWORD_RECOVERY'&&sess){ if(_authBusy||window._authReadyFor===sess.user.id)return; _authBusy=true; try{ S.usuarioAtual=sess.user.id; window._authReadyFor=sess.user.id; setStatus('sync'); var _ok2=await _telaNovaSenha(); if(_ok2){ await _mfaGate(); await pullAll(); setStatus('ok'); render(); ligarRealtime(); } }finally{ _authBusy=false; } return; }
           if(ev==='SIGNED_IN'&&sess){ if(_authBusy||window._authReadyFor===sess.user.id)return; _authBusy=true; try{ S.usuarioAtual=sess.user.id; setStatus('sync'); await _mfaGate(); await pullAll(); window._authReadyFor=sess.user.id; setStatus('ok'); render(); ligarRealtime(); try{localStorage.setItem('bemer_last_seen_'+sess.user.id,String(Date.now()));}catch(e){} }finally{ _authBusy=false; } }
-          if(ev==='SIGNED_OUT'){ window._authReadyFor=null; S.usuarioAtual=null; render(); }
+          if(ev==='SIGNED_OUT'){ window._authReadyFor=null; S.usuarioAtual=null; location.replace('../'); return; }
         }catch(e){ console.warn('v25 auth:',e); setStatus('erro',e.message); }
       });
     }catch(e){
