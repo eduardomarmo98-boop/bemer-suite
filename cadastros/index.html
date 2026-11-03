@@ -213,7 +213,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.03.1';
+var APP_VERSION = '2026.11.03.2';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -222,6 +222,14 @@ var DOMINIO_EMAIL = '@brandaoemarmo.com.br';
 /* ===================================================================== */
 
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* 03/11/2026 (pedido do dono): veio das Configurações do portal (link "Cadastros ↗")?
+   O botão do topo volta para a mesma aba de lá, em vez do início do portal. */
+(function(){
+  var m = /[?&]volta=(config(?:\/|%2F)[a-z]+)(?:&|$)/i.exec(location.search); if(!m) return;
+  var a = document.querySelector('header .bm-portal'); if(!a) return;
+  a.setAttribute('href', '../#' + decodeURIComponent(m[1]).toLowerCase());
+  a.innerHTML = '&#8592; Configurações'; a.title = 'Voltar às Configurações do portal';
+})();
 function core(t){ return sb.schema('core').from(t); }
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
