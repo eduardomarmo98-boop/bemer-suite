@@ -513,7 +513,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.10.28.1';
+var VERSAO   = '2026.11.03.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -540,6 +540,8 @@ var MODULOS = {
   folha:      {nome:'Folha',      desc:'Folha interna do DP: funcionários, benefícios e relatórios.', url:'folha/', icone:'folha'},
   /* 27/10/2026: Manutenção = assistência técnica pós-obra (0082). O card vem de core.perfil_modulos ('manutencao'). */
   manutencao: {nome:'Manutenção', desc:'Assistência pós-obra: chamados, visitas e garantia.', url:'manutencao/', icone:'manutencao'},
+  /* 03/11/2026: B&M Perfil = avaliação comportamental e cognitiva do RH (0087). O card vem de core.perfil_modulos ('perfil'). */
+  perfil:     {nome:'B&M Perfil', desc:'Avaliação comportamental e de raciocínio no processo seletivo.', url:'perfil/', icone:'perfil'},
   /* Não é um sistema: é onde mora o que é da suíte inteira — chaves de IA,
      compactador, garimpador de arquivos mortos, matriz de permissões.
      Só diretoria e TI recebem este módulo (ver migração 0008). Desde o
@@ -557,7 +559,8 @@ var ICONES = {
   /* 28/09/2026: Custos = calculadora (orçamento, medição, faturamento). O cartão de crédito não dizia nada. */
   financeiro:'<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M8.5 6.5h7v3h-7z"/><path d="M8.8 13.2h.01"/><path d="M12 13.2h.01"/><path d="M15.2 13.2h.01"/><path d="M8.8 17h.01"/><path d="M12 17h.01"/><path d="M15.2 17h.01"/>',
   folha:'<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5"/><path d="M18 9.5v5"/>',
-  manutencao:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'
+  manutencao:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
+  perfil:'<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4"/><path d="M16 11l2 2 4-4"/>'
 };
 function svg(nome, tam){
   return '<svg width="'+(tam||28)+'" height="'+(tam||28)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -1306,7 +1309,7 @@ function montarPortal(pessoa){
    ===================================================================== */
 var CONVITE_ATE = '2026-11-15';
 /* 27/10/2026: faixa diagonal no cartão do módulo (tirar a linha = tirar a faixa) */
-var MODULO_EM_TESTE = { financeiro: 'Módulo inativo: em testes', manutencao: 'Módulo inativo: em testes' };
+var MODULO_EM_TESTE = { financeiro: 'Módulo inativo: em testes', manutencao: 'Módulo inativo: em testes', perfil: 'Módulo novo: em testes' };
 function conviteCelular(){
   if(new Date() > new Date(CONVITE_ATE+'T23:59:59')) return;
   var hojeK = new Date().toISOString().slice(0,10);
