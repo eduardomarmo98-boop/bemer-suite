@@ -4844,6 +4844,16 @@ function bmCelulaVerba(it){
    cancelado, rascunho. Os relatórios de consumo continuam só com aprovados. */
 function bmPcReserva(st){ return ["reprovada","cancelada","rascunho"].indexOf(st)<0; }
 function bmTelaDeForm(){ try{ return !!(R&&/Form$/.test(R.name)); }catch(e){ return false; } }
+/* 6p (04/11/2026): parte de um tomador NESTA nota (não o valor dele no contrato) */
+function bmValorTomadorNf(lista, t, total){
+  lista = lista || []; total = Number(total) || 0;
+  if(lista.length <= 1) return total;
+  var soma = lista.reduce(function(s, x){ return s + (Number(x.valor) || 0); }, 0);
+  if(!(soma > 0)) return Math.round(total / lista.length * 100) / 100;
+  var i = lista.indexOf(t), parte = function(x){ return Math.round(total * (Number(x.valor) || 0) / soma * 100) / 100; };
+  if(i === lista.length - 1) return Math.round((total - lista.slice(0, -1).reduce(function(s, x){ return s + parte(x); }, 0)) * 100) / 100;
+  return parte(t);
+}
 function bmQtd(v){
   if(v==null||v==="")return 0;
   if(typeof v==="number")return v;
@@ -5111,10 +5121,9 @@ function bindFinanceiroDet(){
 <p>Comunicamos a aprovação da medição <b>${esc(m?.numero||"")}</b> referente ao contrato <b>${esc(ct?.numero||"")}</b> — ${esc(ct?.objeto||"")}.</p>
 <p>Solicitamos a emissão da Nota Fiscal no valor de <b>${fmtBRL(f.valor)}</b>, conforme dados de faturamento abaixo:</p>
 <table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>Tomador</th><th>CNPJ</th><th>Valor</th></tr></thead><tbody>
-${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td>${fmtBRL(t.valor)}</td></tr>`).join("")}
+${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td>${fmtBRL(bmValorTomadorNf(tomadores,t,f.valor))}</td></tr>`).join("")}
 </tbody></table>
 <p><b>Modalidade:</b> ${f.tipoFat==="cliente"?"Faturamento direto ao Cliente final":"Faturamento à Construtora"}.</p>
-<p>Após emissão, anexe a NF e o boleto correspondente respondendo a este e-mail.</p>
 <p>Atenciosamente,<br>${esc(empB)}</p>`;
     const assunto=`Autorização de emissão de NF — ${m?.numero||""} — ${ct?.numero||""}`;
     let ok=false;
@@ -11297,7 +11306,6 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
 <table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>Tomador</th><th>CNPJ</th><th>Valor</th></tr></thead>
 <tbody><tr><td>${esc(tomador.empresa)}</td><td>${esc(tomador.cnpj)}</td><td>${fmtBRL(tomador.valor)}</td></tr></tbody></table>
 <p><b>Modalidade:</b> ${f.tipoFat==="cliente"?"Faturamento direto ao Cliente":"Faturamento a Construtora"}.</p>
-<p>Apos a emissao, anexe a NF e o boleto correspondente respondendo a este e-mail.</p>
 <p>Atenciosamente,<br>${esc(empB)}</p>`;
         const assunto=`Autorizacao de emissao de NF - PC ${p.numero||""}`;
         let ok=false;
@@ -14605,7 +14613,6 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
 <table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>Tomador</th><th>CNPJ</th><th>Valor</th></tr></thead>
 <tbody><tr><td>${esc(tomador.empresa)}</td><td>${esc(tomador.cnpj)}</td><td>${fmtBRL(tomador.valor)}</td></tr></tbody></table>
 <p><b>Modalidade:</b> ${f.tipoFat==="cliente"?"Faturamento direto ao Cliente":"Faturamento a Construtora"}.</p>
-<p>Apos a emissao, anexe a NF e o boleto correspondente respondendo a este e-mail.</p>
 <p>Atenciosamente,<br>${esc(empB)}</p>`;
         const assunto=`Autorizacao de emissao de NF - PC ${p.numero||""}`;
         let ok=false,tentou=false;
@@ -14644,10 +14651,9 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
 <p>Comunicamos a aprovação da medição <b>${esc(m?.numero||"")}</b> referente ao contrato <b>${esc(ct?.numero||"")}</b> — ${esc(ct?.objeto||"")}.</p>
 <p>Solicitamos a emissão da Nota Fiscal no valor de <b>${fmtBRL(f.valor)}</b>, conforme dados de faturamento abaixo:</p>
 <table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>Tomador</th><th>CNPJ</th><th>Valor</th></tr></thead><tbody>
-${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td>${fmtBRL(t.valor)}</td></tr>`).join("")}
+${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td>${fmtBRL(bmValorTomadorNf(tomadores,t,f.valor))}</td></tr>`).join("")}
 </tbody></table>
 <p><b>Modalidade:</b> ${f.tipoFat==="cliente"?"Faturamento direto ao Cliente final":"Faturamento à Construtora"}.</p>
-<p>Após emissão, anexe a NF e o boleto correspondente respondendo a este e-mail.</p>
 <p>Atenciosamente,<br>${esc(empB)}</p>`;
         const assunto=`Autorização de emissão de NF — ${m?.numero||""} — ${ct?.numero||""}`;
         let ok=false,tentou=false,motivoEnvio="";
@@ -16098,7 +16104,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.11.04.1';
+var APP_VERSION = '2026.11.04.2';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -18920,7 +18926,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
             campoLista('bm-cf-para','Para',para.join(', '),'Separe vários endereços por vírgula.')+
             campoLista('bm-cf-cc','Cópia',cc.join(', '),
               'Quem clicou e a caixa do Financeiro já entram sozinhos.'+motivoFin)+
-            campo('bm-cf-resp','Responder para',resp,'')+
+            
             campo('bm-cf-ass','Assunto',assunto,'')+
             '<p style="font-size:11px;color:#94a3b8;margin:14px 0 0">Se não enviar agora, o documento é '+
               'salvo do mesmo jeito e o sistema marca o e-mail como pendente de reenvio.</p>'+
@@ -18942,7 +18948,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         var ruim=novoPara.concat(bmListaEmails(v('bm-cf-cc')))
           .filter(function(e){ return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); });
         if(ruim.length){ alert('Endereço inválido: '+ruim.join(', ')); return; }
-        var novoResp=bmListaEmails(v('bm-cf-resp'))[0]||'';
+        var novoResp='';   /* 6q: a resposta volta para o remetente */
         fim(Object.assign({},p,{
           to:novoPara.join(','), para:novoPara,
           cc:bmListaEmails(v('bm-cf-cc')).join(','),
@@ -19049,11 +19055,16 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     try{
       var url=await criarLink(f);
       var html='<div style="margin:18px 0;padding:14px 16px;border:1px solid '+LARANJA+';border-radius:10px;background:#FFF7EB;font-family:Arial,sans-serif">'+
-        '<p style="margin:0 0 8px"><b>Envie a nota fiscal por este link</b> (PDF e/ou XML). A conferência com esta autorização sai na hora.</p>'+
-        '<p style="margin:0 0 10px"><a href="'+url+'" style="display:inline-block;background:'+AZUL+';color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Enviar a NF</a></p>'+
+        /* 04/11/2026 (pedido do dono): o link recebe NF E boleto — o e-mail não pede mais anexo na resposta */
+        '<p style="margin:0 0 8px"><b>Após a emissão, envie a nota fiscal e o boleto por este link.</b> NF em PDF e/ou XML; boleto em PDF. A conferência com esta autorização sai na hora.</p>'+
+        '<p style="margin:0 0 10px"><a href="'+url+'" style="display:inline-block;background:'+AZUL+';color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Enviar NF e boleto</a></p>'+
         '<p style="margin:0;font-size:12px;color:#555">O link vale 15 dias, até a NF ser aceita. Se o botão não abrir, copie: '+url+'</p></div>';
       return {url:url,html:html};
-    }catch(e){ console.warn("link da NF:",e); return {url:"",html:""}; }
+    }catch(e){
+      console.warn("link da NF:",e);
+      /* sem link: o pedido volta a ser responder com os anexos (o texto fixo saiu do corpo, 6p) */
+      return {url:"",html:'<p>Após a emissão, responda a este e-mail anexando a nota fiscal e o boleto.</p>'};
+    }
   };
   /* a Autorização de Faturamento, como anexo do e-mail (o servidor converte .html em PDF) */
   window.bmAfAnexo=function(f){
