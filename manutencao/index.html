@@ -105,6 +105,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
 .mic{position:absolute;right:8px;top:8px;width:40px;height:40px;border-radius:50%;background:var(--azul);color:#fff;
   display:flex;align-items:center;justify-content:center}
 .mic.gravando{background:#C62828;animation:pulsa 1.2s infinite}
+/* 04/11: ✨ corrigir (abaixo do microfone) e anexo que não é foto */
+.com-mic textarea{min-height:110px}
+.corrige{position:absolute;right:8px;top:56px;width:40px;height:40px;border-radius:50%;background:var(--laranja);color:var(--azul);display:flex;align-items:center;justify-content:center}
+.corrige.sem-mic{top:8px}
+.corrige.girando svg{animation:gira 1s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.fotos .prev.doc,.fotos a.prev.doc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;text-align:center;color:var(--azul);text-decoration:none;background:#EEF2F9}
+.fotos .prev.doc span{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all}
 @keyframes pulsa{50%{opacity:.6}}
 
 /* filtros */
@@ -247,7 +255,7 @@ td.n,th.n{text-align:right}
     <div class="modal-footer" id="modalFooter"></div>
   </div>
 </div>
-<input type="file" id="arq-fotos" accept="image/*" multiple class="oculto">
+<input type="file" id="arq-fotos" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" multiple class="oculto">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
 <script>
@@ -255,7 +263,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.10.27.1';
+var APP_VERSION = '2026.11.04.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -310,6 +318,8 @@ function uuid(){
 }
 function sem(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
+/* 04/11 (0091): "Outros" mostra o que foi escrito */
+function nomeCat(c){ return c.categoria === 'Outros' && c.categoria_outro ? 'Outros: ' + c.categoria_outro : c.categoria; }
 function obraDe(id){ return D.obras.find(function(o){ return o.id === id; }) || null; }
 function nomePessoa(id){ var p = D.pessoas.find(function(x){ return x.id === id; }); return p ? p.nome : ''; }
 function aberto(c){ return c.status === 'aberto' || c.status === 'em_atendimento'; }
@@ -416,7 +426,8 @@ function fecharModal(){
   if(_camada){ var c = _camada; _camada = null; Volta.fechou(c); }
 }
 $('modalX').addEventListener('click', function(){ if(!_ocupado) fecharModal(); });
-$('modal').addEventListener('click', function(e){ if(e.target === $('modal') && !_ocupado) fecharModal(); });
+/* 04/11/2026 (pedido do dono, vale para a suíte): clicar fora NÃO fecha — só o X (ou Voltar/Esc).
+   Selecionar texto arrastando até fora da janela fechava o formulário e perdia o que foi digitado. */
 document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && $('modal').classList.contains('show') && !_ocupado) fecharModal(); });
 
 /* ---------- ditado por voz (Chrome/Android; no iPhone, o teclado já tem o microfone) ---------- */
@@ -448,25 +459,75 @@ function ligarMic(bt){
 }
 document.addEventListener('click', function(e){ var b = e.target.closest('[data-mic]'); if(b){ e.preventDefault(); ligarMic(b); } });
 
-/* ---------- fotos: escolher, reduzir (~1600 px) e subir ---------- */
-var FOTOS = [];   // [{id, file, url}] escolhidas no formulário aberto
-function gradeFotos(){
-  return '<div class="fotos" id="grade-fotos">' + FOTOS.map(function(f){
-    return '<div class="prev"><img src="' + f.url + '" alt=""><button type="button" class="tirar" data-tirar="' + f.id + '" aria-label="Tirar foto">×</button></div>';
-  }).join('') + '<button type="button" class="add-foto" data-add-foto="1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto</button></div>';
+/* ---------- ✨ corrigir o português (04/11/2026, pedido do dono) ----------
+   Quem atende escreve/dita com erro. A IA (edge ia-corrigir-texto, chave do
+   Portal) devolve o mesmo relato corrigido, sem inventar nada. Não salva
+   sozinho: troca o texto no campo; tocar de novo desfaz. E o corretor do
+   próprio navegador/teclado fica ligado em todo campo de texto. */
+function botaoCorrige(alvo){
+  return '<button type="button" class="corrige' + (temVoz() ? '' : ' sem-mic') + '" data-corrige="' + alvo + '" title="Corrigir o português" aria-label="Corrigir o português">'
+    + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></button>';
 }
-function limparFotos(){ FOTOS.forEach(function(f){ try { URL.revokeObjectURL(f.url); } catch(e){} }); FOTOS = []; }
-function redesenharFotos(){ var g = $('grade-fotos'); if(g) g.outerHTML = gradeFotos(); }
+document.addEventListener('focusin', function(e){
+  var t = e.target;
+  if(t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && (!t.type || t.type === 'text')))){
+    t.spellcheck = true; t.setAttribute('lang', 'pt-BR'); t.setAttribute('autocorrect', 'on'); t.setAttribute('autocapitalize', 'sentences');
+  }
+});
+document.addEventListener('click', async function(e){
+  var b = e.target.closest('[data-corrige]'); if(!b) return;
+  e.preventDefault();
+  var campo = $(b.getAttribute('data-corrige')); if(!campo || b.disabled) return;
+  if(campo.dataset.corrigido && campo.value === campo.dataset.corrigido){
+    campo.value = campo.dataset.antes || ''; delete campo.dataset.corrigido;
+    campo.dispatchEvent(new Event('input', { bubbles:true })); toast('Voltou o texto original.'); return;
+  }
+  var txt = campo.value.trim();
+  if(txt.length < 3){ toast('Escreva (ou fale) o texto primeiro.', 'err'); return; }
+  pararMic(); b.disabled = true; b.classList.add('girando');
+  try {
+    var r = await sb.functions.invoke('ia-corrigir-texto', { body:{ texto:txt } });
+    var d = r.data || {};
+    if(r.error || !d.ok) throw new Error(d.error || (r.error && r.error.message) || 'Não deu para corrigir agora.');
+    campo.dataset.antes = campo.value; campo.value = d.texto; campo.dataset.corrigido = d.texto;
+    campo.dispatchEvent(new Event('input', { bubbles:true }));
+    toast('Texto corrigido. Confira antes de salvar (tocar ✨ de novo desfaz).');
+  } catch(err){ toast(msgErro(err), 'err'); }
+  finally { b.disabled = false; b.classList.remove('girando'); }
+});
+
+/* ---------- fotos e arquivos: escolher, reduzir foto (~1600 px) e subir ----------
+   04/11/2026 (0091, pedido do dono): além de foto, ARQUIVO (PDF, Word, Excel, texto);
+   e na visita as fotos vão em duas seções, "o que foi visto" e "o que foi feito"
+   (grupo 'visto' | 'feito'; '' = do chamado). */
+var FOTOS = [];   // [{id, file, url, grupo, img}] escolhidos no formulário aberto
+var EXT_DOC = { pdf:'application/pdf', doc:'application/msword', docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls:'application/vnd.ms-excel', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', txt:'text/plain' };
+var _grupoFoto = '';
+function extDe(nome){ var m = /\.([a-z0-9]+)$/i.exec(String(nome || '')); return m ? m[1].toLowerCase() : ''; }
+var ICO_DOC = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+function gradeFotos(grupo){
+  grupo = grupo || '';
+  return '<div class="fotos" id="grade-fotos-' + (grupo || 'x') + '" data-grade="' + grupo + '">' + FOTOS.filter(function(f){ return f.grupo === grupo; }).map(function(f){
+    return '<div class="prev' + (f.img ? '' : ' doc') + '">' + (f.img ? '<img src="' + f.url + '" alt="">' : ICO_DOC + '<span>' + esc(f.file.name) + '</span>')
+      + '<button type="button" class="tirar" data-tirar="' + f.id + '" aria-label="Tirar">×</button></div>';
+  }).join('') + '<button type="button" class="add-foto" data-add-foto="' + (grupo || 'x') + '"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto ou arquivo</button></div>';
+}
+function limparFotos(){ FOTOS.forEach(function(f){ try { if(f.url) URL.revokeObjectURL(f.url); } catch(e){} }); FOTOS = []; }
+function redesenharFotos(){ document.querySelectorAll('[data-grade]').forEach(function(g){ g.outerHTML = gradeFotos(g.getAttribute('data-grade')); }); }
 document.addEventListener('click', function(e){
-  if(e.target.closest('[data-add-foto]')){ $('arq-fotos').click(); return; }
+  var a = e.target.closest('[data-add-foto]');
+  if(a){ _grupoFoto = a.getAttribute('data-add-foto') === 'x' ? '' : a.getAttribute('data-add-foto'); $('arq-fotos').click(); return; }
   var t = e.target.closest('[data-tirar]');
-  if(t){ var id = t.getAttribute('data-tirar'); FOTOS = FOTOS.filter(function(f){ if(f.id === id) URL.revokeObjectURL(f.url); return f.id !== id; }); redesenharFotos(); }
+  if(t){ var id = t.getAttribute('data-tirar'); FOTOS = FOTOS.filter(function(f){ if(f.id === id && f.url) URL.revokeObjectURL(f.url); return f.id !== id; }); redesenharFotos(); }
 });
 $('arq-fotos').addEventListener('change', function(){
   Array.prototype.forEach.call(this.files || [], function(f){
-    if(!/^image\//.test(f.type)){ toast(f.name + ': não é foto.', 'err'); return; }
-    if(FOTOS.length >= 12){ toast('Máximo de 12 fotos por vez.', 'err'); return; }
-    FOTOS.push({ id:uuid(), file:f, url:URL.createObjectURL(f) });
+    var img = /^image\//.test(f.type);
+    if(!img && !EXT_DOC[extDe(f.name)]){ toast(f.name + ': tipo não aceito (foto, PDF, Word, Excel ou texto).', 'err'); return; }
+    if(!img && f.size > 20 * 1024 * 1024){ toast(f.name + ': acima de 20 MB.', 'err'); return; }
+    if(FOTOS.filter(function(x){ return x.grupo === _grupoFoto; }).length >= 12){ toast('Máximo de 12 por vez.', 'err'); return; }
+    FOTOS.push({ id:uuid(), file:f, url:img ? URL.createObjectURL(f) : '', grupo:_grupoFoto, img:img });
   });
   this.value = '';
   redesenharFotos();
@@ -489,17 +550,21 @@ async function subirFotos(chamadoId, visitaId){
   var ok = 0, falha = 0;
   for(var i = 0; i < FOTOS.length; i++){
     try {
-      var blob = await reduzir(FOTOS[i].file);
-      var nome = chamadoId + '/' + uuid() + '.jpg';
-      var up = await sb.storage.from('manutencao').upload(nome, blob, { contentType:'image/jpeg', upsert:false });
+      var f = FOTOS[i], nome, corpo, tipo;
+      if(f.img){ corpo = await reduzir(f.file); nome = chamadoId + '/' + uuid() + '.jpg'; tipo = 'image/jpeg'; }
+      else { var ex = extDe(f.file.name); corpo = f.file; nome = chamadoId + '/' + uuid() + '.' + ex; tipo = EXT_DOC[ex]; }
+      var up = await sb.storage.from('manutencao').upload(nome, corpo, { contentType:tipo, upsert:false });
       if(up.error) throw up.error;
-      var r = await M().from('fotos').insert({ chamado_id:chamadoId, visita_id:visitaId || null, caminho:nome, enviado_por:EU.id });
+      var linha = { chamado_id:chamadoId, visita_id:visitaId || null, caminho:nome, enviado_por:EU.id };
+      if(!f.img) linha.nome = String(f.file.name).slice(0, 200);
+      if(f.grupo === 'visto' || f.grupo === 'feito') linha.momento = f.grupo;
+      var r = await M().from('fotos').insert(linha);
       if(r.error) throw r.error;
       ok++;
-    } catch(e){ falha++; console.warn('[foto]', e); }
+    } catch(e){ falha++; console.warn('[anexo]', e); }
   }
   limparFotos();
-  if(falha) toast(falha + ' foto(s) não subiram. Use "+ Fotos" no chamado para mandar de novo.', 'err');
+  if(falha) toast(falha + ' foto(s)/arquivo(s) não subiram. Use "+ Fotos e arquivos" no chamado para mandar de novo.', 'err');
   return ok;
 }
 async function linksFotos(lista){
@@ -580,7 +645,7 @@ function filtrados(){
     if(FILTRO.obra && c.obra_id !== FILTRO.obra) return false;
     if(b){
       var o = obraDe(c.obra_id);
-      if(sem(['#' + c.numero, c.descricao, c.solicitante, c.categoria, o && o.nome, o && o.cliente].join(' ')).indexOf(b) < 0) return false;
+      if(sem(['#' + c.numero, c.descricao, c.solicitante, nomeCat(c), o && o.nome, o && o.cliente].join(' ')).indexOf(b) < 0) return false;
     }
     return true;
   });
@@ -614,7 +679,7 @@ function desenharLista(){
       return '<button type="button" class="ch st-' + c.status + '" data-ch="' + c.id + '">'
         + '<div class="ch-top"><span class="num">#' + c.numero + '</span><span class="obra-nome">' + esc(o ? o.nome : '—') + '</span>' + seloStatus(c) + '</div>'
         + '<div class="ch-desc">' + esc(c.descricao) + '</div>'
-        + '<div class="selos"><span class="selo">' + esc(c.categoria) + '</span>' + selosChamado(c, true) + '</div></button>';
+        + '<div class="selos"><span class="selo">' + esc(nomeCat(c)) + '</span>' + selosChamado(c, true) + '</div></button>';
     }).join('') + '</div>'
     : '<div class="vazio">' + (D.chamados.length ? 'Nenhum chamado neste filtro.'
         : (D.obras.length ? 'Nenhum chamado ainda.' + (PODE.abrir ? ' Toque em <b>+ Novo chamado</b>.' : '')
@@ -645,26 +710,27 @@ function avisoGarantia(obraId){
   if(!f) return '<div class="dica">Obra sem data de entrega: não dá para saber se está na garantia.</div>';
   return f >= hoje() ? '<span class="selo garantia">Na garantia até ' + fmtData(f) + '</span>' : '<span class="selo fora">Garantia vencida em ' + fmtData(f) + '</span>';
 }
-var CAMPOS_CH = ['c-obra', 'c-desc', 'c-solic', 'c-tel', 'c-cat', 'c-urg', 'c-resp', 'c-prazo'];
+/* 04/11/2026 (pedido do dono): sem o telefone do cliente no formulário (a coluna fica) */
+var CAMPOS_CH = ['c-obra', 'c-desc', 'c-solic', 'c-cat', 'c-cat-outro', 'c-urg', 'c-resp', 'c-prazo'];
 function formChamado(c){
   if(!c && !D.obras.some(function(o){ return o.ativa; })){
     abrirModal('Novo chamado', '<p>Nenhuma obra cadastrada ainda.</p><p class="dica" style="margin-top:6px">' + (PODE.obras ? 'Cadastre a obra entregue na aba Obras e volte aqui.' : 'Peça a quem cadastra obras para incluir a obra entregue.') + '</p>', [{ rotulo:'Fechar' }]);
     return;
   }
   var r = c ? null : lerRasc('novo');
-  var v = c ? { 'c-obra':c.obra_id, 'c-desc':c.descricao, 'c-solic':c.solicitante || '', 'c-tel':c.telefone || '', 'c-cat':c.categoria,
+  var v = c ? { 'c-obra':c.obra_id, 'c-desc':c.descricao, 'c-solic':c.solicitante || '', 'c-cat':c.categoria, 'c-cat-outro':c.categoria_outro || '',
                 'c-urg':c.urgente, 'c-resp':c.responsavel_id || '', 'c-prazo':c.prazo || '' }
             : Object.assign({ 'c-obra':FILTRO.obra || '', 'c-cat':'', 'c-urg':false, 'c-resp':'', 'c-prazo':'' }, r || {});
   limparFotos();
   var html =
       (r ? '<div class="card" style="background:var(--laranja-claro);border-color:#F5D9A8;padding:10px 12px">Rascunho recuperado deste aparelho. <button type="button" class="btn btn-sm btn-secondary" id="c-descartar" style="margin-left:6px">Começar do zero</button></div>' : '')
     + '<div class="campo"><label class="rot" for="c-obra">Obra *</label><select id="c-obra">' + opcoesObras(v['c-obra']) + '</select><div id="c-gar" style="margin-top:6px">' + avisoGarantia(v['c-obra']) + '</div></div>'
-    + '<div class="campo"><label class="rot" for="c-desc">O que está acontecendo? *</label><div class="com-mic"><textarea id="c-desc" maxlength="4000" placeholder="Ex.: infiltração no teto do banheiro do apto 32, mancha aumentando depois da chuva">' + esc(v['c-desc'] || '') + '</textarea>' + botaoMic('c-desc') + '</div></div>'
-    + (c ? '' : '<div class="campo"><label class="rot">Fotos</label>' + gradeFotos() + '</div>')
-    + '<div class="lado"><div class="campo"><label class="rot" for="c-solic">Quem pediu</label><input id="c-solic" maxlength="200" placeholder="Nome do cliente / síndico" value="' + esc(v['c-solic'] || '') + '"></div>'
-    + '<div class="campo"><label class="rot" for="c-tel">Telefone</label><input id="c-tel" type="tel" inputmode="tel" maxlength="40" placeholder="(11) 9…" value="' + esc(v['c-tel'] || '') + '"></div></div>'
+    + '<div class="campo"><label class="rot" for="c-desc">O que está acontecendo? *</label><div class="com-mic"><textarea id="c-desc" maxlength="4000" placeholder="Ex.: infiltração no teto do banheiro do apto 32, mancha aumentando depois da chuva">' + esc(v['c-desc'] || '') + '</textarea>' + botaoMic('c-desc') + botaoCorrige('c-desc') + '</div></div>'
+    + (c ? '' : '<div class="campo"><label class="rot">Fotos e arquivos</label>' + gradeFotos('') + '</div>')
+    + '<div class="campo"><label class="rot" for="c-solic">Quem pediu</label><input id="c-solic" maxlength="200" placeholder="Nome do cliente / síndico" value="' + esc(v['c-solic'] || '') + '"></div>'
     + '<div class="lado"><div class="campo"><label class="rot" for="c-cat">Tipo de serviço</label><select id="c-cat"><option value="">— escolha —</option>'
-    + CATEGORIAS.map(function(k){ return '<option' + (k === v['c-cat'] ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select></div>'
+    + CATEGORIAS.map(function(k){ return '<option' + (k === v['c-cat'] ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select>'
+    + '<input id="c-cat-outro" maxlength="80" placeholder="Qual? Ex.: gesso, calhas, portão…" style="margin-top:6px" value="' + esc(v['c-cat-outro'] || '') + '"' + (v['c-cat'] === 'Outros' ? '' : ' class="oculto"') + '></div>'
     + '<div class="campo"><label class="rot">&nbsp;</label><label class="marcar"><input type="checkbox" id="c-urg"' + (v['c-urg'] ? ' checked' : '') + '> Urgente</label></div></div>'
     + '<div class="lado"><div class="campo"><label class="rot" for="c-resp">Responsável</label><select id="c-resp">' + opcoesResp(v['c-resp']) + '</select></div>'
     + '<div class="campo"><label class="rot" for="c-prazo">Prazo</label><input id="c-prazo" type="date" value="' + esc(v['c-prazo'] || '') + '"></div></div>'
@@ -674,6 +740,7 @@ function formChamado(c){
     { rotulo:c ? 'Salvar' : 'Abrir chamado', cls:'btn-primary', salvando:'Salvando…', fn:function(){ return salvarChamado(c); } }
   ], function(){ limparFotos(); });
   $('c-obra').addEventListener('change', function(){ $('c-gar').innerHTML = avisoGarantia(this.value); });
+  $('c-cat').addEventListener('change', function(){ var o = this.value === 'Outros'; $('c-cat-outro').classList.toggle('oculto', !o); if(o) $('c-cat-outro').focus(); });
   if(!c) vigiarRasc('novo', CAMPOS_CH);
   if($('c-descartar')) $('c-descartar').addEventListener('click', function(){
     apagarRasc('novo');
@@ -683,10 +750,11 @@ function formChamado(c){
 }
 async function salvarChamado(c){
   var v = lerCampos(CAMPOS_CH);
-  var erro = !v['c-obra'] ? 'Escolha a obra.' : (v['c-desc'].trim().length < 3 ? 'Descreva o problema.' : '');
+  var erro = !v['c-obra'] ? 'Escolha a obra.' : (v['c-desc'].trim().length < 3 ? 'Descreva o problema.' : (v['c-cat'] === 'Outros' && v['c-cat-outro'].trim().length < 2 ? 'Escreva qual é o tipo de serviço.' : ''));
   if(erro){ $('c-erro').textContent = erro; return false; }
-  var p = { obra_id:v['c-obra'], descricao:v['c-desc'].trim(), solicitante:v['c-solic'], telefone:v['c-tel'],
-            categoria:v['c-cat'] || 'Outros', urgente:!!v['c-urg'], responsavel_id:v['c-resp'] || '', prazo:v['c-prazo'] || '' };
+  var p = { obra_id:v['c-obra'], descricao:v['c-desc'].trim(), solicitante:v['c-solic'],
+            categoria:v['c-cat'] || 'Outros', categoria_outro:v['c-cat'] === 'Outros' ? v['c-cat-outro'].trim() : '',
+            urgente:!!v['c-urg'], responsavel_id:v['c-resp'] || '', prazo:v['c-prazo'] || '' };
   if(c){
     var e = await M().rpc('editar_chamado', { p_id:c.id, p:p });
     if(e.error) throw e.error;
@@ -700,7 +768,7 @@ async function salvarChamado(c){
   apagarRasc('novo');
   var n = FOTOS.length ? await subirFotos(r.data.id, null) : 0;
   await recarregarChamado(r.data.id);
-  toast('Chamado #' + r.data.numero + ' aberto' + (n ? ' com ' + n + ' foto(s)' : '') + '.');
+  toast('Chamado #' + r.data.numero + ' aberto' + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
   FILTRO.status = 'abertos'; desenhar(); abrirChamado(r.data.id);
   return 'manter';
 }
@@ -723,10 +791,13 @@ async function abrirChamado(id){
     desenharChamado(c, vis, fotos, evs, links);
   } catch(e){ $('modalBody').innerHTML = '<p class="erro-txt">' + esc(msgErro(e)) + '</p>'; }
 }
-function htmlFotos(lista, links){
+function ehFotoCam(c){ return /\.(jpe?g|png|webp)$/i.test(c); }
+function htmlFotos(lista, links, rot){
   if(!lista.length) return '';
-  return '<div class="fotos">' + lista.map(function(f){
-    var u = links[f.caminho]; return u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt="Foto" loading="lazy"></a>' : '';
+  return (rot ? '<div class="dica" style="margin-top:6px">' + rot + '</div>' : '') + '<div class="fotos">' + lista.map(function(f){
+    var u = links[f.caminho]; if(!u) return '';
+    return ehFotoCam(f.caminho) ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt="Foto" loading="lazy"></a>'
+      : '<a class="prev doc" href="' + esc(u) + '" target="_blank" rel="noopener">' + ICO_DOC + '<span>' + esc(f.nome || 'arquivo') + '</span></a>';
   }).join('') + '</div>';
 }
 function desenharChamado(c, vis, fotos, evs, links){
@@ -747,11 +818,13 @@ function desenharChamado(c, vis, fotos, evs, links){
   var tempo = itens.map(function(it){
     if(it.v){
       var v = it.v, fv = fotos.filter(function(f){ return f.visita_id === v.id; });
+      var fvi = fv.filter(function(f){ return f.momento === 'visto'; }), ffe = fv.filter(function(f){ return f.momento === 'feito'; }),
+          fou = fv.filter(function(f){ return f.momento !== 'visto' && f.momento !== 'feito'; });
       return '<li class="visita"><div class="qd">Visita em ' + fmtData(v.data) + ' · ' + esc(nomePessoa(v.registrado_por)) + '</div>'
-        + '<div class="tx">' + esc(v.relato) + '</div>'
-        + (v.feito ? '<div class="tx"><b>Feito:</b> ' + esc(v.feito) + '</div>' : '')
+        + '<div class="tx"><b>Visto:</b> ' + esc(v.relato) + '</div>' + htmlFotos(fvi, links)
+        + (v.feito ? '<div class="tx" style="margin-top:6px"><b>Feito:</b> ' + esc(v.feito) + '</div>' : '') + htmlFotos(ffe, links, v.feito ? '' : 'Do que foi feito:')
         + (v.resolveu ? '<div class="selos" style="margin-top:4px"><span class="selo st-resolvido">Resolveu</span></div>' : '')
-        + htmlFotos(fv, links) + '</li>';
+        + htmlFotos(fou, links) + '</li>';
     }
     var e = it.e;
     return '<li class="' + esc(e.tipo) + '"><div class="qd">' + fmtDataHora(e.em) + ' · ' + esc(nomePessoa(e.quem)) + '</div>'
@@ -759,7 +832,7 @@ function desenharChamado(c, vis, fotos, evs, links){
   }).join('');
   var fotosCh = fotos.filter(function(f){ return !f.visita_id; });
   var html =
-      '<div class="selos" style="margin-bottom:8px">' + seloStatus(c) + '<span class="selo">' + esc(c.categoria) + '</span>' + selosChamado(c, false) + '</div>'
+      '<div class="selos" style="margin-bottom:8px">' + seloStatus(c) + '<span class="selo">' + esc(nomeCat(c)) + '</span>' + selosChamado(c, false) + '</div>'
     + '<div class="desc-grande">' + esc(c.descricao) + '</div>'
     + htmlFotos(fotosCh, links)
     + '<div class="card" style="margin-top:12px;padding:8px 12px">'
@@ -776,10 +849,74 @@ function desenharChamado(c, vis, fotos, evs, links){
   if(podeEditar) bts.push({ rotulo:'Cancelar chamado', cls:'btn-danger', fn:function(){ formMotivo(c, 'cancelar'); return 'manter'; } });
   if(podeReabrir) bts.push({ rotulo:'Reabrir', fn:function(){ formMotivo(c, 'reabrir'); return 'manter'; } });
   if(podeEditar) bts.push({ rotulo:'Editar', fn:function(){ formChamado(c); return 'manter'; } });
-  if(podeFoto) bts.push({ rotulo:'+ Fotos', fn:function(){ formFotos(c); return 'manter'; } });
+  if(podeFoto) bts.push({ rotulo:'+ Fotos e arquivos', fn:function(){ formFotos(c); return 'manter'; } });
+  bts.unshift({ rotulo:'📄 Relatório', fn:function(){ relatorioCliente(c, vis, fotos, links); return 'manter'; } });
   if(podeVisita) bts.push({ rotulo:'+ Registrar visita', cls:'btn-laranja', fn:function(){ formVisita(c); return 'manter'; } });
   if(!bts.length) bts.push({ rotulo:'Fechar' });
   abrirModal('Chamado #' + c.numero, html, bts);
+}
+
+/* ---------- 📄 RELATÓRIO PARA O CLIENTE (04/11/2026, pedido do dono) ----------
+   Abre numa janela própria, no papel da B&M, e chama a impressão: "Salvar como
+   PDF" e anexar no e-mail. O botão E-mail abre o e-mail com o endereço da obra
+   e o texto pronto (o PDF vai anexado à mão — envio direto depende do SMTP).
+   Sem dado interno: nem quem abriu nem histórico de edição — só o atendimento. */
+function relatorioCliente(c, vis, fotos, links){
+  var o = obraDe(c.obra_id) || {}, fg = fimGarantia(o), gar = naGarantia(c);
+  var logo = (document.querySelector('.marca img') || {}).src || '';
+  var img = function(lista){
+    var fs = lista.filter(function(f){ return ehFotoCam(f.caminho) && links[f.caminho]; });
+    return fs.length ? '<div class="fotos">' + fs.map(function(f){ return '<img src="' + esc(links[f.caminho]) + '" alt="">'; }).join('') + '</div>' : '';
+  };
+  var visitas = vis.map(function(v, i){
+    var fv = fotos.filter(function(f){ return f.visita_id === v.id; });
+    var visto = fv.filter(function(f){ return f.momento !== 'feito'; }), feito = fv.filter(function(f){ return f.momento === 'feito'; });
+    return '<div class="vis"><h3>Atendimento ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
+      + '<p class="rot">Técnico</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
+      + '<p class="rot">O que foi constatado</p><p class="pre">' + esc(v.relato) + '</p>' + img(visto)
+      + (v.feito || feito.length ? '<p class="rot">O que foi feito</p><p class="pre">' + esc(v.feito || '—') + '</p>' + img(feito) : '')
+      + (v.resolveu ? '<p class="ok">✓ Problema resolvido nesta visita</p>' : '') + '</div>';
+  }).join('');
+  var situacao = c.status === 'resolvido' ? 'Resolvido em ' + fmtData(c.resolvido_em)
+    : c.status === 'cancelado' ? 'Encerrado' + (c.motivo ? ': ' + esc(c.motivo) : '')
+    : c.status === 'em_atendimento' ? 'Em atendimento' : 'Aberto · aguardando visita';
+  var assunto = 'Chamado de manutenção nº ' + c.numero + ' — ' + (o.nome || '');
+  var corpo = 'Prezado(a),\n\nSegue em anexo o relatório do chamado de manutenção nº ' + c.numero + ' (' + (o.nome || '') + ').\n\nSituação: '
+    + String(situacao).replace(/<[^>]*>/g, '') + '.\n\nAtenciosamente,\nBrandão & Marmo Engenharia e Construções';
+  var mailto = 'mailto:' + encodeURIComponent(o.email || '') + '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(corpo);
+  var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(assunto) + '</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>'
+    + '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Poppins,Arial,sans-serif;color:#0F1B2D;margin:0;padding:24px;font-size:12.5px;background:#fff}'
+    + '.barra{display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px}.barra a,.barra button{font:inherit;font-weight:600;border-radius:8px;padding:8px 14px;cursor:pointer;text-decoration:none;border:1px solid #00296B;background:#fff;color:#00296B}'
+    + '.barra .pri{background:#00296B;color:#fff}'
+    + '.cab{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #FE9400;padding-bottom:10px;margin-bottom:14px}'
+    + '.cab img{height:38px}.cab .t{text-align:right}.cab .t b{display:block;font-size:17px;color:#00296B}.cab .t span{color:#4F5B6D;font-size:11px}'
+    + 'h2{font-size:14px;color:#00296B;border-bottom:1px solid #E3E7ED;padding-bottom:4px;margin:16px 0 8px}h3{font-size:13px;color:#00296B;margin:0 0 6px}'
+    + '.grade{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}.rot{font-size:10.5px;color:#4F5B6D;text-transform:uppercase;letter-spacing:.3px;margin:8px 0 1px}p{margin:0}.pre{white-space:pre-wrap;line-height:1.5}'
+    + '.vis{border:1px solid #E3E7ED;border-radius:8px;padding:10px 12px;margin-bottom:10px;break-inside:avoid}'
+    + '.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.fotos img{width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #E3E7ED}'
+    + '.ok{color:#1B5E34;font-weight:600;margin-top:6px}.sit{display:inline-block;background:#FFF1DC;color:#8A5000;border-radius:10px;padding:2px 10px;font-weight:600}'
+    + '.rod{margin-top:22px;border-top:1px solid #E3E7ED;padding-top:8px;color:#4F5B6D;font-size:10.5px;text-align:center}'
+    + '@media print{.barra{display:none}body{padding:0}}'
+    + '</style></head><body>'
+    + '<div class="barra"><a href="' + esc(mailto) + '">✉ E-mail ao cliente</a><button class="pri" onclick="window.print()">⬇ Salvar PDF / Imprimir</button></div>'
+    + '<div class="cab"><img src="' + esc(logo) + '" alt="Brandão & Marmo"><div class="t"><b>Relatório de Atendimento</b><span>Chamado de manutenção nº ' + c.numero + ' · emitido em ' + fmtData(hoje()) + '</span></div></div>'
+    + '<h2>Obra e cliente</h2><div class="grade">'
+    + '<div><p class="rot">Obra</p><p>' + esc(o.nome || '—') + '</p></div><div><p class="rot">Cliente</p><p>' + esc(o.cliente || '—') + '</p></div>'
+    + '<div><p class="rot">Endereço</p><p>' + esc([o.endereco, o.cidade].filter(Boolean).join(', ') || '—') + '</p></div>'
+    + '<div><p class="rot">Garantia</p><p>' + (fg ? (gar ? 'Dentro da garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : '—') + '</p></div></div>'
+    + '<h2>Solicitação</h2><div class="grade">'
+    + '<div><p class="rot">Aberto em</p><p>' + fmtData(c.aberto_em) + '</p></div><div><p class="rot">Solicitante</p><p>' + esc(c.solicitante || '—') + '</p></div>'
+    + '<div><p class="rot">Tipo de serviço</p><p>' + esc(nomeCat(c)) + '</p></div><div><p class="rot">Situação</p><p><span class="sit">' + situacao + '</span></p></div></div>'
+    + '<p class="rot">Descrição</p><p class="pre">' + esc(c.descricao) + '</p>'
+    + img(fotos.filter(function(f){ return !f.visita_id; }))
+    + '<h2>Atendimentos</h2>' + (visitas || '<p>Ainda sem visita registrada.</p>')
+    + '<div class="rod">Brandão &amp; Marmo Engenharia e Construções · São Paulo</div>'
+    + '<script>window.addEventListener("load",function(){var im=document.images,n=im.length,ok=0;function f(){if(++ok>=n)setTimeout(function(){window.print()},300)}if(!n)return f();for(var i=0;i<n;i++){if(im[i].complete)f();else{im[i].onload=f;im[i].onerror=f}}});<\/script>'
+    + '</body></html>';
+  var w = window.open('', '_blank');
+  if(!w){ toast('O navegador bloqueou a janela do relatório. Libere pop-ups para este site.', 'err'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 /* ---------- VISITA ---------- */
@@ -789,9 +926,10 @@ function formVisita(c){
   var html =
       '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc((obraDe(c.obra_id) || {}).nome || '') + '</div>'
     + '<div class="campo"><label class="rot" for="v-data">Data da visita</label><input id="v-data" type="date" max="' + hoje() + '" value="' + esc(r['v-data'] || hoje()) + '"></div>'
-    + '<div class="campo"><label class="rot" for="v-relato">O que foi visto? *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" placeholder="Ex.: ralo da laje sem caimento, manta descolada">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + '</div></div>'
-    + '<div class="campo"><label class="rot" for="v-feito">O que foi feito</label><div class="com-mic"><textarea id="v-feito" maxlength="2000" style="min-height:80px" placeholder="Ex.: refeita a impermeabilização do ralo">' + esc(r['v-feito'] || '') + '</textarea>' + botaoMic('v-feito') + '</div></div>'
-    + '<div class="campo"><label class="rot">Fotos</label>' + gradeFotos() + '</div>'
+    + '<div class="campo"><label class="rot" for="v-relato">O que foi visto? *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" placeholder="Ex.: ralo da laje sem caimento, manta descolada">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + botaoCorrige('v-relato') + '</div>'
+    + '<label class="rot" style="margin-top:8px">Fotos do que foi visto</label>' + gradeFotos('visto') + '</div>'
+    + '<div class="campo"><label class="rot" for="v-feito">O que foi feito</label><div class="com-mic"><textarea id="v-feito" maxlength="2000" placeholder="Ex.: refeita a impermeabilização do ralo">' + esc(r['v-feito'] || '') + '</textarea>' + botaoMic('v-feito') + botaoCorrige('v-feito') + '</div>'
+    + '<label class="rot" style="margin-top:8px">Fotos do que foi feito</label>' + gradeFotos('feito') + '</div>'
     + '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>'
     + '<div class="erro-txt" id="v-erro"></div>';
   abrirModal('Registrar visita', html, [
@@ -804,7 +942,7 @@ function formVisita(c){
         if(x.error) throw x.error;
         apagarRasc(k);
         var n = FOTOS.length ? await subirFotos(c.id, x.data) : 0;
-        toast(v['v-resolveu'] ? 'Visita salva e chamado resolvido.' : 'Visita salva' + (n ? ' com ' + n + ' foto(s)' : '') + '.');
+        toast(v['v-resolveu'] ? 'Visita salva e chamado resolvido.' : 'Visita salva' + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
@@ -815,12 +953,12 @@ function formVisita(c){
 /* ---------- + FOTOS (no chamado, fora de visita) ---------- */
 function formFotos(c){
   limparFotos();
-  abrirModal('Fotos do chamado #' + c.numero, '<p class="dica" style="margin-bottom:8px">Toque em Foto para tirar ou escolher.</p>' + gradeFotos(), [
+  abrirModal('Fotos e arquivos · #' + c.numero, '<p class="dica" style="margin-bottom:8px">Toque para tirar foto ou escolher foto/arquivo (PDF, Word, Excel).</p>' + gradeFotos(''), [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
-    { rotulo:'Enviar fotos', cls:'btn-primary', salvando:'Enviando…', fn:async function(){
-        if(!FOTOS.length){ toast('Escolha ao menos uma foto.', 'err'); return false; }
+    { rotulo:'Enviar', cls:'btn-primary', salvando:'Enviando…', fn:async function(){
+        if(!FOTOS.length){ toast('Escolha ao menos uma foto ou arquivo.', 'err'); return false; }
         var n = await subirFotos(c.id, null);
-        if(n) toast(n + ' foto(s) enviada(s).');
+        if(n) toast(n + ' anexo(s) enviado(s).');
         abrirChamado(c.id); return 'manter';
       } }
   ], function(){ limparFotos(); });
@@ -947,7 +1085,7 @@ async function exportarExcel(){
     if(!window.XLSX) await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
     var linhas = doRelatorio().map(function(c){
       var o = obraDe(c.obra_id) || {}, g = naGarantia(c);
-      return { 'Nº':c.numero, 'Obra':o.nome || '', 'Cliente':o.cliente || '', 'Tipo de serviço':c.categoria, 'Problema':c.descricao,
+      return { 'Nº':c.numero, 'Obra':o.nome || '', 'Cliente':o.cliente || '', 'Tipo de serviço':nomeCat(c), 'Problema':c.descricao,
                'Quem pediu':c.solicitante || '', 'Telefone':c.telefone || '', 'Urgente':c.urgente ? 'sim' : '', 'Status':STATUS[c.status],
                'Garantia':g == null ? '' : (g ? 'dentro' : 'fora'), 'Responsável':nomePessoa(c.responsavel_id), 'Prazo':fmtData(c.prazo),
                'Aberto em':fmtData(c.aberto_em), 'Aberto por':nomePessoa(c.aberto_por), 'Resolvido em':fmtData(c.resolvido_em),

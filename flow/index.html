@@ -932,7 +932,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.04.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -953,7 +953,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.04.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -970,7 +970,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.03.4</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.04.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1095,7 +1095,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.03.4';
+var APP_VERSAO = '2026.11.04.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -2701,7 +2701,9 @@ function abrirModal(html, largo, nivel2, extra){
      passa pelo remove abaixo, que desfaz o passo do histórico.
      extra.camada: a pendência redesenhada herda o passo da anterior. */
   function fechar(){ f.remove(); }
-  f.addEventListener('click', function(e){ if(e.target===f) fechar(); });
+  /* 04/11/2026 (pedido do dono, padrão da suíte): clicar no fundo NÃO fecha — só o X/Voltar.
+     Só o que é passagem (extra.fechaFora, ex.: a pendência aberta ao lado) ainda fecha. */
+  f.addEventListener('click', function(e){ if(e.target===f && extra.fechaFora) fechar(); });
   $('modais').appendChild(f);
   var tirar = f.remove;
   f.remove = function(){
@@ -3662,7 +3664,7 @@ var Detalhe = {
       Detalhe.rodape(p, pp)+
       Detalhe.menu(p, pp);
 
-    var m = abrirModal(html, true, false, { fundo:'f-detalhe', modal:'detalhe', camada:camada, url:Rota.url(p.id) });
+    var m = abrirModal(html, true, false, { fundo:'f-detalhe', modal:'detalhe', camada:camada, url:Rota.url(p.id), fechaFora:true });   /* a pendência aberta é passagem: fora fecha */
     if(depois && depois.parentNode === m.parentNode) m.parentNode.insertBefore(m, depois);
     m.dataset.p = String(p.id);
     Detalhe.pintarNotas(m, p, novas);

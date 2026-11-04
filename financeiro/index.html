@@ -4029,7 +4029,7 @@ function abrirAnexo(href,nome,tipo){
     </div>`;
   document.body.appendChild(m);
   document.getElementById("anx-close").onclick=()=>m.remove();
-  m.onclick=e=>{if(e.target===m)m.remove();};
+  /* fora não fecha (04/11) */
   function onEsc(ev){if(ev.key==="Escape"){m.remove();document.removeEventListener("keydown",onEsc);}}
   document.addEventListener("keydown",onEsc);
 }
@@ -12574,7 +12574,7 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
       '</div>';
     document.body.appendChild(modal);
     document.getElementById("v16-rel-close").onclick=()=>modal.remove();
-    modal.onclick=e=>{if(e.target===modal) modal.remove();};
+    /* fora não fecha (04/11) */
   }
   window.abrirRelatorioMedicoes=abrirRelatorioMedicoes;
 
@@ -13076,7 +13076,7 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
       '</div>';
     document.body.appendChild(modal);
     document.getElementById("v17-rel-close").onclick=()=>modal.remove();
-    modal.onclick=e=>{if(e.target===modal) modal.remove();};
+    /* fora não fecha (04/11) */
   };
 
   /* ========== Item 6: ESCOPO do contrato na medicao ==========
@@ -13255,7 +13255,7 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
       '</div>';
     document.body.appendChild(modal);
     document.getElementById("v17-relsae-close").onclick=()=>modal.remove();
-    modal.onclick=e=>{if(e.target===modal) modal.remove();};
+    /* fora não fecha (04/11) */
   }
   window.abrirRelatorioSAE=abrirRelatorioSAE;
 
@@ -13379,7 +13379,7 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
     busca.oninput=()=>render(busca.value);
     render("");
     modal.querySelector("#v18-forn-close").onclick=()=>modal.remove();
-    modal.onclick=e=>{if(e.target===modal) modal.remove();};
+    /* fora não fecha (04/11) */
     setTimeout(()=>busca.focus(),50);
   }
   window.abrirDropdownFornecedor=abrirDropdownFornecedor;
@@ -13624,7 +13624,7 @@ table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #4
     busca.oninput=()=>render(busca.value);
     render("");
     modal.querySelector("#v18-ct-close").onclick=()=>modal.remove();
-    modal.onclick=e=>{if(e.target===modal) modal.remove();};
+    /* fora não fecha (04/11) */
     setTimeout(()=>busca.focus(),50);
   }
   window.abrirDropdownContrato=abrirDropdownContrato;
@@ -16098,7 +16098,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.11.03.1';
+var APP_VERSION = '2026.11.04.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -16938,7 +16938,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:1000px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800;color:#1a2d5e">Auditoria - ultimas acoes</h2><button id="audit-x" style="font-size:14px;border:1px solid #cbd5e1;border-radius:8px;padding:4px 12px;cursor:pointer;background:#fff">Fechar</button></div><div style="margin-bottom:10px"><input id="audit-f" placeholder="Filtrar por tabela, acao, pessoa..." style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px"/></div><div id="audit-body" style="font-size:13px;color:#475569">Carregando...</div></div>';
     document.body.appendChild(ov);
     document.getElementById('audit-x').onclick=function(){ ov.remove(); };
-    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+    /* fora não fecha (04/11) */
     var body=document.getElementById('audit-body');
     try{
       if(!CLOUD||!sb){ body.textContent='Disponivel somente na versao nuvem.'; return; }
@@ -17980,7 +17980,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       '<div id="wa-body" style="font-size:13px;color:#475569">Carregando...</div></div>';
     document.body.appendChild(ov);
     document.getElementById('wa-x').onclick=function(){ ov.remove(); };
-    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+    /* fora não fecha (04/11) */
     document.getElementById('wa-rec').onclick=function(){ waLista_(); };
     await waLista_();
   }

@@ -319,7 +319,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.03.2';
+var APP_VERSION = '2026.11.04.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -471,7 +471,7 @@ function fecharModal(){
   if(_camada){ var c = _camada; _camada = null; Volta.fechou(c); }
 }
 $('modalX').addEventListener('click', function(){ if(!_ocupado) fecharModal(); });
-$('modal').addEventListener('click', function(e){ if(e.target === $('modal') && !_ocupado) fecharModal(); });
+/* 04/11/2026: clicar fora NÃO fecha — só o X (padrão da suíte, pedido do dono) */
 document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && $('modal').classList.contains('show') && !_ocupado) fecharModal(); });
 
 /* =====================================================================
