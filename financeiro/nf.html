@@ -60,6 +60,10 @@ dd{margin:0;font-weight:500;word-break:break-word}
 .hist{font-size:13px}
 .hist div{border-top:1px solid #EEF2F7;padding:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .erro-envio{color:var(--erro);font-size:13px;margin-top:8px}
+/* 04/11/2026 (pedido do dono): aviso claro enquanto a IA confere */
+.ia-lendo{display:flex;gap:12px;align-items:center;margin-top:12px;padding:12px 14px;border-radius:12px;background:#EEF2F9;color:#00296B;font-size:14px;line-height:1.4}
+.ia-lendo .roda{width:22px;height:22px;border:3px solid #C9D1DD;border-top-color:#00296B;border-radius:50%;animation:gira .9s linear infinite;flex:0 0 auto}
+@keyframes gira{to{transform:rotate(360deg)}}
 footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font-size:12px;text-align:center}
 @media (min-width:560px){ dl.duas{grid-template-columns:1fr 1fr} .valor{font-size:32px} }
 </style>
@@ -138,7 +142,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
         '<label class="drop" id="dropBol" style="margin-top:8px"><input type="file" id="arqBol" accept=".pdf,application/pdf,image/jpeg,image/png" hidden/>'+
           '<strong>📎 Escolher o boleto</strong><span>PDF ou foto do boleto</span></label>'+
         '<ul class="arqs" id="listaBol"></ul>'+
-        '<button class="btn" id="enviar" disabled>Enviar NF e boleto</button><div class="erro-envio" id="erro"></div>'+
+        '<button class="btn" id="enviar" disabled>Enviar NF e boleto</button><div class="ia-lendo" id="ia-lendo" hidden><span class="roda"></span><span><b>Lendo e conferindo a nota…</b><br><span id="ia-passo">Enviando os arquivos.</span> Pode levar até 1 minuto — não feche esta página.</span></div><div class="erro-envio" id="erro"></div>'+
       '</div>'+
       '<div id="resultado"></div><div id="historico"></div>';
     app.innerHTML=h;
@@ -206,6 +210,9 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     if(!boleto){ document.getElementById('erro').textContent='Anexe também o boleto.'; return; }
     enviando=true;
     var b=document.getElementById('enviar'); b.disabled=true; b.textContent='Enviando e conferindo…';
+    var av=document.getElementById('ia-lendo'), ps=document.getElementById('ia-passo'); if(av) av.hidden=false;
+    var passos=['Enviando os arquivos.','A IA está lendo a nota fiscal.','Conferindo com a autorização (valor, CNPJ, tomador).','Quase lá.'], ip=0;
+    var tic=setInterval(function(){ ip=Math.min(ip+1,passos.length-1); if(ps) ps.textContent=passos[ip]; },9000);
     document.getElementById('erro').textContent='';
     Promise.all(arquivos.map(function(f){ return base64(f).then(function(x){ return {nome:f.name,tipo:f.type||'',base64:x,papel:'nf'}; }); })
         .concat([base64(boleto).then(function(x){ return {nome:boleto.name,tipo:boleto.type||'',base64:x,papel:'boleto'}; })]))
@@ -221,7 +228,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
         chamarVer(true);
       })
       .catch(function(e){ document.getElementById('erro').textContent='Sem conexão: '+((e&&e.message)||e)+'. Tente de novo.'; })
-      .then(function(){ enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.textContent='Enviar NF e boleto'; b2.disabled=!arquivos.length||!boleto; } });
+      .then(function(){ clearInterval(tic); var av2=document.getElementById('ia-lendo'); if(av2) av2.hidden=true; enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.textContent='Enviar NF e boleto'; b2.disabled=!arquivos.length||!boleto; } });
   }
 
   function telaResultado(d){
