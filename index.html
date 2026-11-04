@@ -513,7 +513,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.11.03.4';
+var VERSAO   = '2026.11.04.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -1396,7 +1396,7 @@ function msgBanco(e){
   return m;
 }
 
-var CFG_ABAS = [['seguranca', 'Segurança'], ['ia', 'Inteligência artificial'], ['acervo', 'Acervo e Storage']];
+var CFG_ABAS = [['seguranca', 'Segurança'], ['ia', 'Inteligência artificial'], ['email', 'E-mail'], ['acervo', 'Acervo e Storage']];
 var CFG = { aba: null };
 function abrirConfig(aba){
   if(!CFG_ABAS.some(function(a){ return a[0] === aba; })) aba = 'seguranca';
@@ -1404,7 +1404,44 @@ function abrirConfig(aba){
   $('cfg-abas').innerHTML = CFG_ABAS.map(function(a){
     return '<a href="#config/' + a[0] + '" class="' + (a[0] === aba ? 'ativa' : '') + '"' + (a[0] === aba ? ' aria-current="page"' : '') + '>' + esc(a[1]) + '</a>';
   }).join('') + (MODULOS.configuracoes.url ? '<a href="' + esc(MODULOS.configuracoes.url + '?volta=config/' + aba) + '">Cadastros ↗</a>' : '');   // 03/11: o "←" dos Cadastros volta para esta aba
-  ({ seguranca: telaSeguranca, ia: telaIA, acervo: telaAcervo })[aba]();
+  ({ seguranca: telaSeguranca, ia: telaIA, email: telaEmail, acervo: telaAcervo })[aba]();
+}
+
+/* ------------------------------ E-mail ------------------------------
+   04/11/2026 (pedido do dono): todas as caixas que o sistema usa, num lugar
+   só — Docs, DP, Flow, Patrimônio e as do Custos. A edge core-email-diagnostico
+   só conecta e autentica (não envia nada, não mostra senha). Cada conferência é
+   UMA tentativa de senha por caixa: há intervalo de 2 min entre elas, porque
+   senha errada repetida faz o servidor bloquear. */
+var EML = { res:null, erro:'', rodando:false };
+function telaEmail(){
+  var r = EML.res, h = '<section class="bloco"><div class="linha"><div><h2>Caixas de e-mail do sistema</h2>'
+    + '<p class="dica">Confere se cada caixa consegue entrar no servidor de e-mail. Não envia nada.</p></div>'
+    + '<button class="btn" type="button" id="eml-conferir"' + (EML.rodando ? ' disabled' : '') + '>' + (EML.rodando ? 'Conferindo…' : 'Conferir as caixas') + '</button></div>'
+    + (EML.erro ? '<div class="aviso-cfg">' + esc(EML.erro) + '</div>' : '');
+  if(r){
+    var falhas = r.contas.filter(function(c){ return !c.ok; });
+    h += '<table class="uso"><thead><tr><th>Módulo</th><th>Para quê</th><th>Caixa</th><th>Situação</th></tr></thead><tbody>'
+      + r.contas.map(function(c){
+          return '<tr><td>' + esc(c.modulo) + '</td><td>' + esc(c.uso) + '</td><td>' + esc(c.usuario) + '<br><span class="fraco" style="font-size:11px">' + esc(c.servidor) + '</span></td>'
+            + '<td>' + (c.ok ? '<span class="ok-txt">✓ entrou</span>' : '<span class="erro-txt">✗ ' + esc(c.motivo || 'falhou') + '</span>')
+            + ((c.avisos || []).length ? '<br><span class="fraco" style="font-size:11px">⚠ ' + esc(c.avisos.join('; ')) + '</span>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>'
+      + '<p class="dica" style="margin-top:8px">Conferido em ' + esc(dataHora(r.em)) + '.</p>';
+    if(falhas.length) h += '<div class="aviso-cfg" style="margin-top:10px"><b>Como corrigir</b>: confira a senha da caixa no cPanel (ou redefina) e grave a mesma senha no Supabase › Edge Functions › Secrets, no secret: '
+      + falhas.map(function(c){ return '<b>' + esc(c.secret) + '</b> (' + esc(c.usuario) + ')'; }).join(', ') + '. Depois, Conferir de novo.</div>';
+  }
+  $('cfg-conteudo').innerHTML = h + '</section>';
+  $('eml-conferir').addEventListener('click', function(){
+    if(EML.rodando) return;
+    EML.rodando = true; EML.erro = ''; telaEmail();
+    sb.functions.invoke('core-email-diagnostico', { body:{} }).then(function(x){
+      var d = x.data || {};
+      if(x.error || !d.ok) EML.erro = d.error || (x.error && x.error.message) || 'Não deu para conferir.';
+      else EML.res = d;
+    }, function(e){ EML.erro = msgBanco(e); })
+      .then(function(){ EML.rodando = false; if(CFG.aba === 'email') telaEmail(); });
+  });
 }
 
 /* ---------------------------- Segurança ---------------------------- */
