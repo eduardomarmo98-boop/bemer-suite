@@ -130,6 +130,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
   border-radius:12px;padding:11px 12px;box-shadow:var(--shadow)}
 .ch.st-aberto{border-left-color:var(--laranja)} .ch.st-em_atendimento{border-left-color:var(--azul)}
 .ch.st-resolvido{border-left-color:#2E7D32} .ch.st-cancelado{border-left-color:#9AA3AF}
+.ch.st-novo{border-left-color:#C62828}
+.selo.st-novo{background:#FDE7E7;color:#B71C1C}
+.selo.cliente{background:#FFF1DC;color:#8A5000}
+.triagem-aviso{background:#FFF6E8;border:1px solid #F5D9A8;border-radius:12px;padding:10px 12px;margin:10px 0}
+.equipe-lista{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;border:1px solid var(--borda);border-radius:10px;padding:8px 10px}
+.link-cliente{display:flex;gap:6px;align-items:center}
+.link-cliente input{flex:1;min-width:0;font-size:13px}
+#o-qr{margin-top:8px;display:inline-block;background:#fff;padding:8px;border:1px solid var(--borda);border-radius:10px}
 .ch:hover{border-color:var(--borda-forte)}
 .ch-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;min-width:0}
 .num{font-weight:700;color:var(--azul)}
@@ -264,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.04.2';
+var APP_VERSION = '2026.11.04.3';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -274,7 +282,7 @@ function $(id){ return document.getElementById(id); }
 
 var EU = null;                                     // {id, nome}
 var PODE = { ver:false, abrir:false, atender:false, obras:false };
-var D = { obras:[], chamados:[], pessoas:[], carregadoEm:0 };
+var D = { obras:[], chamados:[], pessoas:[], equipe:[], config:null, carregadoEm:0 };
 var ABA = 'chamados';
 var FILTRO = { status:'abertos', obra:'', busca:'' };
 var REL = { obra:'', de:'', ate:'' };
@@ -283,7 +291,8 @@ var REL = { obra:'', de:'', ate:'' };
 /* 04/11/2026 (pedido do dono): em ordem alfabética, "Outros" por último */
 var CATEGORIAS = ['Alvenaria / Estrutura','Cobertura / Telhado','Elétrica','Esquadrias (portas e janelas)','Hidráulica',
   'Impermeabilização','Louças e metais','Marcenaria','Pintura','Pisos e revestimentos','Outros'];
-var STATUS = { aberto:'Aberto', em_atendimento:'Em atendimento', resolvido:'Resolvido', cancelado:'Cancelado' };
+/* 04/11/2026 (0092): "novo" = aberto pelo CLIENTE no formulário, aguardando a triagem */
+var STATUS = { novo:'Novo · triagem', aberto:'Aberto', em_atendimento:'Em atendimento', resolvido:'Resolvido', cancelado:'Cancelado' };
 
 $('rodape').textContent = 'BeMer · Manutenção · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
 $('btn-sair').addEventListener('click', function(){
@@ -324,7 +333,10 @@ function sem(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
 function nomeCat(c){ return c.categoria === 'Outros' && c.categoria_outro ? 'Outros: ' + c.categoria_outro : c.categoria; }
 function obraDe(id){ return D.obras.find(function(o){ return o.id === id; }) || null; }
 function nomePessoa(id){ var p = D.pessoas.find(function(x){ return x.id === id; }); return p ? p.nome : ''; }
-function aberto(c){ return c.status === 'aberto' || c.status === 'em_atendimento'; }
+function aberto(c){ return c.status === 'novo' || c.status === 'aberto' || c.status === 'em_atendimento'; }
+function equipeDe(c){ return D.equipe.filter(function(e){ return e.chamado_id === c.id; }).map(function(e){ return e.pessoa_id; }); }
+function naEquipe(c, id){ return equipeDe(c).indexOf(id) >= 0; }
+function comigo(c){ return aberto(c) && (c.responsavel_id === EU.id || naEquipe(c, EU.id)); }
 function atrasado(c){ return aberto(c) && c.prazo && c.prazo < hoje(); }
 /* garantia: entrega + meses da obra, comparada com a data em que o chamado foi aberto */
 function fimGarantia(o){ return o && o.entrega ? somaMeses(o.entrega, o.garantia_meses || 0) : ''; }
@@ -595,10 +607,18 @@ async function carregar(){
   var rs = await Promise.all([
     M().from('obras').select('*').order('nome'),
     M().from('chamados').select('*').order('numero', { ascending:false }),
-    M().rpc('pessoas')
+    M().rpc('pessoas'),
+    M().from('equipe').select('*'),
+    M().from('config').select('*').eq('id', 1).maybeSingle()
   ]);
-  rs.forEach(function(r){ if(r.error) throw r.error; });
+  rs.slice(0, 3).forEach(function(r){ if(r.error) throw r.error; });
   D.obras = rs[0].data || []; D.chamados = rs[1].data || []; D.pessoas = rs[2].data || []; D.carregadoEm = Date.now();
+  D.equipe = rs[3].error ? [] : (rs[3].data || []); D.config = rs[4].error ? null : rs[4].data;
+}
+async function recarregarEquipe(id){
+  var r = await M().from('equipe').select('*').eq('chamado_id', id);
+  if(r.error) return;
+  D.equipe = D.equipe.filter(function(e){ return e.chamado_id !== id; }).concat(r.data || []);
 }
 async function recarregarChamado(id){
   var r = await M().from('chamados').select('*').eq('id', id).maybeSingle();
@@ -625,6 +645,7 @@ function desenhar(){ if(ABA === 'obras') telaObras(); else if(ABA === 'relatorio
 function seloStatus(c){ return '<span class="selo st-' + c.status + '">' + STATUS[c.status] + '</span>'; }
 function selosChamado(c, curto){
   var s = [];
+  if(c.origem === 'cliente') s.push('<span class="selo cliente">Pelo cliente</span>');
   if(c.urgente && aberto(c)) s.push('<span class="selo urgente">Urgente</span>');
   if(atrasado(c)) s.push('<span class="selo atrasado">Atrasado · prazo ' + fmtData(c.prazo) + '</span>');
   else if(c.prazo && aberto(c)) s.push('<span class="selo cinza">Prazo ' + fmtData(c.prazo) + '</span>');
@@ -633,6 +654,7 @@ function selosChamado(c, curto){
   else if(g === false) s.push('<span class="selo fora">Fora da garantia</span>');
   if(c.responsavel_id) s.push('<span class="selo cinza">' + esc(nomePessoa(c.responsavel_id) || 'Responsável') + '</span>');
   else if(aberto(c)) s.push('<span class="selo cinza">Sem responsável</span>');
+  var eq = equipeDe(c).length; if(eq && aberto(c)) s.push('<span class="selo cinza">Equipe: ' + eq + '</span>');
   if(curto && aberto(c)){ var n = dias(c.aberto_em, hoje()); s.push('<span class="selo cinza">' + (n <= 0 ? 'aberto hoje' : 'há ' + n + (n === 1 ? ' dia' : ' dias')) + '</span>'); }
   return s.join('');
 }
@@ -640,14 +662,15 @@ function filtrados(){
   var b = sem(FILTRO.busca);
   return D.chamados.filter(function(c){
     if(FILTRO.status === 'abertos' && !aberto(c)) return false;
-    if(FILTRO.status === 'comigo' && !(aberto(c) && c.responsavel_id === EU.id)) return false;
+    if(FILTRO.status === 'novo' && c.status !== 'novo') return false;
+    if(FILTRO.status === 'comigo' && !comigo(c)) return false;
     if(FILTRO.status === 'atrasados' && !atrasado(c)) return false;
     if(FILTRO.status === 'resolvido' && c.status !== 'resolvido') return false;
     if(FILTRO.status === 'cancelado' && c.status !== 'cancelado') return false;
     if(FILTRO.obra && c.obra_id !== FILTRO.obra) return false;
     if(b){
       var o = obraDe(c.obra_id);
-      if(sem(['#' + c.numero, c.descricao, c.solicitante, nomeCat(c), o && o.nome, o && o.cliente].join(' ')).indexOf(b) < 0) return false;
+      if(sem(['#' + c.numero, c.descricao, c.solicitante, c.unidade, nomeCat(c), o && o.nome, o && o.cliente].join(' ')).indexOf(b) < 0) return false;
     }
     return true;
   });
@@ -655,11 +678,13 @@ function filtrados(){
 function telaChamados(){
   var n = {
     abertos: D.chamados.filter(aberto).length,
-    comigo: D.chamados.filter(function(c){ return aberto(c) && c.responsavel_id === EU.id; }).length,
-    atrasados: D.chamados.filter(atrasado).length
+    comigo: D.chamados.filter(comigo).length,
+    atrasados: D.chamados.filter(atrasado).length,
+    novo: D.chamados.filter(function(c){ return c.status === 'novo'; }).length
   };
   var chips = [['abertos', 'Abertos', n.abertos], ['comigo', 'Comigo', n.comigo], ['atrasados', 'Atrasados', n.atrasados],
                ['resolvido', 'Resolvidos'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
+  if(n.novo || FILTRO.status === 'novo') chips.unshift(['novo', 'Triagem', n.novo]);
   var obrasUsadas = D.obras.filter(function(o){ return o.ativa || D.chamados.some(function(c){ return c.obra_id === o.id; }); });
   $('main').innerHTML =
       '<div class="cab"><h1>Chamados</h1>' + (PODE.abrir ? '<button type="button" class="btn btn-laranja so-pc" data-novo="1">+ Novo chamado</button>' : '') + '</div>'
@@ -693,6 +718,7 @@ $('main').addEventListener('click', function(e){
   if(e.target.closest('[data-novo]')){ formChamado(null); return; }
   var o = e.target.closest('[data-obra]'); if(o){ formObra(obraDe(o.getAttribute('data-obra'))); return; }
   if(e.target.closest('[data-nova-obra]')){ formObra(null); return; }
+  if(e.target.closest('[data-cfg-triagem]')){ formConfigTriagem(); return; }
   if(e.target.closest('[data-exportar]')){ exportarExcel(); return; }
 });
 $('fab').addEventListener('click', function(){ formChamado(null); });
@@ -803,11 +829,13 @@ function htmlFotos(lista, links, rot){
   }).join('') + '</div>';
 }
 function desenharChamado(c, vis, fotos, evs, links){
-  var o = obraDe(c.obra_id), eu = EU.id;
-  var podeVisita = aberto(c) && (PODE.atender || c.responsavel_id === eu);
+  var o = obraDe(c.obra_id), eu = EU.id, eq = equipeDe(c);
+  /* 0092: quem está na EQUIPE do chamado registra visita; "novo" precisa da triagem antes */
+  var podeVisita = aberto(c) && c.status !== 'novo' && (PODE.atender || c.responsavel_id === eu || eq.indexOf(eu) >= 0);
   var podeEditar = aberto(c) && (PODE.atender || (c.aberto_por === eu && c.status === 'aberto' && PODE.abrir));
   var podeReabrir = !aberto(c) && PODE.atender;
-  var podeFoto = PODE.atender || (aberto(c) && (PODE.abrir || c.responsavel_id === eu));
+  var podeFoto = PODE.atender || (aberto(c) && (PODE.abrir || c.responsavel_id === eu || eq.indexOf(eu) >= 0));
+  var podeTriar = aberto(c) && PODE.atender;
   var gar = naGarantia(c), fg = fimGarantia(o);
   /* linha do tempo: os eventos + cada visita no lugar do seu evento */
   var itens = [], vi = 0;
@@ -816,7 +844,8 @@ function desenharChamado(c, vis, fotos, evs, links){
     itens.push({ e:ev });
   });
   for(; vi < vis.length; vi++) itens.push({ v:vis[vi] });
-  var NOMES = { aberto:'Abriu o chamado', editado:'Editou', resolvido:'Resolvido', cancelado:'Cancelou', reaberto:'Reabriu' };
+  var NOMES = { aberto:'Abriu o chamado', editado:'Editou', resolvido:'Resolvido', cancelado:'Cancelou', reaberto:'Reabriu',
+                triado:'Triagem feita', equipe:'Mudou a equipe' };
   var tempo = itens.map(function(it){
     if(it.v){
       var v = it.v, fv = fotos.filter(function(f){ return f.visita_id === v.id; });
@@ -829,21 +858,29 @@ function desenharChamado(c, vis, fotos, evs, links){
         + htmlFotos(fou, links) + '</li>';
     }
     var e = it.e;
-    return '<li class="' + esc(e.tipo) + '"><div class="qd">' + fmtDataHora(e.em) + ' · ' + esc(nomePessoa(e.quem)) + '</div>'
+    return '<li class="' + esc(e.tipo) + '"><div class="qd">' + fmtDataHora(e.em) + ' · ' + esc(nomePessoa(e.quem) || (e.tipo === 'aberto' && c.origem === 'cliente' ? c.solicitante || 'Cliente' : '')) + '</div>'
       + '<div class="tx"><b>' + esc(NOMES[e.tipo] || e.tipo) + '</b>' + (e.detalhe ? ': ' + esc(e.detalhe) : '') + '</div></li>';
   }).join('');
   var fotosCh = fotos.filter(function(f){ return !f.visita_id; });
+  var eng = o && (o.eng_nome || o.eng_contato) ? esc(o.eng_nome || '') + (o.eng_contato ? (o.eng_nome ? ' · ' : '') + telLinks(o.eng_contato) : '') : '';
   var html =
       '<div class="selos" style="margin-bottom:8px">' + seloStatus(c) + '<span class="selo">' + esc(nomeCat(c)) + '</span>' + selosChamado(c, false) + '</div>'
+    + (c.status === 'novo' ? '<div class="triagem-aviso"><b>Aguardando triagem.</b> Fale com a Engenharia da obra'
+        + (eng ? ' (' + eng + ')' : ' (sem contato cadastrado na obra)') + ', depois escolha o responsável e a equipe que vai atender.'
+        + (PODE.atender ? '' : '<div class="dica" style="margin-top:4px">Quem faz a triagem é quem tem “Atender” na Manutenção.</div>') + '</div>' : '')
     + '<div class="desc-grande">' + esc(c.descricao) + '</div>'
     + htmlFotos(fotosCh, links)
     + '<div class="card" style="margin-top:12px;padding:8px 12px">'
     + '<div class="det-linha"><b>Obra</b><span>' + esc(o ? o.nome : '—') + (o && o.cliente ? ' · ' + esc(o.cliente) : '') + (o && o.endereco ? '<br><span class="dica">' + esc(o.endereco) + (o.cidade ? ', ' + esc(o.cidade) : '') + '</span>' : '') + '</span></div>'
     + '<div class="det-linha"><b>Garantia</b><span>' + (fg ? (gar ? 'Na garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : 'Obra sem data de entrega') + '</span></div>'
-    + (c.solicitante || c.telefone ? '<div class="det-linha"><b>Quem pediu</b><span>' + esc(c.solicitante || '') + (c.telefone ? '<br>' + telLinks(c.telefone) : '') + '</span></div>' : '')
+    + (eng ? '<div class="det-linha"><b>Engenharia</b><span>' + eng + '</span></div>' : '')
+    + (c.unidade ? '<div class="det-linha"><b>Unidade</b><span>' + esc(c.unidade) + '</span></div>' : '')
+    + (c.solicitante || c.telefone || c.cliente_email ? '<div class="det-linha"><b>Quem pediu</b><span>' + esc(c.solicitante || '') + (c.telefone ? '<br>' + telLinks(c.telefone) : '')
+        + (c.cliente_email ? '<br><a href="mailto:' + esc(c.cliente_email) + '">' + esc(c.cliente_email) + '</a>' : '') + '</span></div>' : '')
     + '<div class="det-linha"><b>Responsável</b><span>' + esc(nomePessoa(c.responsavel_id) || '—') + '</span></div>'
+    + (eq.length || c.status !== 'novo' ? '<div class="det-linha"><b>Equipe</b><span>' + (eq.length ? eq.map(function(id){ return esc(nomePessoa(id) || '?'); }).join(', ') : '—') + '</span></div>' : '')
     + '<div class="det-linha"><b>Prazo</b><span>' + (c.prazo ? fmtData(c.prazo) : '—') + '</span></div>'
-    + '<div class="det-linha"><b>Aberto</b><span>' + fmtDataHora(c.aberto_em) + ' · ' + esc(nomePessoa(c.aberto_por)) + '</span></div>'
+    + '<div class="det-linha"><b>Aberto</b><span>' + fmtDataHora(c.aberto_em) + ' · ' + (c.origem === 'cliente' ? 'pelo cliente (formulário)' : esc(nomePessoa(c.aberto_por))) + '</span></div>'
     + (c.motivo && !aberto(c) ? '<div class="det-linha"><b>Motivo</b><span>' + esc(c.motivo) + '</span></div>' : '')
     + '</div>'
     + '<h2 style="font-size:15px;color:var(--azul);margin:14px 0 8px">Histórico</h2><ul class="linha-tempo">' + tempo + '</ul>';
@@ -853,9 +890,47 @@ function desenharChamado(c, vis, fotos, evs, links){
   if(podeEditar) bts.push({ rotulo:'Editar', fn:function(){ formChamado(c); return 'manter'; } });
   if(podeFoto) bts.push({ rotulo:'+ Fotos e arquivos', fn:function(){ formFotos(c); return 'manter'; } });
   bts.unshift({ rotulo:'📄 Relatório', fn:function(){ relatorioCliente(c, vis, fotos, links); return 'manter'; } });
+  if(podeTriar && c.status !== 'novo') bts.push({ rotulo:'Equipe', fn:function(){ formTriagem(c); return 'manter'; } });
   if(podeVisita) bts.push({ rotulo:'+ Registrar visita', cls:'btn-laranja', fn:function(){ formVisita(c); return 'manter'; } });
+  if(podeTriar && c.status === 'novo') bts.push({ rotulo:'Fazer triagem', cls:'btn-laranja', fn:function(){ formTriagem(c); return 'manter'; } });
   if(!bts.length) bts.push({ rotulo:'Fechar' });
   abrirModal('Chamado #' + c.numero, html, bts);
+}
+
+/* ---------- TRIAGEM / EQUIPE (04/11/2026, 0092) ----------
+   Quem atende confirma o chamado do cliente: responsável + equipe (quem vai
+   registrar as visitas) + prazo. "Novo" vira "Aberto". Depois, o mesmo
+   formulário muda a equipe. */
+function formTriagem(c){
+  var o = obraDe(c.obra_id) || {}, eq = equipeDe(c);
+  var gente = D.pessoas.filter(function(p){ return p.pode_ser_responsavel || eq.indexOf(p.id) >= 0; })
+    .sort(function(a, b){ return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
+  var eng = o.eng_nome || o.eng_contato ? esc(o.eng_nome || '') + (o.eng_contato ? (o.eng_nome ? ' · ' : '') + telLinks(o.eng_contato) : '') : '';
+  var html =
+      '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc(o.nome || '') + (c.unidade ? ' · ' + esc(c.unidade) : '') + '</div>'
+    + '<div class="card" style="padding:8px 12px;margin-bottom:10px"><div class="det-linha"><b>Engenharia</b><span>' + (eng || 'Sem contato cadastrado na obra (aba Obras).') + '</span></div></div>'
+    + '<div class="lado"><div class="campo"><label class="rot" for="t-resp">Responsável *</label><select id="t-resp">' + opcoesResp(c.responsavel_id || EU.id) + '</select></div>'
+    + '<div class="campo"><label class="rot" for="t-prazo">Prazo</label><input id="t-prazo" type="date" value="' + esc(c.prazo || '') + '"></div></div>'
+    + '<div class="campo"><label class="rot">Equipe — quem vai participar e registrar as visitas</label><div class="equipe-lista">'
+    + (gente.length ? gente.map(function(p){
+        return '<label class="marcar"><input type="checkbox" class="t-eq" value="' + p.id + '"' + (eq.indexOf(p.id) >= 0 ? ' checked' : '') + '> ' + esc(p.nome) + (p.id === EU.id ? ' (eu)' : '') + '</label>'; }).join('')
+      : '<span class="dica">Ninguém com a Manutenção liberada.</span>')
+    + '</div><div class="dica" style="margin-top:4px">Só aparece quem tem a Manutenção liberada (Cadastros › Permissões).</div></div>'
+    + '<div class="erro-txt" id="t-erro"></div>';
+  abrirModal(c.status === 'novo' ? 'Triagem do chamado #' + c.numero : 'Equipe do chamado #' + c.numero, html, [
+    { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
+    { rotulo:c.status === 'novo' ? 'Confirmar chamado' : 'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
+        var resp = $('t-resp').value;
+        var equipe = Array.prototype.map.call(document.querySelectorAll('.t-eq:checked'), function(x){ return x.value; });
+        if(!resp){ $('t-erro').textContent = 'Escolha o responsável.'; return false; }
+        var r = await M().rpc('triar', { p_id:c.id, p_resp:resp, p_equipe:equipe, p_prazo:$('t-prazo').value || null });
+        if(r.error) throw r.error;
+        toast(c.status === 'novo' ? 'Chamado confirmado.' : 'Equipe salva.');
+        await Promise.all([recarregarChamado(c.id), recarregarEquipe(c.id)]);
+        desenhar(); abrirChamado(c.id);
+        return 'manter';
+      } }
+  ]);
 }
 
 /* ---------- 📄 RELATÓRIO PARA O CLIENTE (04/11/2026, pedido do dono) ----------
@@ -881,7 +956,7 @@ function relatorioCliente(c, vis, fotos, links){
   }).join('');
   var situacao = c.status === 'resolvido' ? 'Resolvido em ' + fmtData(c.resolvido_em)
     : c.status === 'cancelado' ? 'Encerrado' + (c.motivo ? ': ' + esc(c.motivo) : '')
-    : c.status === 'em_atendimento' ? 'Em atendimento' : 'Aberto · aguardando visita';
+    : c.status === 'em_atendimento' ? 'Em atendimento' : c.status === 'novo' ? 'Recebido · em análise' : 'Aberto · aguardando visita';
   var assunto = 'Chamado de manutenção nº ' + c.numero + ' — ' + (o.nome || '');
   var corpo = 'Prezado(a),\n\nSegue em anexo o relatório do chamado de manutenção nº ' + c.numero + ' (' + (o.nome || '') + ').\n\nSituação: '
     + String(situacao).replace(/<[^>]*>/g, '') + '.\n\nAtenciosamente,\nBrandão & Marmo Engenharia e Construções';
@@ -990,6 +1065,9 @@ function telaObras(){
   var lista = D.obras.slice().sort(function(a, b){ return (b.ativa - a.ativa) || a.nome.localeCompare(b.nome, 'pt-BR'); });
   $('main').innerHTML =
       '<div class="cab"><h1>Obras entregues</h1>' + (PODE.obras ? '<button type="button" class="btn btn-laranja" data-nova-obra="1">+ Nova obra</button>' : '') + '</div>'
+    + (D.config ? '<div class="card" style="padding:10px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">'
+        + '<div><div class="dica">Chamados abertos pelo cliente (link/QR de cada obra) chegam para</div><b>' + esc(D.config.email_triagem) + '</b></div>'
+        + (PODE.atender ? '<button type="button" class="btn btn-sm btn-secondary" data-cfg-triagem="1">Alterar</button>' : '') + '</div>' : '')
     + (lista.length ? lista.map(function(o){
         var f = fimGarantia(o), ab = D.chamados.filter(function(c){ return c.obra_id === o.id && aberto(c); }).length;
         var tot = D.chamados.filter(function(c){ return c.obra_id === o.id; }).length;
@@ -1012,8 +1090,16 @@ function formObra(o){
     + '<div class="lado">' + cp('o-tel', 'Telefone', v.telefone, ' type="tel" inputmode="tel" maxlength="40"') + cp('o-email', 'E-mail', v.email, ' type="email" maxlength="200"') + '</div>'
     + '<div class="lado">' + cp('o-end', 'Endereço', v.endereco, ' maxlength="300"') + cp('o-cidade', 'Cidade', v.cidade, ' maxlength="100"') + '</div>'
     + '<div class="lado">' + cp('o-entrega', 'Data de entrega', v.entrega, ' type="date"') + cp('o-gar', 'Garantia (meses)', v.garantia_meses, ' type="number" min="0" max="240" inputmode="numeric"') + '</div>'
+    + '<div class="lado">' + cp('o-eng-nome', 'Engenharia responsável', v.eng_nome, ' maxlength="200" placeholder="Engenheiro(a) da obra"') + cp('o-eng-contato', 'Contato da Engenharia', v.eng_contato, ' maxlength="200" placeholder="Telefone ou e-mail"') + '</div>'
     + '<div class="campo"><label class="rot" for="o-obs">Observações</label><textarea id="o-obs" maxlength="2000" style="min-height:70px"' + (so ? ' disabled' : '') + '>' + esc(v.observacoes || '') + '</textarea></div>'
     + '<div class="dica">A garantia conta a partir da entrega. O chamado mostra sozinho se está dentro ou fora.</div>'
+    + (o && o.token ? '<div class="campo" style="margin-top:12px"><label class="rot" for="o-link">Link do cliente — para abrir chamado sem conta</label>'
+        + '<div class="link-cliente"><input id="o-link" readonly value="' + esc(linkCliente(o)) + '"><button type="button" class="btn btn-sm btn-secondary" id="o-copiar">Copiar</button></div>'
+        + (o.ativa ? '' : '<div class="erro-txt">Obra desativada: o link não abre chamado.</div>')
+        + '<div id="o-qr" title="QR code do link"></div>'
+        + '<div class="dica">Entregue o link ou o QR ao cliente/síndico (manual do proprietário, placa no condomínio). O chamado chega como <b>Novo · triagem</b>.'
+        + (so ? '' : ' <button type="button" class="btn btn-sm btn-secondary" id="o-novo-link" style="margin-left:4px">Trocar o link</button>') + '</div></div>'
+      : (o ? '' : '<div class="dica" style="margin-top:8px">Depois de salvar, abra a obra de novo para pegar o link/QR do cliente.</div>'))
     + '<div class="erro-txt" id="o-erro"></div>';
   var bts = [{ rotulo:so ? 'Fechar' : 'Cancelar' }];
   if(!so && o) bts.unshift({ rotulo:o.ativa ? 'Desativar' : 'Reativar', cls:o.ativa ? 'btn-danger' : 'btn-secondary', fn:async function(){
@@ -1026,7 +1112,8 @@ function formObra(o){
     var p = { nome:$('o-nome').value.trim(), cliente:$('o-cliente').value.trim() || null, contato:$('o-contato').value.trim() || null,
               telefone:$('o-tel').value.trim() || null, email:$('o-email').value.trim() || null, endereco:$('o-end').value.trim() || null,
               cidade:$('o-cidade').value.trim() || null, entrega:$('o-entrega').value || null,
-              garantia_meses:parseInt($('o-gar').value, 10), observacoes:$('o-obs').value.trim() || null };
+              garantia_meses:parseInt($('o-gar').value, 10), observacoes:$('o-obs').value.trim() || null,
+              eng_nome:$('o-eng-nome').value.trim() || null, eng_contato:$('o-eng-contato').value.trim() || null };
     if(p.nome.length < 2){ $('o-erro').textContent = 'Dê um nome à obra.'; return false; }
     if(!(p.garantia_meses >= 0 && p.garantia_meses <= 240)){ $('o-erro').textContent = 'Garantia: de 0 a 240 meses.'; return false; }
     var r = o ? await M().from('obras').update(p).eq('id', o.id) : await M().from('obras').insert(p);
@@ -1034,6 +1121,46 @@ function formObra(o){
     await carregar(); desenhar(); toast('Obra salva.');
   } });
   abrirModal(o ? (so ? o.nome : 'Editar obra') : 'Nova obra', html, bts);
+  if(o && o.token){
+    $('o-copiar').addEventListener('click', function(){
+      var t = $('o-link').value;
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast('Link copiado.'); },
+        function(){ $('o-link').select(); toast('Selecionei o link: copie com Ctrl+C.'); });
+    });
+    desenharQR(linkCliente(o));
+    if($('o-novo-link')) $('o-novo-link').addEventListener('click', async function(){
+      if(!confirm('Trocar o link de "' + o.nome + '"? O link e o QR antigos param de funcionar.')) return;
+      try {
+        var r = await M().from('obras').update({ token:uuid().replace(/-/g, '') }).eq('id', o.id);
+        if(r.error) throw r.error;
+        await carregar(); toast('Link trocado.'); formObra(obraDe(o.id));
+      } catch(e){ toast(msgErro(e), 'err'); }
+    });
+  }
+}
+/* link público do formulário do cliente (chamado.html). O token vai depois do #:
+   não sai nos registros do servidor nem no "Referer". */
+function linkCliente(o){ return new URL('chamado.html', location.href).href.split('#')[0].split('?')[0] + '#t=' + o.token; }
+function desenharQR(texto){
+  var alvo = $('o-qr'); if(!alvo) return;
+  var faz = function(){ if(!window.QRCode || !$('o-qr')) return; alvo.innerHTML = ''; new QRCode(alvo, { text:texto, width:180, height:180, correctLevel:QRCode.CorrectLevel.M }); };
+  if(window.QRCode) return faz();
+  carregarScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js').then(faz, function(){ alvo.remove(); });
+}
+function formConfigTriagem(){
+  abrirModal('Quem recebe os chamados do cliente',
+    '<div class="campo"><label class="rot" for="cfg-email">E-mail da triagem *</label><input id="cfg-email" type="email" maxlength="400" value="' + esc((D.config || {}).email_triagem || '') + '"></div>'
+    + '<div class="dica">Recebe o aviso de cada chamado aberto pelo link/QR. Mais de um: separe por vírgula.</div><div class="erro-txt" id="cfg-erro"></div>', [
+    { rotulo:'Cancelar' },
+    { rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
+        var v = $('cfg-email').value.trim().toLowerCase().replace(/\s+/g, '');
+        var ok = v && v.split(',').every(function(x){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); });
+        if(!ok){ $('cfg-erro').textContent = 'E-mail inválido.'; return false; }
+        var r = await M().from('config').update({ email_triagem:v }).eq('id', 1);
+        if(r.error) throw r.error;
+        D.config = Object.assign({}, D.config, { email_triagem:v }); desenhar(); toast('Salvo.');
+      } }
+  ]);
 }
 
 /* ---------- RELATÓRIO ---------- */

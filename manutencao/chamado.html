@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; media-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; connect-src 'self' https://cupdrskggjmhbzdxiume.supabase.co wss://cupdrskggjmhbzdxiume.supabase.co https://viacep.com.br https://generativelanguage.googleapis.com https://hook.eu2.make.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; frame-src 'self' blob: data: https://cupdrskggjmhbzdxiume.supabase.co https://www.youtube-nocookie.com https://drive.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<meta name="referrer" content="no-referrer"/>
+<meta name="theme-color" content="#00296B"/>
+<title>Assistência técnica · Brandão &amp; Marmo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- Manutenção · formulário público do CLIENTE (04/11/2026, pedido do dono). Sem login:
+     vale o token da obra no link/QR (#t=…). Fala só com a edge man-chamado-publico. -->
+<style>
+:root{--azul:#00296B;--laranja:#FE9400;--fundo:#F3F6FB;--texto:#1E293B;--suave:#64748B;--borda:#DCE3EE;--ok:#15803D;--okf:#DCFCE7;--erro:#B91C1C}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Poppins,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+header{background:var(--azul);color:#fff;padding:14px 16px 16px}
+header .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
+header img{height:30px;width:auto;display:block}
+header .marca-txt{font-weight:700;letter-spacing:.5px}
+header .marca-txt b{color:var(--laranja)}
+header .tit{font-size:13px;opacity:.9;text-align:right}
+.faixa{height:4px;background:var(--laranja)}
+main{max-width:640px;margin:0 auto;padding:16px 16px 40px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:16px;margin-bottom:14px}
+h1{font-size:20px;margin:0 0 4px;color:var(--azul)}
+.sub{color:var(--suave);font-size:14px;margin:0}
+label{display:block;font-size:13px;font-weight:600;color:#334155;margin:14px 0 5px}
+input,select,textarea{width:100%;border:1px solid #C9D1DD;border-radius:10px;padding:11px 12px;font:inherit;font-size:16px;background:#fff}
+textarea{min-height:120px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(0,41,107,.12)}
+.lado{display:grid;grid-template-columns:1fr;gap:0 12px}
+@media (min-width:560px){ .lado{grid-template-columns:1fr 1fr} }
+.isca{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:6px}
+.fotos .p{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#E9EDF3}
+.fotos img{width:100%;height:100%;object-fit:cover;display:block}
+.fotos .x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:28px;cursor:pointer}
+.add{aspect-ratio:1;border:2px dashed #B8C6DD;border-radius:10px;background:#FAFBFE;color:var(--azul);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:15px;font:inherit;font-weight:700;font-size:17px;cursor:pointer;background:var(--laranja);color:#fff;margin-top:18px}
+.btn:disabled{opacity:.6;cursor:wait}
+.erro{color:var(--erro);font-size:14px;margin-top:10px}
+.msg{padding:28px 16px;text-align:center}
+.msg .ico{font-size:44px}
+.dica{font-size:12px;color:var(--suave);margin-top:4px}
+footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><img id="logo" src="../marca/cliente/bm-logo-branco.png" alt="Brandão &amp; Marmo"
+       onerror="if(!this.dataset.t){this.dataset.t=1;this.src='../../portal/marca/cliente/bm-logo-branco.png';}else{this.replaceWith(Object.assign(document.createElement('span'),{className:'marca-txt',innerHTML:'BRANDÃO <b>&amp;</b> MARMO'}));}"/></div>
+  <div class="tit">Assistência técnica</div>
+</div></header>
+<div class="faixa"></div>
+<main id="app"><div class="card msg"><div class="ico">⏳</div><p>Carregando…</p></div></main>
+<footer>Brandão &amp; Marmo Engenharia e Construções</footer>
+<input type="file" id="arq" accept="image/*" multiple hidden/>
+
+<script>
+(function(){
+  /* o publicar.js troca estes dois pela produção */
+  var SB_URL='https://cupdrskggjmhbzdxiume.supabase.co';
+  var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
+  var FUNCAO=SB_URL+'/functions/v1/man-chamado-publico';
+  var TIPOS=['Alvenaria / Estrutura','Cobertura / Telhado','Elétrica','Esquadrias (portas e janelas)','Hidráulica','Impermeabilização','Louças e metais','Marcenaria','Pintura','Pisos e revestimentos','Outros'];
+  var app=document.getElementById('app');
+  var token=(((location.hash||'')+'&'+(location.search||'')).match(/[#&?]t=([0-9a-f]{20,64})/)||[])[1]||'';
+  var t0=Date.now(), fotos=[], enviando=false;
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function chamar(corpo){
+    return fetch(FUNCAO,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY},body:JSON.stringify(corpo)})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,erro:'resposta inválida ('+r.status+')'}; }); });
+  }
+  function mensagem(ico,tit,txt){ app.innerHTML='<div class="card msg"><div class="ico">'+ico+'</div><h1>'+esc(tit)+'</h1><p class="sub">'+txt+'</p></div>'; }
+
+  if(!token){ mensagem('🔗','Link incompleto','Use o link ou o QR code que a Brandão &amp; Marmo entregou para a sua obra.'); return; }
+  chamar({acao:'ver',token:token}).then(function(d){
+    if(!d||!d.ok) return mensagem('⚠️','Link não encontrado',esc((d&&d.erro)||'Não consegui abrir este link.'));
+    tela(d.obra||{});
+  }, function(){ mensagem('📶','Sem conexão','Confira a internet e abra o link de novo.'); });
+
+  function tela(obra){
+    app.innerHTML='<div class="card"><h1>Abrir chamado de assistência</h1>'
+      +'<p class="sub">'+esc(obra.nome||'')+(obra.cliente?' · '+esc(obra.cliente):'')+'</p>'
+      +'<label for="nome">Seu nome *</label><input id="nome" autocomplete="name" maxlength="200">'
+      +'<div class="lado"><div><label for="tel">Telefone / WhatsApp *</label><input id="tel" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" placeholder="(11) 9…"></div>'
+      +'<div><label for="email">E-mail</label><input id="email" type="email" inputmode="email" autocomplete="email" maxlength="200" placeholder="para receber a confirmação"></div></div>'
+      +'<div class="lado"><div><label for="unid">Unidade / local</label><input id="unid" maxlength="80" placeholder="Ex.: apto 32, bloco B, garagem"></div>'
+      +'<div><label for="tipo">Tipo de problema</label><select id="tipo"><option value="">— não sei —</option>'+TIPOS.map(function(t){ return '<option>'+esc(t)+'</option>'; }).join('')+'</select></div></div>'
+      +'<label for="desc">O que está acontecendo? *</label><textarea id="desc" maxlength="4000" placeholder="Descreva o problema, onde fica e desde quando."></textarea>'
+      +'<label>Fotos (até 5)</label><div class="fotos" id="fotos"></div><div class="dica">Fotos ajudam a equipe a chegar preparada.</div>'
+      +'<div class="isca" aria-hidden="true"><label for="site">Site</label><input id="site" tabindex="-1" autocomplete="off"></div>'
+      +'<button class="btn" id="enviar">Enviar chamado</button><div class="erro" id="erro"></div></div>'
+      +'<p class="dica" style="text-align:center">Seus dados são usados só para atender este chamado.</p>';
+    desenharFotos();
+    document.getElementById('enviar').onclick=enviar;
+  }
+  function desenharFotos(){
+    var g=document.getElementById('fotos'); if(!g) return;
+    g.innerHTML=fotos.map(function(f,i){ return '<div class="p"><img src="'+f.url+'" alt=""><button class="x" data-i="'+i+'" aria-label="Tirar">×</button></div>'; }).join('')
+      +(fotos.length<5?'<button class="add" id="add">📷<br>Foto</button>':'');
+    g.querySelectorAll('.x').forEach(function(b){ b.onclick=function(){ fotos.splice(+b.dataset.i,1); desenharFotos(); }; });
+    var a=document.getElementById('add'); if(a) a.onclick=function(){ document.getElementById('arq').click(); };
+  }
+  document.getElementById('arq').onchange=function(){
+    Array.prototype.forEach.call(this.files||[],function(f){ if(/^image\//.test(f.type)&&fotos.length<5) fotos.push({file:f,url:URL.createObjectURL(f)}); });
+    this.value=''; desenharFotos();
+  };
+  function reduzir(f){
+    return new Promise(function(res,rej){
+      var img=new Image(), u=URL.createObjectURL(f);
+      img.onload=function(){ var k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)); var c=document.createElement('canvas');
+        c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(u); res(c.toDataURL('image/jpeg',0.8)); };
+      img.onerror=function(){ URL.revokeObjectURL(u); rej(new Error('foto')); };
+      img.src=u;
+    });
+  }
+  function v(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
+  function enviar(){
+    if(enviando) return;
+    var er=document.getElementById('erro'); er.textContent='';
+    if(v('nome').length<3) return er.textContent='Escreva seu nome.';
+    if(v('tel').replace(/\D/g,'').length<10) return er.textContent='Informe o telefone com DDD.';
+    if(v('desc').length<5) return er.textContent='Descreva o problema.';
+    enviando=true; var b=document.getElementById('enviar'); b.disabled=true; b.textContent='Enviando…';
+    Promise.all(fotos.map(function(f){ return reduzir(f.file).then(function(x){ return {nome:f.file.name,tipo:'image/jpeg',base64:x}; },function(){ return null; }); }))
+      .then(function(lista){ return chamar({acao:'abrir',token:token,nome:v('nome'),telefone:v('tel'),email:v('email'),unidade:v('unid'),
+        categoria:v('tipo'),descricao:v('desc'),fotos:lista.filter(Boolean),hp:v('site'),ms:Date.now()-t0}); })
+      .then(function(d){
+        if(!d||!d.ok){ er.textContent=(d&&d.erro)||'Não consegui enviar. Tente de novo.'; return; }
+        mensagem('✅','Chamado nº '+d.numero+' recebido','Nossa equipe de manutenção vai analisar e entrar em contato para agendar a visita.'+(v('email')?'<br>Enviamos a confirmação para o seu e-mail.':''));
+      }, function(){ er.textContent='Sem conexão. Tente de novo.'; })
+      .then(function(){ enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.disabled=false; b2.textContent='Enviar chamado'; } });
+  }
+})();
+</script>
+</body>
+</html>
