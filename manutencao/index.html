@@ -272,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.04.3';
+var APP_VERSION = '2026.11.05.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -845,10 +845,16 @@ function desenharChamado(c, vis, fotos, evs, links){
   });
   for(; vi < vis.length; vi++) itens.push({ v:vis[vi] });
   var NOMES = { aberto:'Abriu o chamado', editado:'Editou', resolvido:'Resolvido', cancelado:'Cancelou', reaberto:'Reabriu',
-                triado:'Triagem feita', equipe:'Mudou a equipe' };
+                triado:'Triagem feita', equipe:'Mudou a equipe', email:'E-mail' };
   var tempo = itens.map(function(it){
     if(it.v){
       var v = it.v, fv = fotos.filter(function(f){ return f.visita_id === v.id; });
+      /* 05/11: visita nova tem um registro só; as antigas (visto/feito) continuam aparecendo */
+      if(!v.feito && !fv.some(function(f){ return f.momento; })){
+        return '<li class="visita"><div class="qd">Visita em ' + fmtData(v.data) + ' · ' + esc(nomePessoa(v.registrado_por)) + '</div>'
+          + '<div class="tx" style="white-space:pre-wrap">' + esc(v.relato) + '</div>' + htmlFotos(fv, links)
+          + (v.resolveu ? '<div class="selos" style="margin-top:4px"><span class="selo st-resolvido">Resolveu</span></div>' : '') + '</li>';
+      }
       var fvi = fv.filter(function(f){ return f.momento === 'visto'; }), ffe = fv.filter(function(f){ return f.momento === 'feito'; }),
           fou = fv.filter(function(f){ return f.momento !== 'visto' && f.momento !== 'feito'; });
       return '<li class="visita"><div class="qd">Visita em ' + fmtData(v.data) + ' · ' + esc(nomePessoa(v.registrado_por)) + '</div>'
@@ -879,6 +885,7 @@ function desenharChamado(c, vis, fotos, evs, links){
         + (c.cliente_email ? '<br><a href="mailto:' + esc(c.cliente_email) + '">' + esc(c.cliente_email) + '</a>' : '') + '</span></div>' : '')
     + '<div class="det-linha"><b>Responsável</b><span>' + esc(nomePessoa(c.responsavel_id) || '—') + '</span></div>'
     + (eq.length || c.status !== 'novo' ? '<div class="det-linha"><b>Equipe</b><span>' + (eq.length ? eq.map(function(id){ return esc(nomePessoa(id) || '?'); }).join(', ') : '—') + '</span></div>' : '')
+    + ((c.fornecedores || []).length ? '<div class="det-linha"><b>Fornecedores</b><span>' + c.fornecedores.map(esc).join(', ') + '</span></div>' : '')
     + '<div class="det-linha"><b>Prazo</b><span>' + (c.prazo ? fmtData(c.prazo) : '—') + '</span></div>'
     + '<div class="det-linha"><b>Aberto</b><span>' + fmtDataHora(c.aberto_em) + ' · ' + (c.origem === 'cliente' ? 'pelo cliente (formulário)' : esc(nomePessoa(c.aberto_por))) + '</span></div>'
     + (c.motivo && !aberto(c) ? '<div class="det-linha"><b>Motivo</b><span>' + esc(c.motivo) + '</span></div>' : '')
@@ -890,7 +897,7 @@ function desenharChamado(c, vis, fotos, evs, links){
   if(podeEditar) bts.push({ rotulo:'Editar', fn:function(){ formChamado(c); return 'manter'; } });
   if(podeFoto) bts.push({ rotulo:'+ Fotos e arquivos', fn:function(){ formFotos(c); return 'manter'; } });
   bts.unshift({ rotulo:'📄 Relatório', fn:function(){ relatorioCliente(c, vis, fotos, links); return 'manter'; } });
-  if(podeTriar && c.status !== 'novo') bts.push({ rotulo:'Equipe', fn:function(){ formTriagem(c); return 'manter'; } });
+  if(podeTriar && c.status !== 'novo') bts.push({ rotulo:'Equipe e fornecedores', fn:function(){ formTriagem(c); return 'manter'; } });
   if(podeVisita) bts.push({ rotulo:'+ Registrar visita', cls:'btn-laranja', fn:function(){ formVisita(c); return 'manter'; } });
   if(podeTriar && c.status === 'novo') bts.push({ rotulo:'Fazer triagem', cls:'btn-laranja', fn:function(){ formTriagem(c); return 'manter'; } });
   if(!bts.length) bts.push({ rotulo:'Fechar' });
@@ -916,14 +923,19 @@ function formTriagem(c){
         return '<label class="marcar"><input type="checkbox" class="t-eq" value="' + p.id + '"' + (eq.indexOf(p.id) >= 0 ? ' checked' : '') + '> ' + esc(p.nome) + (p.id === EU.id ? ' (eu)' : '') + '</label>'; }).join('')
       : '<span class="dica">Ninguém com a Manutenção liberada.</span>')
     + '</div><div class="dica" style="margin-top:4px">Só aparece quem tem a Manutenção liberada (Cadastros › Permissões).</div></div>'
+    /* 05/11 (0093): fornecedores que ajudam nesta demanda — só o nome */
+    + '<div class="campo"><label class="rot" for="t-forn">Fornecedores que vão ajudar</label>'
+    + '<textarea id="t-forn" maxlength="2400" style="min-height:70px" placeholder="Um por linha. Ex.: Hidráulica Silva">' + esc((c.fornecedores || []).join('\n')) + '</textarea></div>'
     + '<div class="erro-txt" id="t-erro"></div>';
-  abrirModal(c.status === 'novo' ? 'Triagem do chamado #' + c.numero : 'Equipe do chamado #' + c.numero, html, [
+  abrirModal(c.status === 'novo' ? 'Triagem do chamado #' + c.numero : 'Equipe e fornecedores · #' + c.numero, html, [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
     { rotulo:c.status === 'novo' ? 'Confirmar chamado' : 'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
         var resp = $('t-resp').value;
         var equipe = Array.prototype.map.call(document.querySelectorAll('.t-eq:checked'), function(x){ return x.value; });
         if(!resp){ $('t-erro').textContent = 'Escolha o responsável.'; return false; }
-        var r = await M().rpc('triar', { p_id:c.id, p_resp:resp, p_equipe:equipe, p_prazo:$('t-prazo').value || null });
+        var forn = $('t-forn').value.split(/\n|;/).map(function(x){ return x.trim().slice(0, 120); }).filter(Boolean);
+        if(forn.length > 20){ $('t-erro').textContent = 'No máximo 20 fornecedores.'; return false; }
+        var r = await M().rpc('triar', { p_id:c.id, p_resp:resp, p_equipe:equipe, p_prazo:$('t-prazo').value || null, p_fornecedores:forn });
         if(r.error) throw r.error;
         toast(c.status === 'novo' ? 'Chamado confirmado.' : 'Equipe salva.');
         await Promise.all([recarregarChamado(c.id), recarregarEquipe(c.id)]);
@@ -934,8 +946,8 @@ function formTriagem(c){
 }
 
 /* ---------- 📄 RELATÓRIO PARA O CLIENTE (04/11/2026, pedido do dono) ----------
-   Abre numa janela própria, no papel da B&M, e chama a impressão: "Salvar como
-   PDF" e anexar no e-mail. O botão E-mail abre o e-mail com o endereço da obra
+   Abre numa janela própria, no papel da B&M, EDITÁVEL (05/11: não imprime
+   sozinho; ajusta o texto/tira foto e clica em Salvar PDF) e anexa no e-mail. O botão E-mail abre o e-mail com o endereço da obra
    e o texto pronto (o PDF vai anexado à mão — envio direto depende do SMTP).
    Sem dado interno: nem quem abriu nem histórico de edição — só o atendimento. */
 function relatorioCliente(c, vis, fotos, links){
@@ -948,6 +960,12 @@ function relatorioCliente(c, vis, fotos, links){
   var visitas = vis.map(function(v, i){
     var fv = fotos.filter(function(f){ return f.visita_id === v.id; });
     var visto = fv.filter(function(f){ return f.momento !== 'feito'; }), feito = fv.filter(function(f){ return f.momento === 'feito'; });
+    if(!v.feito && !fv.some(function(f){ return f.momento; })){      // 05/11: visita com registro único
+      return '<div class="vis"><h3>Atendimento ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
+        + '<p class="rot">Técnico</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
+        + '<p class="rot">Registro</p><p class="pre">' + esc(v.relato) + '</p>' + img(fv)
+        + (v.resolveu ? '<p class="ok">✓ Problema resolvido nesta visita</p>' : '') + '</div>';
+    }
     return '<div class="vis"><h3>Atendimento ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
       + '<p class="rot">Técnico</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
       + '<p class="rot">O que foi constatado</p><p class="pre">' + esc(v.relato) + '</p>' + img(visto)
@@ -960,7 +978,7 @@ function relatorioCliente(c, vis, fotos, links){
   var assunto = 'Chamado de manutenção nº ' + c.numero + ' — ' + (o.nome || '');
   var corpo = 'Prezado(a),\n\nSegue em anexo o relatório do chamado de manutenção nº ' + c.numero + ' (' + (o.nome || '') + ').\n\nSituação: '
     + String(situacao).replace(/<[^>]*>/g, '') + '.\n\nAtenciosamente,\nBrandão & Marmo Engenharia e Construções';
-  var mailto = 'mailto:' + encodeURIComponent(o.email || '') + '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(corpo);
+  var mailto = 'mailto:' + encodeURIComponent(c.cliente_email || o.email || '') + '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(corpo);
   var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(assunto) + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>'
     + '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Poppins,Arial,sans-serif;color:#0F1B2D;margin:0;padding:24px;font-size:12.5px;background:#fff}'
@@ -974,9 +992,15 @@ function relatorioCliente(c, vis, fotos, links){
     + '.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.fotos img{width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #E3E7ED}'
     + '.ok{color:#1B5E34;font-weight:600;margin-top:6px}.sit{display:inline-block;background:#FFF1DC;color:#8A5000;border-radius:10px;padding:2px 10px;font-weight:600}'
     + '.rod{margin-top:22px;border-top:1px solid #E3E7ED;padding-top:8px;color:#4F5B6D;font-size:10.5px;text-align:center}'
-    + '@media print{.barra{display:none}body{padding:0}}'
+    + '.edita{background:#FFF6E8;border:1px solid #F5D9A8;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px}'
+    + '#doc:focus{outline:none}#doc p:hover,#doc h3:hover,#doc b:hover{background:#FFFBEA}.fotos img{cursor:pointer}'
+    + '@media print{.barra,.edita{display:none}body{padding:0}#doc p:hover,#doc h3:hover,#doc b:hover{background:none}}'
     + '</style></head><body>'
     + '<div class="barra"><a href="' + esc(mailto) + '">✉ E-mail ao cliente</a><button class="pri" onclick="window.print()">⬇ Salvar PDF / Imprimir</button></div>'
+    /* 05/11 (pedido do dono): editar antes de enviar — o texto todo é editável
+       nesta janela (vale só para este PDF; o chamado não muda) */
+    + '<div class="edita">✏️ <b>Dá para ajustar antes de salvar:</b> clique em qualquer texto e escreva. Para tirar uma foto, clique nela. As mudanças valem só para este PDF — o chamado não muda.</div>'
+    + '<div id="doc" contenteditable="true" spellcheck="true">'
     + '<div class="cab"><img src="' + esc(logo) + '" alt="Brandão & Marmo"><div class="t"><b>Relatório de Atendimento</b><span>Chamado de manutenção nº ' + c.numero + ' · emitido em ' + fmtData(hoje()) + '</span></div></div>'
     + '<h2>Obra e cliente</h2><div class="grade">'
     + '<div><p class="rot">Obra</p><p>' + esc(o.nome || '—') + '</p></div><div><p class="rot">Cliente</p><p>' + esc(o.cliente || '—') + '</p></div>'
@@ -988,8 +1012,8 @@ function relatorioCliente(c, vis, fotos, links){
     + '<p class="rot">Descrição</p><p class="pre">' + esc(c.descricao) + '</p>'
     + img(fotos.filter(function(f){ return !f.visita_id; }))
     + '<h2>Atendimentos</h2>' + (visitas || '<p>Ainda sem visita registrada.</p>')
-    + '<div class="rod">Brandão &amp; Marmo Engenharia e Construções · São Paulo</div>'
-    + '<script>window.addEventListener("load",function(){var im=document.images,n=im.length,ok=0;function f(){if(++ok>=n)setTimeout(function(){window.print()},300)}if(!n)return f();for(var i=0;i<n;i++){if(im[i].complete)f();else{im[i].onload=f;im[i].onerror=f}}});<\/script>'
+    + '<div class="rod">Brandão &amp; Marmo Engenharia e Construções · São Paulo</div></div>'
+    + '<script>document.getElementById("doc").addEventListener("click",function(e){var i=e.target;if(i.tagName==="IMG"&&i.closest(".fotos")&&confirm("Tirar esta foto do relatório?")){i.remove();}});<\/script>'
     + '</body></html>';
   var w = window.open('', '_blank');
   if(!w){ toast('O navegador bloqueou a janela do relatório. Libere pop-ups para este site.', 'err'); return; }
@@ -1003,19 +1027,18 @@ function formVisita(c){
   var html =
       '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc((obraDe(c.obra_id) || {}).nome || '') + '</div>'
     + '<div class="campo"><label class="rot" for="v-data">Data da visita</label><input id="v-data" type="date" max="' + hoje() + '" value="' + esc(r['v-data'] || hoje()) + '"></div>'
-    + '<div class="campo"><label class="rot" for="v-relato">O que foi visto? *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" placeholder="Ex.: ralo da laje sem caimento, manta descolada">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + botaoCorrige('v-relato') + '</div>'
-    + '<label class="rot" style="margin-top:8px">Fotos do que foi visto</label>' + gradeFotos('visto') + '</div>'
-    + '<div class="campo"><label class="rot" for="v-feito">O que foi feito</label><div class="com-mic"><textarea id="v-feito" maxlength="2000" placeholder="Ex.: refeita a impermeabilização do ralo">' + esc(r['v-feito'] || '') + '</textarea>' + botaoMic('v-feito') + botaoCorrige('v-feito') + '</div>'
-    + '<label class="rot" style="margin-top:8px">Fotos do que foi feito</label>' + gradeFotos('feito') + '</div>'
+    /* 05/11/2026 (pedido do dono): um campo de registro e um de fotos/arquivos */
+    + '<div class="campo"><label class="rot" for="v-relato">Registro da visita *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" style="min-height:130px" placeholder="O que foi encontrado e o que foi feito. Ex.: ralo da laje sem caimento, manta descolada; refeita a impermeabilização do ralo">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + botaoCorrige('v-relato') + '</div></div>'
+    + '<div class="campo"><label class="rot">Fotos e arquivos</label>' + gradeFotos('') + '</div>'
     + '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>'
     + '<div class="erro-txt" id="v-erro"></div>';
   abrirModal('Registrar visita', html, [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
     { rotulo:'Salvar visita', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
-        var v = lerCampos(['v-data', 'v-relato', 'v-feito', 'v-resolveu']);
-        if(v['v-relato'].trim().length < 3){ $('v-erro').textContent = 'Escreva o que foi visto.'; return false; }
+        var v = lerCampos(['v-data', 'v-relato', 'v-resolveu']);
+        if(v['v-relato'].trim().length < 3){ $('v-erro').textContent = 'Escreva o registro da visita.'; return false; }
         var x = await M().rpc('registrar_visita', { p_chamado:c.id, p_data:v['v-data'] || hoje(), p_relato:v['v-relato'].trim(),
-                                                    p_feito:v['v-feito'].trim(), p_resolveu:!!v['v-resolveu'] });
+                                                    p_feito:'', p_resolveu:!!v['v-resolveu'] });
         if(x.error) throw x.error;
         apagarRasc(k);
         var n = FOTOS.length ? await subirFotos(c.id, x.data) : 0;
@@ -1024,7 +1047,7 @@ function formVisita(c){
         return 'manter';
       } }
   ], function(){ limparFotos(); });
-  vigiarRasc(k, ['v-data', 'v-relato', 'v-feito', 'v-resolveu']);
+  vigiarRasc(k, ['v-data', 'v-relato', 'v-resolveu']);
 }
 
 /* ---------- + FOTOS (no chamado, fora de visita) ---------- */
