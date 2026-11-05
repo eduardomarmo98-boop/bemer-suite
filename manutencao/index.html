@@ -272,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.05.1';
+var APP_VERSION = '2026.11.05.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -976,9 +976,8 @@ function relatorioCliente(c, vis, fotos, links){
     : c.status === 'cancelado' ? 'Encerrado' + (c.motivo ? ': ' + esc(c.motivo) : '')
     : c.status === 'em_atendimento' ? 'Em atendimento' : c.status === 'novo' ? 'Recebido · em análise' : 'Aberto · aguardando visita';
   var assunto = 'Chamado de manutenção nº ' + c.numero + ' — ' + (o.nome || '');
-  var corpo = 'Prezado(a),\n\nSegue em anexo o relatório do chamado de manutenção nº ' + c.numero + ' (' + (o.nome || '') + ').\n\nSituação: '
+  var corpo = 'Prezado(a),\n\nSegue o relatório do chamado de manutenção nº ' + c.numero + ' (' + (o.nome || '') + ').\n\nSituação: '
     + String(situacao).replace(/<[^>]*>/g, '') + '.\n\nAtenciosamente,\nBrandão & Marmo Engenharia e Construções';
-  var mailto = 'mailto:' + encodeURIComponent(c.cliente_email || o.email || '') + '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(corpo);
   var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(assunto) + '</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>'
     + '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Poppins,Arial,sans-serif;color:#0F1B2D;margin:0;padding:24px;font-size:12.5px;background:#fff}'
@@ -994,9 +993,17 @@ function relatorioCliente(c, vis, fotos, links){
     + '.rod{margin-top:22px;border-top:1px solid #E3E7ED;padding-top:8px;color:#4F5B6D;font-size:10.5px;text-align:center}'
     + '.edita{background:#FFF6E8;border:1px solid #F5D9A8;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px}'
     + '#doc:focus{outline:none}#doc p:hover,#doc h3:hover,#doc b:hover{background:#FFFBEA}.fotos img{cursor:pointer}'
-    + '@media print{.barra,.edita{display:none}body{padding:0}#doc p:hover,#doc h3:hover,#doc b:hover{background:none}}'
+    + '.envio{border:1px solid #DCE3EE;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;display:grid;gap:6px}.envio input,.envio textarea{font:inherit;font-size:13px;border:1px solid #C9D1DD;border-radius:6px;padding:6px 8px;width:100%}.envio textarea{min-height:90px}.envio .st{font-weight:600}'
+    + '@media print{.barra,.edita,.envio{display:none}body{padding:0}#doc p:hover,#doc h3:hover,#doc b:hover{background:none}}'
     + '</style></head><body>'
-    + '<div class="barra"><a href="' + esc(mailto) + '">✉ E-mail ao cliente</a><button class="pri" onclick="window.print()">⬇ Salvar PDF / Imprimir</button></div>'
+    + '<div class="barra"><button class="pri" onclick="window.print()">⬇ Salvar PDF / Imprimir</button></div>'
+    /* 05/11: o mailto não funcionava (depende de programa de e-mail no PC) —
+       agora envia pelo sistema (edge man-enviar-relatorio), com as fotos */
+    + '<div class="envio"><b>✉ Enviar ao cliente pelo sistema</b>'
+    + '<label>Para <input id="rel-para" type="email" multiple value="' + esc(c.cliente_email || o.email || '') + '" placeholder="e-mail do cliente (vários: separe por vírgula)"></label>'
+    + '<label>Mensagem <textarea id="rel-msg">' + esc(corpo) + '</textarea></label>'
+    + '<div><button class="pri" id="rel-enviar" onclick="_manEnviar()">Enviar e-mail</button> <span class="st" id="rel-st"></span></div>'
+    + '<div style="color:#4F5B6D">Vai o relatório como está na tela (com as suas mudanças) e as fotos. A resposta do cliente volta para o seu e-mail.</div></div>'
     /* 05/11 (pedido do dono): editar antes de enviar — o texto todo é editável
        nesta janela (vale só para este PDF; o chamado não muda) */
     + '<div class="edita">✏️ <b>Dá para ajustar antes de salvar:</b> clique em qualquer texto e escreva. Para tirar uma foto, clique nela. As mudanças valem só para este PDF — o chamado não muda.</div>'
@@ -1018,6 +1025,29 @@ function relatorioCliente(c, vis, fotos, links){
   var w = window.open('', '_blank');
   if(!w){ toast('O navegador bloqueou a janela do relatório. Libere pop-ups para este site.', 'err'); return; }
   w.document.open(); w.document.write(html); w.document.close();
+  w._manEnviar = function(){ enviarRelatorio(w, c, assunto); };
+}
+async function enviarRelatorio(w, c, assunto){
+  var d = w.document, st = d.getElementById('rel-st'), bt = d.getElementById('rel-enviar');
+  var para = d.getElementById('rel-para').value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+/.test(para)){ st.style.color = '#B71C1C'; st.textContent = 'Informe o e-mail do cliente.'; return; }
+  var doc = d.getElementById('doc').cloneNode(true);
+  /* e-mail não entende grade/CSS moderno: medidas direto nas imagens */
+  Array.prototype.forEach.call(doc.querySelectorAll('.fotos img'), function(i){ i.setAttribute('style', 'width:200px;height:150px;object-fit:cover;border-radius:6px;margin:3px;border:1px solid #E3E7ED'); });
+  Array.prototype.forEach.call(doc.querySelectorAll('.cab img'), function(i){ i.setAttribute('style', 'height:38px'); });
+  var css = ((d.querySelector('style') || {}).textContent || '').split('@media print')[0].replace(/@page\{[^}]*\}/, '').replace(/body\{[^}]*\}/, '');
+  var html = '<div style="font-family:Arial,Helvetica,sans-serif;color:#0F1B2D;font-size:13px;max-width:760px">'
+    + '<p style="white-space:pre-wrap;margin:0 0 14px">' + esc(d.getElementById('rel-msg').value) + '</p><hr style="border:0;border-top:1px solid #E3E7ED;margin:0 0 14px">'
+    + '<style>' + css + '</style>' + doc.innerHTML + '</div>';
+  bt.disabled = true; st.style.color = '#4F5B6D'; st.textContent = 'Enviando…';
+  try {
+    var r = await sb.functions.invoke('man-enviar-relatorio', { body:{ chamado_id:c.id, para:para, html:html, assunto:assunto } });
+    var x = r.data || {};
+    if(r.error || !x.ok) throw new Error(x.erro || (r.error && r.error.message) || 'falhou');
+    st.style.color = '#1B5E34'; st.textContent = '✓ Enviado para ' + x.para.join(', ') + (x.fotos ? ' com ' + x.fotos + ' foto(s)' : '') + '.';
+    toast('Relatório enviado ao cliente.');
+  } catch(e){ st.style.color = '#B71C1C'; st.textContent = 'Não enviou: ' + msgErro(e); }
+  bt.disabled = false;
 }
 
 /* ---------- VISITA ---------- */
