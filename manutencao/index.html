@@ -272,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.05.2';
+var APP_VERSION = '2026.11.05.3';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -282,7 +282,7 @@ function $(id){ return document.getElementById(id); }
 
 var EU = null;                                     // {id, nome}
 var PODE = { ver:false, abrir:false, atender:false, obras:false };
-var D = { obras:[], chamados:[], pessoas:[], equipe:[], config:null, carregadoEm:0 };
+var D = { obras:[], chamados:[], pessoas:[], equipe:[], config:null, colabs:[], carregadoEm:0 };
 var ABA = 'chamados';
 var FILTRO = { status:'abertos', obra:'', busca:'' };
 var REL = { obra:'', de:'', ate:'' };
@@ -609,11 +609,13 @@ async function carregar(){
     M().from('chamados').select('*').order('numero', { ascending:false }),
     M().rpc('pessoas'),
     M().from('equipe').select('*'),
-    M().from('config').select('*').eq('id', 1).maybeSingle()
+    M().from('config').select('*').eq('id', 1).maybeSingle(),
+    M().rpc('colaboradores')
   ]);
   rs.slice(0, 3).forEach(function(r){ if(r.error) throw r.error; });
   D.obras = rs[0].data || []; D.chamados = rs[1].data || []; D.pessoas = rs[2].data || []; D.carregadoEm = Date.now();
   D.equipe = rs[3].error ? [] : (rs[3].data || []); D.config = rs[4].error ? null : rs[4].data;
+  D.colabs = rs[5].error ? [] : (rs[5].data || []);
 }
 async function recarregarEquipe(id){
   var r = await M().from('equipe').select('*').eq('chamado_id', id);
@@ -868,7 +870,7 @@ function desenharChamado(c, vis, fotos, evs, links){
       + '<div class="tx"><b>' + esc(NOMES[e.tipo] || e.tipo) + '</b>' + (e.detalhe ? ': ' + esc(e.detalhe) : '') + '</div></li>';
   }).join('');
   var fotosCh = fotos.filter(function(f){ return !f.visita_id; });
-  var eng = o && (o.eng_nome || o.eng_contato) ? esc(o.eng_nome || '') + (o.eng_contato ? (o.eng_nome ? ' · ' : '') + telLinks(o.eng_contato) : '') : '';
+  var eng = engDe(o);
   var html =
       '<div class="selos" style="margin-bottom:8px">' + seloStatus(c) + '<span class="selo">' + esc(nomeCat(c)) + '</span>' + selosChamado(c, false) + '</div>'
     + (c.status === 'novo' ? '<div class="triagem-aviso"><b>Aguardando triagem.</b> Fale com a Engenharia da obra'
@@ -912,7 +914,7 @@ function formTriagem(c){
   var o = obraDe(c.obra_id) || {}, eq = equipeDe(c);
   var gente = D.pessoas.filter(function(p){ return p.pode_ser_responsavel || eq.indexOf(p.id) >= 0; })
     .sort(function(a, b){ return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
-  var eng = o.eng_nome || o.eng_contato ? esc(o.eng_nome || '') + (o.eng_contato ? (o.eng_nome ? ' · ' : '') + telLinks(o.eng_contato) : '') : '';
+  var eng = engDe(o);
   var html =
       '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc(o.nome || '') + (c.unidade ? ' · ' + esc(c.unidade) : '') + '</div>'
     + '<div class="card" style="padding:8px 12px;margin-bottom:10px"><div class="det-linha"><b>Engenharia</b><span>' + (eng || 'Sem contato cadastrado na obra (aba Obras).') + '</span></div></div>'
@@ -1003,14 +1005,14 @@ function relatorioCliente(c, vis, fotos, links){
     + '<label>Para <input id="rel-para" type="email" multiple value="' + esc(c.cliente_email || o.email || '') + '" placeholder="e-mail do cliente (vários: separe por vírgula)"></label>'
     + '<label>Mensagem <textarea id="rel-msg">' + esc(corpo) + '</textarea></label>'
     + '<div><button class="pri" id="rel-enviar" onclick="_manEnviar()">Enviar e-mail</button> <span class="st" id="rel-st"></span></div>'
-    + '<div style="color:#4F5B6D">Vai o relatório como está na tela (com as suas mudanças) e as fotos. A resposta do cliente volta para o seu e-mail.</div></div>'
+    + '<div style="color:#4F5B6D">A mensagem vai no corpo e o relatório vai em PDF anexo, do jeito que está na tela (com as suas mudanças). A resposta do cliente volta para o seu e-mail.</div></div>'
     /* 05/11 (pedido do dono): editar antes de enviar — o texto todo é editável
        nesta janela (vale só para este PDF; o chamado não muda) */
     + '<div class="edita">✏️ <b>Dá para ajustar antes de salvar:</b> clique em qualquer texto e escreva. Para tirar uma foto, clique nela. As mudanças valem só para este PDF — o chamado não muda.</div>'
     + '<div id="doc" contenteditable="true" spellcheck="true">'
     + '<div class="cab"><img src="' + esc(logo) + '" alt="Brandão & Marmo"><div class="t"><b>Relatório de Atendimento</b><span>Chamado de manutenção nº ' + c.numero + ' · emitido em ' + fmtData(hoje()) + '</span></div></div>'
     + '<h2>Obra e cliente</h2><div class="grade">'
-    + '<div><p class="rot">Obra</p><p>' + esc(o.nome || '—') + '</p></div><div><p class="rot">Cliente</p><p>' + esc(o.cliente || '—') + '</p></div>'
+    + '<div><p class="rot">Obra / cliente</p><p>' + esc(nomeObraCliente(o) || '—') + '</p></div><div><p class="rot">Contato</p><p>' + esc(o.contato || c.solicitante || '—') + '</p></div>'
     + '<div><p class="rot">Endereço</p><p>' + esc([o.endereco, o.cidade].filter(Boolean).join(', ') || '—') + '</p></div>'
     + '<div><p class="rot">Garantia</p><p>' + (fg ? (gar ? 'Dentro da garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : '—') + '</p></div></div>'
     + '<h2>Solicitação</h2><div class="grade">'
@@ -1027,24 +1029,39 @@ function relatorioCliente(c, vis, fotos, links){
   w.document.open(); w.document.write(html); w.document.close();
   w._manEnviar = function(){ enviarRelatorio(w, c, assunto); };
 }
+/* PDF do relatório (html2pdf: html2canvas + jsPDF, cdnjs), carregado na própria janela */
+async function gerarPdfRelatorio(w){
+  var d = w.document;
+  if(!w.html2pdf){
+    await new Promise(function(res, rej){ var s = d.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload = res; s.onerror = function(){ rej(new Error('não carregou o gerador de PDF (internet?)')); }; d.head.appendChild(s); });
+  }
+  var el = d.getElementById('doc');
+  if(d.activeElement && d.activeElement.blur) d.activeElement.blur();
+  el.removeAttribute('contenteditable');
+  try {
+    /* o html2pdf devolve "data:application/pdf;filename=…;base64," — normaliza */
+    return String(await w.html2pdf().set({ margin:[10, 10, 12, 10], image:{ type:'jpeg', quality:0.85 },
+      html2canvas:{ scale:2, useCORS:true, backgroundColor:'#ffffff' }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' },
+      pagebreak:{ mode:['css', 'legacy'], avoid:['.vis', '.fotos img', 'h2', 'h3'] } }).from(el).outputPdf('datauristring'))
+      .replace(/^data:application\/pdf;[^,]*base64,/, 'data:application/pdf;base64,');
+  } finally { el.setAttribute('contenteditable', 'true'); }
+}
 async function enviarRelatorio(w, c, assunto){
   var d = w.document, st = d.getElementById('rel-st'), bt = d.getElementById('rel-enviar');
   var para = d.getElementById('rel-para').value.trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+/.test(para)){ st.style.color = '#B71C1C'; st.textContent = 'Informe o e-mail do cliente.'; return; }
-  var doc = d.getElementById('doc').cloneNode(true);
-  /* e-mail não entende grade/CSS moderno: medidas direto nas imagens */
-  Array.prototype.forEach.call(doc.querySelectorAll('.fotos img'), function(i){ i.setAttribute('style', 'width:200px;height:150px;object-fit:cover;border-radius:6px;margin:3px;border:1px solid #E3E7ED'); });
-  Array.prototype.forEach.call(doc.querySelectorAll('.cab img'), function(i){ i.setAttribute('style', 'height:38px'); });
-  var css = ((d.querySelector('style') || {}).textContent || '').split('@media print')[0].replace(/@page\{[^}]*\}/, '').replace(/body\{[^}]*\}/, '');
-  var html = '<div style="font-family:Arial,Helvetica,sans-serif;color:#0F1B2D;font-size:13px;max-width:760px">'
-    + '<p style="white-space:pre-wrap;margin:0 0 14px">' + esc(d.getElementById('rel-msg').value) + '</p><hr style="border:0;border-top:1px solid #E3E7ED;margin:0 0 14px">'
-    + '<style>' + css + '</style>' + doc.innerHTML + '</div>';
-  bt.disabled = true; st.style.color = '#4F5B6D'; st.textContent = 'Enviando…';
+  bt.disabled = true; st.style.color = '#4F5B6D'; st.textContent = 'Gerando o PDF…';
   try {
-    var r = await sb.functions.invoke('man-enviar-relatorio', { body:{ chamado_id:c.id, para:para, html:html, assunto:assunto } });
+    /* 05/11 (pedido do dono): o relatório vai EM ANEXO, em PDF — gerado aqui,
+       do jeito que está na tela (com as mudanças) */
+    var pdf = await gerarPdfRelatorio(w);
+    st.textContent = 'Enviando…';
+    var r = await sb.functions.invoke('man-enviar-relatorio', { body:{ chamado_id:c.id, para:para, assunto:assunto,
+      mensagem:d.getElementById('rel-msg').value, pdf:pdf, arquivo:'Relatorio-chamado-' + c.numero + '.pdf' } });
     var x = r.data || {};
     if(r.error || !x.ok) throw new Error(x.erro || (r.error && r.error.message) || 'falhou');
-    st.style.color = '#1B5E34'; st.textContent = '✓ Enviado para ' + x.para.join(', ') + (x.fotos ? ' com ' + x.fotos + ' foto(s)' : '') + '.';
+    st.style.color = '#1B5E34'; st.textContent = '✓ Enviado para ' + x.para.join(', ') + ' com o PDF anexo.';
     toast('Relatório enviado ao cliente.');
   } catch(e){ st.style.color = '#B71C1C'; st.textContent = 'Não enviou: ' + msgErro(e); }
   bt.disabled = false;
@@ -1134,16 +1151,45 @@ function telaObras(){
       }).join('')
       : '<div class="vazio">Nenhuma obra cadastrada.' + (PODE.obras ? ' Toque em <b>+ Nova obra</b>.' : '') + '</div>');
 }
+/* 05/11: obra e cliente num campo só — o que estava em "Cliente" vem junto */
+function nomeObraCliente(o){
+  var n = o.nome || '', c = String(o.cliente || '').trim();
+  return c && sem(n).indexOf(sem(c)) < 0 ? n + ' · ' + c : n;
+}
+/* 05/11 (0094): Engenharia do cadastro de pessoas */
+function colabDe(id){ return D.colabs.find(function(p){ return p.id === id; }) || null; }
+function opcoesEng(sel){
+  var g = function(lista){ return lista.map(function(p){ return '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + '>' + esc(p.nome) + (p.cargo ? ' — ' + esc(p.cargo) : '') + '</option>'; }).join(''); };
+  var eng = D.colabs.filter(function(p){ return p.engenharia; }), out = D.colabs.filter(function(p){ return !p.engenharia; });
+  return '<option value="">— escolha —</option>' + (eng.length ? '<optgroup label="Engenharia">' + g(eng) + '</optgroup>' : '')
+    + (out.length ? '<optgroup label="Outros colaboradores">' + g(out) + '</optgroup>' : '');
+}
+function contatoEng(o){
+  var p = o && o.eng_id ? colabDe(o.eng_id) : null;
+  if(p) return [p.whatsapp ? telLinks(p.whatsapp) : '', p.email ? '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>' : ''].filter(Boolean).join(' · ') || 'Sem telefone/e-mail no cadastro da pessoa.';
+  if(o && (o.eng_nome || o.eng_contato)) return 'Digitado antes: ' + esc(o.eng_nome || '') + (o.eng_contato ? ' · ' + esc(o.eng_contato) : '') + ' — escolha a pessoa acima.';
+  return 'O contato (WhatsApp e e-mail) vem do cadastro da pessoa.';
+}
+/* nome + contato para o chamado e a triagem */
+function engDe(o){
+  if(!o) return '';
+  var p = o.eng_id ? colabDe(o.eng_id) : null;
+  if(p) return esc(p.nome) + (p.whatsapp ? ' · ' + telLinks(p.whatsapp) : '') + (p.email ? ' · <a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>' : '');
+  return o.eng_nome || o.eng_contato ? esc(o.eng_nome || '') + (o.eng_contato ? (o.eng_nome ? ' · ' : '') + telLinks(o.eng_contato) : '') : '';
+}
 function formObra(o){
   var so = !PODE.obras, v = o || { garantia_meses:60, ativa:true };
   function cp(id, rot, val, extra){ return '<div class="campo"><label class="rot" for="' + id + '">' + rot + '</label><input id="' + id + '" value="' + esc(val == null ? '' : val) + '"' + (extra || '') + (so ? ' disabled' : '') + '></div>'; }
   var html =
-      cp('o-nome', 'Nome da obra *', v.nome, ' maxlength="200" placeholder="Ex.: Residencial Alfa — Torre B"')
-    + '<div class="lado">' + cp('o-cliente', 'Cliente', v.cliente, ' maxlength="200"') + cp('o-contato', 'Contato no cliente', v.contato, ' maxlength="200" placeholder="Síndico, zelador…"') + '</div>'
-    + '<div class="lado">' + cp('o-tel', 'Telefone', v.telefone, ' type="tel" inputmode="tel" maxlength="40"') + cp('o-email', 'E-mail', v.email, ' type="email" maxlength="200"') + '</div>'
-    + '<div class="lado">' + cp('o-end', 'Endereço', v.endereco, ' maxlength="300"') + cp('o-cidade', 'Cidade', v.cidade, ' maxlength="100"') + '</div>'
+      /* 05/11 (pedido do dono): UM campo para obra/cliente (o "Cliente" antigo entra junto no nome) */
+      cp('o-nome', 'Obra / cliente *', nomeObraCliente(v), ' maxlength="200" placeholder="Ex.: Residencial Alfa — Torre B · Cond. Alfa"')
+    + '<div class="lado">' + cp('o-contato', 'Contato no cliente', v.contato, ' maxlength="200" placeholder="Síndico, zelador…"') + cp('o-tel', 'Telefone', v.telefone, ' type="tel" inputmode="tel" maxlength="40"') + '</div>'
+    + '<div class="lado">' + cp('o-email', 'E-mail do cliente', v.email, ' type="email" maxlength="200"') + cp('o-cidade', 'Cidade', v.cidade, ' maxlength="100"') + '</div>'
+    + cp('o-end', 'Endereço', v.endereco, ' maxlength="300"')
     + '<div class="lado">' + cp('o-entrega', 'Data de entrega', v.entrega, ' type="date"') + cp('o-gar', 'Garantia (meses)', v.garantia_meses, ' type="number" min="0" max="240" inputmode="numeric"') + '</div>'
-    + '<div class="lado">' + cp('o-eng-nome', 'Engenharia responsável', v.eng_nome, ' maxlength="200" placeholder="Engenheiro(a) da obra"') + cp('o-eng-contato', 'Contato da Engenharia', v.eng_contato, ' maxlength="200" placeholder="Telefone ou e-mail"') + '</div>'
+    /* 05/11 (0094): Engenharia escolhida do cadastro de pessoas; o contato vem de lá */
+    + '<div class="campo"><label class="rot" for="o-eng">Engenharia responsável</label><select id="o-eng"' + (so ? ' disabled' : '') + '>' + opcoesEng(v.eng_id) + '</select>'
+    + '<div class="dica" id="o-eng-ct" style="margin-top:4px">' + contatoEng(v) + '</div></div>'
     + '<div class="campo"><label class="rot" for="o-obs">Observações</label><textarea id="o-obs" maxlength="2000" style="min-height:70px"' + (so ? ' disabled' : '') + '>' + esc(v.observacoes || '') + '</textarea></div>'
     + '<div class="dica">A garantia conta a partir da entrega. O chamado mostra sozinho se está dentro ou fora.</div>'
     + (o && o.token ? '<div class="campo" style="margin-top:12px"><label class="rot" for="o-link">Link do cliente — para abrir chamado sem conta</label>'
@@ -1162,11 +1208,12 @@ function formObra(o){
     await carregar(); desenhar(); toast(o.ativa ? 'Obra desativada.' : 'Obra reativada.');
   } });
   if(!so) bts.push({ rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
-    var p = { nome:$('o-nome').value.trim(), cliente:$('o-cliente').value.trim() || null, contato:$('o-contato').value.trim() || null,
+    var p = { nome:$('o-nome').value.trim(), cliente:null, contato:$('o-contato').value.trim() || null,
               telefone:$('o-tel').value.trim() || null, email:$('o-email').value.trim() || null, endereco:$('o-end').value.trim() || null,
               cidade:$('o-cidade').value.trim() || null, entrega:$('o-entrega').value || null,
               garantia_meses:parseInt($('o-gar').value, 10), observacoes:$('o-obs').value.trim() || null,
-              eng_nome:$('o-eng-nome').value.trim() || null, eng_contato:$('o-eng-contato').value.trim() || null };
+              eng_id:$('o-eng').value || null };
+    if(p.eng_id){ p.eng_nome = null; p.eng_contato = null; }      // o digitado antes (0092) dá lugar ao cadastro
     if(p.nome.length < 2){ $('o-erro').textContent = 'Dê um nome à obra.'; return false; }
     if(!(p.garantia_meses >= 0 && p.garantia_meses <= 240)){ $('o-erro').textContent = 'Garantia: de 0 a 240 meses.'; return false; }
     var r = o ? await M().from('obras').update(p).eq('id', o.id) : await M().from('obras').insert(p);
@@ -1174,6 +1221,7 @@ function formObra(o){
     await carregar(); desenhar(); toast('Obra salva.');
   } });
   abrirModal(o ? (so ? o.nome : 'Editar obra') : 'Nova obra', html, bts);
+  $('o-eng').addEventListener('change', function(){ $('o-eng-ct').innerHTML = contatoEng({ eng_id:this.value || null }); });
   if(o && o.token){
     $('o-copiar').addEventListener('click', function(){
       var t = $('o-link').value;
