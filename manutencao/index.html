@@ -272,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.06.1';
+var APP_VERSION = '2026.11.06.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -620,6 +620,14 @@ async function carregar(){
 /* 06/11/2026 (pedido do dono): depois da triagem e a cada atualização, a equipe
    (responsável + equipe + triagem, menos quem fez e nunca o cliente) recebe e-mail.
    Não espera nem trava a tela; o resultado fica no histórico (evento "email"). */
+/* 06/11 (0096): depois de apagar, os arquivos saem do Storage (falha aqui não desfaz nada) */
+async function tirarArquivos(lista){
+  lista = (lista || []).filter(Boolean);
+  for(var i = 0; i < lista.length; i += 100){
+    try { var r = await sb.storage.from('manutencao').remove(lista.slice(i, i + 100)); if(r.error) console.warn('[apagar arquivos]', r.error); }
+    catch(e){ console.warn('[apagar arquivos]', e); }
+  }
+}
 function avisarEquipe(id, evento){
   try { sb.functions.invoke('man-avisar-equipe', { body:{ chamado_id:id, evento:evento } }).then(function(r){ if(r && r.error) console.warn('[aviso equipe]', r.error); }, function(e){ console.warn('[aviso equipe]', e); }); }
   catch(e){ console.warn('[aviso equipe]', e); }
@@ -901,6 +909,15 @@ function desenharChamado(c, vis, fotos, evs, links){
     + '</div>'
     + '<h2 style="font-size:15px;color:var(--azul);margin:14px 0 8px">Histórico</h2><ul class="linha-tempo">' + tempo + '</ul>';
   var bts = [];
+  if(PODE.apagar) bts.push({ rotulo:'🗑 Apagar', cls:'btn-danger', fn:async function(){
+    if(!confirm('APAGAR o chamado #' + c.numero + ' com visitas, fotos, arquivos e histórico?\n\nNão dá para desfazer. (Para só encerrar, use "Cancelar chamado".)')) return false;
+    var r = await M().rpc('apagar_chamado', { p_id:c.id });
+    if(r.error) throw r.error;
+    await tirarArquivos(r.data);
+    D.chamados = D.chamados.filter(function(x){ return x.id !== c.id; });
+    D.equipe = D.equipe.filter(function(e){ return e.chamado_id !== c.id; });
+    desenhar(); toast('Chamado #' + c.numero + ' apagado.');
+  } });
   if(podeEditar) bts.push({ rotulo:'Cancelar chamado', cls:'btn-danger', fn:function(){ formMotivo(c, 'cancelar'); return 'manter'; } });
   if(podeReabrir) bts.push({ rotulo:'Reabrir', fn:function(){ formMotivo(c, 'reabrir'); return 'manter'; } });
   if(podeEditar) bts.push({ rotulo:'Editar', fn:function(){ formChamado(c); return 'manter'; } });
@@ -1236,6 +1253,14 @@ function formObra(o){
     if(r.error) throw r.error;
     await carregar(); desenhar(); toast(o.ativa ? 'Obra desativada.' : 'Obra reativada.');
   } });
+  if(o && PODE.apagar) bts.unshift({ rotulo:'🗑 Apagar obra', cls:'btn-danger', fn:async function(){
+    var n = D.chamados.filter(function(x){ return x.obra_id === o.id; }).length;
+    if(!confirm('APAGAR a obra "' + o.nome + '"' + (n ? ' e os ' + n + ' chamado(s) dela (com visitas, fotos e histórico)' : '') + '?\n\nNão dá para desfazer.')) return false;
+    var r = await M().rpc('apagar_obra', { p_id:o.id });
+    if(r.error) throw r.error;
+    await tirarArquivos(r.data);
+    await carregar(); desenhar(); toast('Obra apagada' + (n ? ' com ' + n + ' chamado(s)' : '') + '.');
+  } });
   if(!so) bts.push({ rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
     var p = { nome:$('o-nome').value.trim(), cliente:null, contato:$('o-contato').value.trim() || null,
               telefone:$('o-tel').value.trim() || null, email:$('o-email').value.trim() || null, endereco:$('o-end').value.trim() || null,
@@ -1390,6 +1415,8 @@ async function iniciar(){
       throw a.error;
     }
     PODE = { ver:!!a.data.ver, abrir:!!a.data.abrir, atender:!!a.data.atender, obras:!!a.data.obras };
+    /* 06/11 (0096): a Diretoria (ou admin do sistema) apaga obra e chamado */
+    try { var pa = await M().rpc('_pode_apagar'); PODE.apagar = !pa.error && pa.data === true; } catch(e){ PODE.apagar = false; }
     if(!PODE.ver){
       semAcesso('Sem acesso à Manutenção', 'A Manutenção é liberada por perfil (Cadastros › Permissões). Se você precisa dela, peça à diretoria.');
       return;
