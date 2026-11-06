@@ -272,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.05.3';
+var APP_VERSION = '2026.11.06.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -617,6 +617,13 @@ async function carregar(){
   D.equipe = rs[3].error ? [] : (rs[3].data || []); D.config = rs[4].error ? null : rs[4].data;
   D.colabs = rs[5].error ? [] : (rs[5].data || []);
 }
+/* 06/11/2026 (pedido do dono): depois da triagem e a cada atualização, a equipe
+   (responsável + equipe + triagem, menos quem fez e nunca o cliente) recebe e-mail.
+   Não espera nem trava a tela; o resultado fica no histórico (evento "email"). */
+function avisarEquipe(id, evento){
+  try { sb.functions.invoke('man-avisar-equipe', { body:{ chamado_id:id, evento:evento } }).then(function(r){ if(r && r.error) console.warn('[aviso equipe]', r.error); }, function(e){ console.warn('[aviso equipe]', e); }); }
+  catch(e){ console.warn('[aviso equipe]', e); }
+}
 async function recarregarEquipe(id){
   var r = await M().from('equipe').select('*').eq('chamado_id', id);
   if(r.error) return;
@@ -937,9 +944,11 @@ function formTriagem(c){
         if(!resp){ $('t-erro').textContent = 'Escolha o responsável.'; return false; }
         var forn = $('t-forn').value.split(/\n|;/).map(function(x){ return x.trim().slice(0, 120); }).filter(Boolean);
         if(forn.length > 20){ $('t-erro').textContent = 'No máximo 20 fornecedores.'; return false; }
+        var eraNovo = c.status === 'novo';
         var r = await M().rpc('triar', { p_id:c.id, p_resp:resp, p_equipe:equipe, p_prazo:$('t-prazo').value || null, p_fornecedores:forn });
         if(r.error) throw r.error;
-        toast(c.status === 'novo' ? 'Chamado confirmado.' : 'Equipe salva.');
+        toast(eraNovo ? 'Chamado confirmado.' : 'Equipe salva.');
+        avisarEquipe(c.id, eraNovo ? 'triagem' : 'equipe');
         await Promise.all([recarregarChamado(c.id), recarregarEquipe(c.id)]);
         desenhar(); abrirChamado(c.id);
         return 'manter';
@@ -1041,8 +1050,8 @@ async function gerarPdfRelatorio(w){
   el.removeAttribute('contenteditable');
   try {
     /* o html2pdf devolve "data:application/pdf;filename=…;base64," — normaliza */
-    return String(await w.html2pdf().set({ margin:[10, 10, 12, 10], image:{ type:'jpeg', quality:0.85 },
-      html2canvas:{ scale:2, useCORS:true, backgroundColor:'#ffffff' }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' },
+    return String(await w.html2pdf().set({ margin:[10, 10, 12, 10], image:{ type:'jpeg', quality:0.8 },
+      html2canvas:{ scale:1.6, useCORS:true, backgroundColor:'#ffffff' }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' },
       pagebreak:{ mode:['css', 'legacy'], avoid:['.vis', '.fotos img', 'h2', 'h3'] } }).from(el).outputPdf('datauristring'))
       .replace(/^data:application\/pdf;[^,]*base64,/, 'data:application/pdf;base64,');
   } finally { el.setAttribute('contenteditable', 'true'); }
@@ -1056,11 +1065,29 @@ async function enviarRelatorio(w, c, assunto){
     /* 05/11 (pedido do dono): o relatório vai EM ANEXO, em PDF — gerado aqui,
        do jeito que está na tela (com as mudanças) */
     var pdf = await gerarPdfRelatorio(w);
+    /* 06/11 ("envio ao cliente está falhando"): o PDF com fotos ia dentro do
+       pedido e podia passar do limite. Agora fica GUARDADO no chamado (anexo
+       "Relatório enviado ao cliente …") e o servidor anexa de lá. Sem permissão
+       de anexar, vai como antes (dentro do pedido). */
+    st.textContent = 'Guardando o PDF no chamado…';
+    var corpo = { chamado_id:c.id, para:para, assunto:assunto, mensagem:d.getElementById('rel-msg').value,
+                  arquivo:'Relatorio-chamado-' + c.numero + '.pdf' };
+    try {
+      var bin = atob(pdf.split(',')[1]), u8 = new Uint8Array(bin.length);
+      for(var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      var caminho = c.id + '/' + uuid() + '.pdf';
+      var up = await sb.storage.from('manutencao').upload(caminho, new Blob([u8], { type:'application/pdf' }), { contentType:'application/pdf', upsert:false });
+      if(up.error) throw up.error;
+      var ins = await M().from('fotos').insert({ chamado_id:c.id, caminho:caminho, enviado_por:EU.id,
+        nome:'Relatório enviado ao cliente ' + fmtData(hoje()).replace(/\//g, '-') + '.pdf' });
+      if(ins.error) console.warn('[relatório] sem a linha do anexo', ins.error);
+      corpo.caminho = caminho;
+    } catch(eUp){ console.warn('[relatório] não guardou no chamado, vai no pedido', eUp); corpo.pdf = pdf; }
     st.textContent = 'Enviando…';
-    var r = await sb.functions.invoke('man-enviar-relatorio', { body:{ chamado_id:c.id, para:para, assunto:assunto,
-      mensagem:d.getElementById('rel-msg').value, pdf:pdf, arquivo:'Relatorio-chamado-' + c.numero + '.pdf' } });
+    var r = await sb.functions.invoke('man-enviar-relatorio', { body:corpo });
     var x = r.data || {};
-    if(r.error || !x.ok) throw new Error(x.erro || (r.error && r.error.message) || 'falhou');
+    if(r.error && !r.data && r.error.context && typeof r.error.context.json === 'function'){ try { x = await r.error.context.json(); } catch(e2){} }
+    if(!x.ok) throw new Error(x.erro || (r.error && r.error.message) || 'falhou');
     st.style.color = '#1B5E34'; st.textContent = '✓ Enviado para ' + x.para.join(', ') + ' com o PDF anexo.';
     toast('Relatório enviado ao cliente.');
   } catch(e){ st.style.color = '#B71C1C'; st.textContent = 'Não enviou: ' + msgErro(e); }
@@ -1090,6 +1117,7 @@ function formVisita(c){
         apagarRasc(k);
         var n = FOTOS.length ? await subirFotos(c.id, x.data) : 0;
         toast(v['v-resolveu'] ? 'Visita salva e chamado resolvido.' : 'Visita salva' + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
+        avisarEquipe(c.id, v['v-resolveu'] ? 'resolvido' : 'visita');
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
@@ -1124,6 +1152,7 @@ function formMotivo(c, acao){
         var r = await M().rpc(canc ? 'cancelar_chamado' : 'reabrir_chamado', { p_id:c.id, p_motivo:m });
         if(r.error) throw r.error;
         toast(canc ? 'Chamado cancelado.' : 'Chamado reaberto.');
+        avisarEquipe(c.id, canc ? 'cancelado' : 'reaberto');
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }

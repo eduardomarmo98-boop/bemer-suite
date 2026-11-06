@@ -39,6 +39,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
 .fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:6px}
 .fotos .p{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#E9EDF3}
 .fotos img{width:100%;height:100%;object-fit:cover;display:block}
+.fotos .doc{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;font-size:26px;text-align:center}
+.fotos .doc span{font-size:11px;line-height:1.2;word-break:break-all;max-height:3.6em;overflow:hidden}
 .fotos .x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:28px;cursor:pointer}
 .add{aspect-ratio:1;border:2px dashed #B8C6DD;border-radius:10px;background:#FAFBFE;color:var(--azul);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .btn{display:block;width:100%;border:0;border-radius:12px;padding:15px;font:inherit;font-weight:700;font-size:17px;cursor:pointer;background:var(--laranja);color:#fff;margin-top:18px}
@@ -60,6 +62,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
 <main id="app"><div class="card msg"><div class="ico">⏳</div><p>Carregando…</p></div></main>
 <footer>Brandão &amp; Marmo Engenharia e Construções</footer>
 <input type="file" id="arq" accept="image/*" multiple hidden/>
+<input type="file" id="arq-doc" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf" multiple hidden/>
 
 <script>
 (function(){
@@ -94,7 +97,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
       +'<div class="lado"><div><label for="unid">Unidade / local</label><input id="unid" maxlength="80" placeholder="Ex.: apto 32, bloco B, garagem"></div>'
       +'<div><label for="tipo">Tipo de problema</label><select id="tipo"><option value="">— não sei —</option>'+TIPOS.map(function(t){ return '<option>'+esc(t)+'</option>'; }).join('')+'</select></div></div>'
       +'<label for="desc">O que está acontecendo? *</label><textarea id="desc" maxlength="4000" placeholder="Descreva o problema, onde fica e desde quando."></textarea>'
-      +'<label>Fotos (até 5)</label><div class="fotos" id="fotos"></div><div class="dica">Fotos ajudam a equipe a chegar preparada.</div>'
+      +'<label>Fotos e arquivos (até 5)</label><div class="fotos" id="fotos"></div><div class="dica">Fotos ajudam a equipe a chegar preparada. Arquivo: PDF, Word, Excel ou texto, até 10 MB.</div>'
       +'<div class="isca" aria-hidden="true"><label for="site">Site</label><input id="site" tabindex="-1" autocomplete="off"></div>'
       +'<button class="btn" id="enviar">Enviar chamado</button><div class="erro" id="erro"></div></div>'
       +'<p class="dica" style="text-align:center">Seus dados são usados só para atender este chamado.</p>';
@@ -103,26 +106,56 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
   }
   function desenharFotos(){
     var g=document.getElementById('fotos'); if(!g) return;
-    g.innerHTML=fotos.map(function(f,i){ return '<div class="p"><img src="'+f.url+'" alt=""><button class="x" data-i="'+i+'" aria-label="Tirar">×</button></div>'; }).join('')
-      +(fotos.length<5?'<button class="add" id="add">📷<br>Foto</button>':'');
+    g.innerHTML=fotos.map(function(f,i){ return '<div class="p">'+(f.img?'<img src="'+f.url+'" alt="">'
+        :'<div class="doc">📄<span>'+esc(f.file.name)+'</span></div>')+'<button class="x" data-i="'+i+'" aria-label="Tirar">×</button></div>'; }).join('')
+      +(fotos.length<5?'<button class="add" id="add">📷<br>Foto</button><button class="add" id="add-doc">📎<br>Arquivo</button>':'');
     g.querySelectorAll('.x').forEach(function(b){ b.onclick=function(){ fotos.splice(+b.dataset.i,1); desenharFotos(); }; });
     var a=document.getElementById('add'); if(a) a.onclick=function(){ document.getElementById('arq').click(); };
+    var ad=document.getElementById('add-doc'); if(ad) ad.onclick=function(){ document.getElementById('arq-doc').click(); };
   }
-  document.getElementById('arq').onchange=function(){
-    Array.prototype.forEach.call(this.files||[],function(f){ if(/^image\//.test(f.type)&&fotos.length<5) fotos.push({file:f,url:URL.createObjectURL(f)}); });
-    this.value=''; desenharFotos();
-  };
+  /* 06/11/2026 (pedido do dono): além de foto, ARQUIVO (PDF, Word, Excel, texto) */
+  var EXTS={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',txt:'text/plain'};
+  function extDe(n){ var m=/\.([a-z0-9]+)$/i.exec(n||''); return m?m[1].toLowerCase():''; }
+  function escolheu(lista){
+    var recusou='';
+    Array.prototype.forEach.call(lista||[],function(f){
+      if(fotos.length>=5) return;
+      if(/^image\//.test(f.type)) fotos.push({file:f,url:URL.createObjectURL(f),img:true});
+      else if(EXTS[extDe(f.name)] && f.size<=10*1024*1024) fotos.push({file:f,img:false});
+      else recusou=f.name;
+    });
+    desenharFotos();
+    if(recusou){ var er=document.getElementById('erro'); if(er) er.textContent='"'+recusou+'" não foi: use PDF, Word, Excel ou texto, até 10 MB.'; }
+  }
+  document.getElementById('arq').onchange=function(){ escolheu(this.files); this.value=''; };
+  document.getElementById('arq-doc').onchange=function(){ escolheu(this.files); this.value=''; };
   function reduzir(f){
     return new Promise(function(res,rej){
       var img=new Image(), u=URL.createObjectURL(f);
       img.onload=function(){ var k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)); var c=document.createElement('canvas');
         c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-        URL.revokeObjectURL(u); res(c.toDataURL('image/jpeg',0.8)); };
+        URL.revokeObjectURL(u); c.toBlob(function(bl){ bl?res(bl):rej(new Error('foto')); },'image/jpeg',0.8); };
       img.onerror=function(){ URL.revokeObjectURL(u); rej(new Error('foto')); };
       img.src=u;
     });
   }
   function v(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
+  /* sobe cada anexo no link de envio e registra no chamado; devolve quantos falharam */
+  function subirAnexos(d, prontos){
+    var envios=d.envios||[], ok=[];
+    if(!prontos.length) return Promise.resolve(0);
+    return envios.reduce(function(p, e){
+      return p.then(function(){
+        var a=prontos[e.i]; if(!a) return;
+        return fetch(SB_URL+'/storage/v1/object/upload/sign/manutencao/'+e.path+'?token='+encodeURIComponent(e.token),
+          {method:'PUT',headers:{apikey:SB_KEY,'Content-Type':e.tipo,'x-upsert':'false'},body:a.blob})
+          .then(function(r){ if(r.ok) ok.push({path:e.path,nome:a.nome}); },function(){});
+      });
+    }, Promise.resolve())
+    .then(function(){ return ok.length ? chamar({acao:'anexos',token:token,chamado_id:d.chamado_id,itens:ok}) : null; })
+    .then(function(r){ return prontos.length-((r&&r.ok)?r.anexos:0); },function(){ return prontos.length; });
+  }
   function enviar(){
     if(enviando) return;
     var er=document.getElementById('erro'); er.textContent='';
@@ -130,12 +163,25 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     if(v('tel').replace(/\D/g,'').length<10) return er.textContent='Informe o telefone com DDD.';
     if(v('desc').length<5) return er.textContent='Descreva o problema.';
     enviando=true; var b=document.getElementById('enviar'); b.disabled=true; b.textContent='Enviando…';
-    Promise.all(fotos.map(function(f){ return reduzir(f.file).then(function(x){ return {nome:f.file.name,tipo:'image/jpeg',base64:x}; },function(){ return null; }); }))
-      .then(function(lista){ return chamar({acao:'abrir',token:token,nome:v('nome'),telefone:v('tel'),email:v('email'),unidade:v('unid'),
-        categoria:v('tipo'),descricao:v('desc'),fotos:lista.filter(Boolean),hp:v('site'),ms:Date.now()-t0}); })
+    var comEmail=!!v('email'), prontos=[];
+    /* 06/11: foto reduzida no aparelho; arquivo vai como está. Cada um sobe DIRETO no
+       armazenamento pelo link de envio que o servidor devolve (sem limite de tamanho no pedido). */
+    Promise.all(fotos.map(function(f){
+        if(!f.img) return Promise.resolve({blob:f.file,ext:extDe(f.file.name),nome:f.file.name});
+        return reduzir(f.file).then(function(bl){ return {blob:bl,ext:'jpg',nome:f.file.name}; },function(){ return null; });
+      }))
+      .then(function(lista){ prontos=lista.filter(Boolean);
+        return chamar({acao:'abrir',token:token,nome:v('nome'),telefone:v('tel'),email:v('email'),unidade:v('unid'),
+          categoria:v('tipo'),descricao:v('desc'),anexos:prontos.map(function(a){ return {ext:a.ext,nome:a.nome,tamanho:a.blob.size}; }),
+          hp:v('site'),ms:Date.now()-t0}); })
       .then(function(d){
         if(!d||!d.ok){ er.textContent=(d&&d.erro)||'Não consegui enviar. Tente de novo.'; return; }
-        mensagem('✅','Chamado nº '+d.numero+' recebido','Nossa equipe de manutenção vai analisar e entrar em contato para agendar a visita.'+(v('email')?'<br>Enviamos a confirmação para o seu e-mail.':''));
+        b.textContent='Enviando anexos…';
+        return subirAnexos(d, prontos).then(function(falhou){
+          mensagem('✅','Chamado nº '+d.numero+' recebido','Nossa equipe de manutenção vai analisar e entrar em contato para agendar a visita.'
+            +(comEmail?'<br>Enviamos a confirmação para o seu e-mail.':'')
+            +(falhou?'<br><b>'+falhou+' anexo(s) não chegaram</b> — se precisar, mande quando a equipe entrar em contato.':''));
+        });
       }, function(){ er.textContent='Sem conexão. Tente de novo.'; })
       .then(function(){ enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.disabled=false; b2.textContent='Enviar chamado'; } });
   }
