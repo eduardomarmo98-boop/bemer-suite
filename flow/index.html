@@ -933,7 +933,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.04.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.06.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -954,7 +954,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.04.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.06.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -971,7 +971,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.04.2</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.06.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1096,7 +1096,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.04.2';
+var APP_VERSAO = '2026.11.06.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1996,7 +1996,9 @@ var ST_F = '';                   // 15/10/2026: '' todos · 'aberto' · 'atrasad
 var STATUS_F = [['', 'Todos', ''], ['aberto', 'Em aberto', 'com prazo, ainda não venceu'],
                 ['atrasada', 'Atrasadas', 'o prazo já passou'], ['sem_prazo', 'Sem prazo', 'ninguém assumiu prazo ainda']];
 function nomeStatusFiltro(){ return (STATUS_F.filter(function(o){ return o[0] === ST_F; })[0] || STATUS_F[0])[1]; }
-var PES_F = '';                  // 03/11/2026: '' todas · id de quem está com a pendência (responsável)
+var PES_F = '';                  // 03/11/2026: '' todas · id da pessoa (06/11: tudo em que ela está envolvida)
+/* 06/11/2026 (pedido do dono): filtrar a pessoa mostra TUDO dela — com ela, aberta por ela e que ela acompanha */
+function envolve(p, id){ return mesmoId(p.responsavel_id, id) || mesmoId(p.criado_por, id) || (p.envolvidos||[]).some(function(x){ return mesmoId(x, id); }); }
 function nomePessoaFiltro(){ var c = PES_F && pessoa(PES_F); return c ? nomeCurto(c.nome) : 'Todas'; }
 var RECOLHIDO_ABERTO = {};
 var DOZE_HORAS = 12*3600*1000;
@@ -2055,8 +2057,8 @@ function porObra(l){
   else if(CAT_F) l = l.filter(function(p){ return normalizar(p.categoria||'') === normalizar(CAT_F); });
   /* 15/10/2026: e pelo status (pedido do dono). Vale para as abertas; Resolvidas segue com as dela */
   if(ST_F) l = l.filter(passaStatus);
-  /* 03/11/2026 (pedido do dono): e por pessoa — com quem a pendência está (responsável) */
-  if(PES_F) l = l.filter(function(p){ return mesmoId(p.responsavel_id, PES_F); });
+  /* 03/11/2026 (pedido do dono): e por pessoa — 06/11: com ela, aberta por ela ou que ela acompanha */
+  if(PES_F) l = l.filter(function(p){ return envolve(p, PES_F); });
   return l;
 }
 function passaStatus(p){
@@ -2085,7 +2087,11 @@ function escolherStatus(){
    contagem), para a lista não virar o cadastro inteiro. Com muita gente, campo de busca. */
 function escolherPessoa(){
   var n = {};
-  visiveis().forEach(function(p){ if(aberta(p) && !arquivada(p) && p.responsavel_id) n[p.responsavel_id] = (n[p.responsavel_id]||0) + 1; });
+  visiveis().forEach(function(p){
+    if(!aberta(p) || arquivada(p)) return;
+    var ids = {}; [p.responsavel_id, p.criado_por].concat(p.envolvidos||[]).forEach(function(x){ if(x) ids[String(x)] = 1; });
+    Object.keys(ids).forEach(function(id){ n[id] = (n[id]||0) + 1; });
+  });
   if(PES_F && !n[PES_F]) n[PES_F] = 0;
   var gente = Object.keys(n).map(function(id){ var c = pessoa(id); return c ? [String(c.id), c.nome, n[id]] : null; })
     .filter(Boolean).sort(function(a, b){ return a[1].localeCompare(b[1], 'pt-BR'); });
@@ -2093,7 +2099,7 @@ function escolherPessoa(){
     return '<button type="button" data-filtro="'+esc(o[0])+'" data-nome="'+esc(normalizar(o[1]))+'"'+(on?' style="font-weight:700;color:var(--azul)"':'')+'>'+esc(o[1])+
       (o[2] != null ? ' <small style="font-weight:400;color:var(--tinta2)">· '+o[2]+' aberta'+(o[2]===1?'':'s')+'</small>' : '')+(on?' ✓':'')+'</button>'; };
   var f = folha('Filtrar por pessoa',
-    '<div class="dica" style="margin:0 0 8px">Mostra as pendências que estão <b>com</b> a pessoa (responsável).</div>'+
+    '<div class="dica" style="margin:0 0 8px">Mostra <b>tudo</b> em que a pessoa está: com ela, abertas por ela e as que ela acompanha.</div>'+
     (gente.length > 10 ? '<input type="search" id="pes-busca" placeholder="Buscar pessoa" style="width:100%;font-size:16px;padding:9px 12px;border-radius:10px;margin-bottom:8px">' : '')+
     '<div class="det-menu" style="position:static;box-shadow:none;padding:0;animation:none">'+
     botao(['', 'Todas as pessoas', null])+gente.map(botao).join('')+'</div>');
@@ -4047,8 +4053,8 @@ var Detalhe = {
       '<label>O que impediu</label>'+
       '<div class="fichas">'+CAUSAS_COMUNS.map(function(k){
         return '<button type="button" class="ficha" data-causa-d="'+k+'">'+esc(CAUSAS[k].split(' — ')[0])+'</button>'; }).join('')+'</div>'+
-      /* a lista só tem o que não está nas fichas */
-      '<input type="hidden" id="d-causa"><select id="d-causa-outro" style="margin-top:8px"><option value="">Outro motivo…</option>'+
+      /* a lista só tem o que não está nas fichas; 06/11 (dono): o texto da caixa não é opção da lista */
+      '<input type="hidden" id="d-causa"><select id="d-causa-outro" style="margin-top:8px"><option value="" disabled selected hidden>Outros motivos…</option>'+
       Object.keys(CAUSAS).filter(function(k){ return CAUSAS_COMUNS.indexOf(k) < 0; })
         .map(function(k){ return '<option value="'+k+'">'+esc(CAUSAS[k])+'</option>'; }).join('')+
       '</select><label for="d-motivo">O que aconteceu</label>'+
