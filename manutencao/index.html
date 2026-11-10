@@ -272,7 +272,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.06.2';
+var APP_VERSION = '2026.11.10.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -1038,7 +1038,7 @@ function relatorioCliente(c, vis, fotos, links){
     + '<div id="doc" contenteditable="true" spellcheck="true">'
     + '<div class="cab"><img src="' + esc(logo) + '" alt="Brandão & Marmo"><div class="t"><b>Relatório de Atendimento</b><span>Chamado de manutenção nº ' + c.numero + ' · emitido em ' + fmtData(hoje()) + '</span></div></div>'
     + '<h2>Obra e cliente</h2><div class="grade">'
-    + '<div><p class="rot">Obra / cliente</p><p>' + esc(nomeObraCliente(o) || '—') + '</p></div><div><p class="rot">Contato</p><p>' + esc(o.contato || c.solicitante || '—') + '</p></div>'
+    + '<div><p class="rot">Obra / cliente</p><p>' + esc(nomeObraCliente(o) || '—') + '</p></div><div><p class="rot">Contato</p><p>' + (o.contato ? esc(o.contato) + (o.contato_cargo ? ' · ' + esc(o.contato_cargo) : '') : esc(c.solicitante || '—')) + '</p></div>'
     + '<div><p class="rot">Endereço</p><p>' + esc([o.endereco, o.cidade].filter(Boolean).join(', ') || '—') + '</p></div>'
     + '<div><p class="rot">Garantia</p><p>' + (fg ? (gar ? 'Dentro da garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : '—') + '</p></div></div>'
     + '<h2>Solicitação</h2><div class="grade">'
@@ -1066,10 +1066,14 @@ async function gerarPdfRelatorio(w){
   if(d.activeElement && d.activeElement.blur) d.activeElement.blur();
   el.removeAttribute('contenteditable');
   try {
-    /* o html2pdf devolve "data:application/pdf;filename=…;base64," — normaliza */
-    return String(await w.html2pdf().set({ margin:[10, 10, 12, 10], image:{ type:'jpeg', quality:0.8 },
+    /* 10/11 ("Não enviou: Invalid margin array"): o html2pdf roda na JANELA DO
+       RELATÓRIO e confere `margin.constructor === Array` — a lista criada aqui
+       (outra janela) tem outro `Array` e era recusada. As opções nascem lá. */
+    var opc = w.JSON.parse(JSON.stringify({ margin:[10, 10, 12, 10], image:{ type:'jpeg', quality:0.8 },
       html2canvas:{ scale:1.6, useCORS:true, backgroundColor:'#ffffff' }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' },
-      pagebreak:{ mode:['css', 'legacy'], avoid:['.vis', '.fotos img', 'h2', 'h3'] } }).from(el).outputPdf('datauristring'))
+      pagebreak:{ mode:['css', 'legacy'], avoid:['.vis', '.fotos img', 'h2', 'h3'] } }));
+    /* o html2pdf devolve "data:application/pdf;filename=…;base64," — normaliza */
+    return String(await w.html2pdf().set(opc).from(el).outputPdf('datauristring'))
       .replace(/^data:application\/pdf;[^,]*base64,/, 'data:application/pdf;base64,');
   } finally { el.setAttribute('contenteditable', 'true'); }
 }
@@ -1229,7 +1233,9 @@ function formObra(o){
   var html =
       /* 05/11 (pedido do dono): UM campo para obra/cliente (o "Cliente" antigo entra junto no nome) */
       cp('o-nome', 'Obra / cliente *', nomeObraCliente(v), ' maxlength="200" placeholder="Ex.: Residencial Alfa — Torre B · Cond. Alfa"')
-    + '<div class="lado">' + cp('o-contato', 'Contato no cliente', v.contato, ' maxlength="200" placeholder="Síndico, zelador…"') + cp('o-tel', 'Telefone', v.telefone, ' type="tel" inputmode="tel" maxlength="40"') + '</div>'
+    /* 10/11 (pedido do dono): o contato é o NOME da pessoa; o cargo vai à parte (0100) */
+    + '<div class="lado">' + cp('o-contato', 'Contato no cliente (nome)', v.contato, ' maxlength="200" placeholder="Ex.: João da Silva"') + cp('o-cargo', 'Cargo do contato', v.contato_cargo, ' maxlength="80" placeholder="Síndico, zelador, gerente…"') + '</div>'
+    + '<div class="lado">' + cp('o-tel', 'Telefone', v.telefone, ' type="tel" inputmode="tel" maxlength="40"') + '<div></div></div>'
     + '<div class="lado">' + cp('o-email', 'E-mail do cliente', v.email, ' type="email" maxlength="200"') + cp('o-cidade', 'Cidade', v.cidade, ' maxlength="100"') + '</div>'
     + cp('o-end', 'Endereço', v.endereco, ' maxlength="300"')
     + '<div class="lado">' + cp('o-entrega', 'Data de entrega', v.entrega, ' type="date"') + cp('o-gar', 'Garantia (meses)', v.garantia_meses, ' type="number" min="0" max="240" inputmode="numeric"') + '</div>'
@@ -1263,6 +1269,7 @@ function formObra(o){
   } });
   if(!so) bts.push({ rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
     var p = { nome:$('o-nome').value.trim(), cliente:null, contato:$('o-contato').value.trim() || null,
+              contato_cargo:$('o-cargo').value.trim() || null,
               telefone:$('o-tel').value.trim() || null, email:$('o-email').value.trim() || null, endereco:$('o-end').value.trim() || null,
               cidade:$('o-cidade').value.trim() || null, entrega:$('o-entrega').value || null,
               garantia_meses:parseInt($('o-gar').value, 10), observacoes:$('o-obs').value.trim() || null,
