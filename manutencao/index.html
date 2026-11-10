@@ -129,7 +129,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
 .ch{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--borda);border-left:4px solid var(--borda-forte);
   border-radius:12px;padding:11px 12px;box-shadow:var(--shadow)}
 .ch.st-aberto{border-left-color:var(--laranja)} .ch.st-em_atendimento{border-left-color:var(--azul)}
-.ch.st-resolvido{border-left-color:#2E7D32} .ch.st-cancelado{border-left-color:#9AA3AF}
+.ch.st-resolvido{border-left-color:#2E7D32} .ch.st-cancelado{border-left-color:#9AA3AF} .ch.st-recusado{border-left-color:#B45309}
+.caixa-email{border:1px solid var(--borda);border-radius:10px;padding:6px 12px 2px;margin-top:10px;background:#F7F9FC}
 .ch.st-novo{border-left-color:#C62828}
 .selo.st-novo{background:#FDE7E7;color:#B71C1C}
 .selo.cliente{background:#FFF1DC;color:#8A5000}
@@ -148,7 +149,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
 .selo.st-aberto{background:var(--laranja-claro);color:var(--laranja-txt)}
 .selo.st-em_atendimento{background:#E3ECFA;color:var(--azul)}
 .selo.st-resolvido{background:var(--ok-fundo);color:var(--ok)}
-.selo.st-cancelado{background:#EEF0F3;color:#5B6576}
+.selo.st-cancelado{background:#EEF0F3;color:#5B6576} .selo.st-recusado{background:#FDECD8;color:#8A4B00}
 .selo.urgente{background:#C62828;color:#fff}
 .selo.atrasado{background:var(--erro-fundo);color:var(--erro)}
 .selo.garantia{background:var(--ok-fundo);color:var(--ok)}
@@ -175,6 +176,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
 .linha-tempo li.visita::before{border-color:var(--azul);background:var(--azul)}
 .linha-tempo li.resolvido::before{border-color:#2E7D32;background:#2E7D32}
 .linha-tempo li.cancelado::before{border-color:#9AA3AF;background:#9AA3AF}
+.linha-tempo li.recusado::before{border-color:#B45309;background:#B45309}
 .linha-tempo .qd{font-size:11px;color:var(--texto2)}
 .linha-tempo .tx{white-space:pre-wrap;line-height:1.45;margin-top:2px}
 .acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -272,7 +274,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.10.1';
+var APP_VERSION = '2026.11.10.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -292,7 +294,8 @@ var REL = { obra:'', de:'', ate:'' };
 var CATEGORIAS = ['Alvenaria / Estrutura','Cobertura / Telhado','Elétrica','Esquadrias (portas e janelas)','Hidráulica',
   'Impermeabilização','Louças e metais','Marcenaria','Pintura','Pisos e revestimentos','Outros'];
 /* 04/11/2026 (0092): "novo" = aberto pelo CLIENTE no formulário, aguardando a triagem */
-var STATUS = { novo:'Novo · triagem', aberto:'Aberto', em_atendimento:'Em atendimento', resolvido:'Resolvido', cancelado:'Cancelado' };
+var STATUS = { novo:'Novo · triagem', aberto:'Aberto', em_atendimento:'Em atendimento', resolvido:'Resolvido', cancelado:'Cancelado',
+               recusado:'Recusado' };   // 10/11 (0101): recusa é resposta ao cliente; cancelar é erro/duplicidade
 
 $('rodape').textContent = 'BeMer · Manutenção · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
 $('btn-sair').addEventListener('click', function(){
@@ -684,6 +687,7 @@ function filtrados(){
     if(FILTRO.status === 'atrasados' && !atrasado(c)) return false;
     if(FILTRO.status === 'resolvido' && c.status !== 'resolvido') return false;
     if(FILTRO.status === 'cancelado' && c.status !== 'cancelado') return false;
+    if(FILTRO.status === 'recusado' && c.status !== 'recusado') return false;
     if(FILTRO.obra && c.obra_id !== FILTRO.obra) return false;
     if(b){
       var o = obraDe(c.obra_id);
@@ -700,7 +704,7 @@ function telaChamados(){
     novo: D.chamados.filter(function(c){ return c.status === 'novo'; }).length
   };
   var chips = [['abertos', 'Abertos', n.abertos], ['comigo', 'Comigo', n.comigo], ['atrasados', 'Atrasados', n.atrasados],
-               ['resolvido', 'Resolvidos'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
+               ['resolvido', 'Resolvidos'], ['recusado', 'Recusados'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
   if(n.novo || FILTRO.status === 'novo') chips.unshift(['novo', 'Triagem', n.novo]);
   var obrasUsadas = D.obras.filter(function(o){ return o.ativa || D.chamados.some(function(c){ return c.obra_id === o.id; }); });
   $('main').innerHTML =
@@ -847,8 +851,9 @@ function htmlFotos(lista, links, rot){
 }
 function desenharChamado(c, vis, fotos, evs, links){
   var o = obraDe(c.obra_id), eu = EU.id, eq = equipeDe(c);
-  /* 0092: quem está na EQUIPE do chamado registra visita; "novo" precisa da triagem antes */
-  var podeVisita = aberto(c) && c.status !== 'novo' && (PODE.atender || c.responsavel_id === eu || eq.indexOf(eu) >= 0);
+  /* 0092: quem está na EQUIPE do chamado registra visita; "novo" precisa da triagem antes.
+     10/11 (0101): vira "atualização" — antes da triagem, quem atende registra INFORMAÇÃO */
+  var podeVisita = aberto(c) && (c.status === 'novo' ? PODE.atender : (PODE.atender || c.responsavel_id === eu || eq.indexOf(eu) >= 0));
   var podeEditar = aberto(c) && (PODE.atender || (c.aberto_por === eu && c.status === 'aberto' && PODE.abrir));
   var podeReabrir = !aberto(c) && PODE.atender;
   var podeFoto = PODE.atender || (aberto(c) && (PODE.abrir || c.responsavel_id === eu || eq.indexOf(eu) >= 0));
@@ -861,14 +866,14 @@ function desenharChamado(c, vis, fotos, evs, links){
     itens.push({ e:ev });
   });
   for(; vi < vis.length; vi++) itens.push({ v:vis[vi] });
-  var NOMES = { aberto:'Abriu o chamado', editado:'Editou', resolvido:'Resolvido', cancelado:'Cancelou', reaberto:'Reabriu',
+  var NOMES = { aberto:'Abriu o chamado', editado:'Editou', resolvido:'Resolvido', cancelado:'Cancelou', reaberto:'Reabriu', recusado:'Recusou',
                 triado:'Triagem feita', equipe:'Mudou a equipe', email:'E-mail' };
   var tempo = itens.map(function(it){
     if(it.v){
       var v = it.v, fv = fotos.filter(function(f){ return f.visita_id === v.id; });
       /* 05/11: visita nova tem um registro só; as antigas (visto/feito) continuam aparecendo */
       if(!v.feito && !fv.some(function(f){ return f.momento; })){
-        return '<li class="visita"><div class="qd">Visita em ' + fmtData(v.data) + ' · ' + esc(nomePessoa(v.registrado_por)) + '</div>'
+        return '<li class="visita"><div class="qd">' + (v.tipo === 'informacao' ? 'Atualização' : 'Visita') + ' em ' + fmtData(v.data) + ' · ' + esc(nomePessoa(v.registrado_por)) + '</div>'
           + '<div class="tx" style="white-space:pre-wrap">' + esc(v.relato) + '</div>' + htmlFotos(fv, links)
           + (v.resolveu ? '<div class="selos" style="margin-top:4px"><span class="selo st-resolvido">Resolveu</span></div>' : '') + '</li>';
       }
@@ -924,10 +929,73 @@ function desenharChamado(c, vis, fotos, evs, links){
   if(podeFoto) bts.push({ rotulo:'+ Fotos e arquivos', fn:function(){ formFotos(c); return 'manter'; } });
   bts.unshift({ rotulo:'📄 Relatório', fn:function(){ relatorioCliente(c, vis, fotos, links); return 'manter'; } });
   if(podeTriar && c.status !== 'novo') bts.push({ rotulo:'Equipe e fornecedores', fn:function(){ formTriagem(c); return 'manter'; } });
-  if(podeVisita) bts.push({ rotulo:'+ Registrar visita', cls:'btn-laranja', fn:function(){ formVisita(c); return 'manter'; } });
+  /* 10/11 (0101): recusar = responder ao cliente que não será atendido (fora da garantia, mau uso…) */
+  if(podeTriar) bts.push({ rotulo:'Recusar', cls:'btn-danger', fn:function(){ formMotivo(c, 'recusar'); return 'manter'; } });
+  if(podeVisita) bts.push({ rotulo:'+ Registrar atualização', cls:c.status === 'novo' ? 'btn-secondary' : 'btn-laranja', fn:function(){ formVisita(c); return 'manter'; } });
   if(podeTriar && c.status === 'novo') bts.push({ rotulo:'Fazer triagem', cls:'btn-laranja', fn:function(){ formTriagem(c); return 'manter'; } });
   if(!bts.length) bts.push({ rotulo:'Fechar' });
   abrirModal('Chamado #' + c.numero, html, bts);
+}
+
+/* ---------- E-MAIL AO CLIENTE (10/11/2026, pedido do dono) ----------
+   Na triagem (aceito), na recusa, no resolvido e — se marcar — em cada
+   atualização. Sempre com o texto à vista e editável antes de sair: é a
+   aprovação de quem atende. Sai pela manutencao@ (edge man-enviar-relatorio,
+   `sem_anexo`) e fica no histórico (evento "email"). */
+function emailDoCliente(c){ var o = obraDe(c.obra_id) || {}; return String(c.cliente_email || o.email || '').trim(); }
+function textoCliente(c, motivo, x){
+  var o = obraDe(c.obra_id) || {}, nome = String(c.solicitante || o.contato || '').trim();
+  var ref = 'chamado de manutenção nº ' + c.numero + (o.nome ? ' (' + o.nome + ')' : '');
+  var ola = 'Prezado(a)' + (nome ? ' ' + nome : '') + ',\n\n';
+  var fim = '\n\nAtenciosamente,\nDepartamento de Manutenção\nBrandão & Marmo Engenharia e Construções';
+  x = x || {};
+  if(motivo === 'aceito') return ola + 'Seu ' + ref + ' foi analisado e aceito.\n\nResponsável pelo atendimento: ' + (x.resp || '—') + '.'
+    + (x.prazo ? '\nPrevisão de atendimento: ' + fmtData(x.prazo) + '.' : '') + '\n\nVamos entrar em contato para agendar a visita.' + fim;
+  if(motivo === 'recusado') return ola + 'Analisamos o seu ' + ref + ' e ele não será atendido pela garantia.\n\nMotivo: ' + (x.motivo || '…')
+    + (x.orcamento ? '\n\nSe quiser, podemos enviar um orçamento para o serviço: é só responder a este e-mail.' : '') + '\n\nQualquer dúvida, estamos à disposição.' + fim;
+  if(motivo === 'resolvido') return ola + 'O seu ' + ref + ' foi concluído em ' + fmtData(x.data || hoje()) + '.' + (x.relato ? '\n\n' + x.relato : '')
+    + '\n\nSe o problema voltar, é só responder a este e-mail.' + fim;
+  return ola + 'Atualização do seu ' + ref + ':\n\n' + (x.relato || '…') + fim;
+}
+var ASSUNTO_CLI = { aceito:'aceito', recusado:'resposta da análise', resolvido:'concluído', atualizacao:'atualização' };
+function blocoEmail(p, c, ligado){
+  var para = emailDoCliente(c);
+  return '<div class="caixa-email"><label class="marcar"><input type="checkbox" id="' + p + '-on"' + (ligado && para ? ' checked' : '') + '> ✉ Enviar e-mail ao cliente</label>'
+    + '<div id="' + p + '-box"' + (ligado && para ? '' : ' class="oculto"') + '>'
+    + '<div class="campo"><label class="rot" for="' + p + '-para">Para</label><input id="' + p + '-para" type="email" multiple maxlength="300" value="' + esc(para) + '" placeholder="e-mail do cliente (vários: separe por vírgula)"></div>'
+    + '<div class="campo"><label class="rot" for="' + p + '-msg">Mensagem — confira e ajuste antes de salvar</label><textarea id="' + p + '-msg" maxlength="5000" style="min-height:160px"></textarea></div>'
+    + (para ? '' : '<div class="dica" style="margin-bottom:8px">Sem e-mail do cliente no chamado nem na obra: digite acima para enviar.</div>') + '</div></div>';
+}
+/* liga o bloco: o texto se refaz sozinho (gerar) até a pessoa mexer nele */
+function ligarEmail(p, gerar, ids){
+  var on = $(p + '-on'), box = $(p + '-box'), msg = $(p + '-msg');
+  if(!on) return;
+  var refaz = function(){ if(msg.dataset.mexeu !== '1') msg.value = gerar(); };
+  refaz();
+  on.addEventListener('change', function(){ on.dataset.mexeu = '1'; box.classList.toggle('oculto', !on.checked); refaz(); });
+  msg.addEventListener('input', function(){ msg.dataset.mexeu = '1'; });
+  (ids || []).forEach(function(id){ var el = $(id); if(el){ el.addEventListener('input', refaz); el.addEventListener('change', refaz); } });
+  return { refaz:refaz, ligar:function(sim){ if(on.dataset.mexeu === '1') return; on.checked = !!sim && !!$(p + '-para').value.trim(); box.classList.toggle('oculto', !on.checked); refaz(); } };
+}
+/* antes de gravar: null = não envia; {erro} = não deixa salvar */
+function lerEmail(p){
+  var on = $(p + '-on'); if(!on || !on.checked) return null;
+  var para = $(p + '-para').value.trim(), msg = $(p + '-msg').value.trim();
+  if(!para.split(/[,;]/).every(function(x){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.trim()); })) return { erro:'Confira o e-mail do cliente.' };
+  if(msg.length < 10) return { erro:'Escreva a mensagem ao cliente.' };
+  return { para:para, msg:msg };
+}
+/* depois de gravar: envia e diz o que aconteceu (falha não desfaz a ação) */
+async function avisarCliente(c, motivo, d){
+  if(!d) return;
+  try {
+    var r = await sb.functions.invoke('man-enviar-relatorio', { body:{ chamado_id:c.id, para:d.para, mensagem:d.msg, sem_anexo:true, motivo:motivo,
+      assunto:'Chamado de manutenção nº ' + c.numero + ' — ' + (ASSUNTO_CLI[motivo] || 'atualização') } });
+    var x = r.data || {};
+    if(r.error && !r.data && r.error.context && typeof r.error.context.json === 'function'){ try { x = await r.error.context.json(); } catch(e2){} }
+    if(!x.ok) throw new Error(x.erro || (r.error && r.error.message) || 'falhou');
+    toast('E-mail enviado ao cliente (' + x.para.join(', ') + ').');
+  } catch(e){ toast('Salvo, mas o e-mail ao cliente NÃO saiu: ' + msgErro(e), 'err'); }
 }
 
 /* ---------- TRIAGEM / EQUIPE (04/11/2026, 0092) ----------
@@ -952,6 +1020,8 @@ function formTriagem(c){
     /* 05/11 (0093): fornecedores que ajudam nesta demanda — só o nome */
     + '<div class="campo"><label class="rot" for="t-forn">Fornecedores que vão ajudar</label>'
     + '<textarea id="t-forn" maxlength="2400" style="min-height:70px" placeholder="Um por linha. Ex.: Hidráulica Silva">' + esc((c.fornecedores || []).join('\n')) + '</textarea></div>'
+    /* 10/11: na confirmação, o cliente fica sabendo (texto editável; já vem marcado) */
+    + (c.status === 'novo' ? blocoEmail('te', c, true) : '')
     + '<div class="erro-txt" id="t-erro"></div>';
   abrirModal(c.status === 'novo' ? 'Triagem do chamado #' + c.numero : 'Equipe e fornecedores · #' + c.numero, html, [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
@@ -962,15 +1032,20 @@ function formTriagem(c){
         var forn = $('t-forn').value.split(/\n|;/).map(function(x){ return x.trim().slice(0, 120); }).filter(Boolean);
         if(forn.length > 20){ $('t-erro').textContent = 'No máximo 20 fornecedores.'; return false; }
         var eraNovo = c.status === 'novo';
+        var em = eraNovo ? lerEmail('te') : null;
+        if(em && em.erro){ $('t-erro').textContent = em.erro; return false; }
         var r = await M().rpc('triar', { p_id:c.id, p_resp:resp, p_equipe:equipe, p_prazo:$('t-prazo').value || null, p_fornecedores:forn });
         if(r.error) throw r.error;
         toast(eraNovo ? 'Chamado confirmado.' : 'Equipe salva.');
         avisarEquipe(c.id, eraNovo ? 'triagem' : 'equipe');
+        await avisarCliente(c, 'aceito', em);
         await Promise.all([recarregarChamado(c.id), recarregarEquipe(c.id)]);
         desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
   ]);
+  if(c.status === 'novo') ligarEmail('te', function(){
+    return textoCliente(c, 'aceito', { resp:nomePessoa($('t-resp').value), prazo:$('t-prazo').value }); }, ['t-resp', 't-prazo']);
 }
 
 /* ---------- 📄 RELATÓRIO PARA O CLIENTE (04/11/2026, pedido do dono) ----------
@@ -989,19 +1064,20 @@ function relatorioCliente(c, vis, fotos, links){
     var fv = fotos.filter(function(f){ return f.visita_id === v.id; });
     var visto = fv.filter(function(f){ return f.momento !== 'feito'; }), feito = fv.filter(function(f){ return f.momento === 'feito'; });
     if(!v.feito && !fv.some(function(f){ return f.momento; })){      // 05/11: visita com registro único
-      return '<div class="vis"><h3>Atendimento ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
-        + '<p class="rot">Técnico</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
+      return '<div class="vis"><h3>' + (v.tipo === 'informacao' ? 'Atualização' : 'Visita') + ' ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
+        + '<p class="rot">' + (v.tipo === 'informacao' ? 'Registrado por' : 'Técnico') + '</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
         + '<p class="rot">Registro</p><p class="pre">' + esc(v.relato) + '</p>' + img(fv)
         + (v.resolveu ? '<p class="ok">✓ Problema resolvido nesta visita</p>' : '') + '</div>';
     }
-    return '<div class="vis"><h3>Atendimento ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
-      + '<p class="rot">Técnico</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
+    return '<div class="vis"><h3>' + (v.tipo === 'informacao' ? 'Atualização' : 'Visita') + ' ' + (i + 1) + ' · ' + fmtData(v.data) + '</h3>'
+      + '<p class="rot">' + (v.tipo === 'informacao' ? 'Registrado por' : 'Técnico') + '</p><p>' + esc(nomePessoa(v.registrado_por) || '—') + '</p>'
       + '<p class="rot">O que foi constatado</p><p class="pre">' + esc(v.relato) + '</p>' + img(visto)
       + (v.feito || feito.length ? '<p class="rot">O que foi feito</p><p class="pre">' + esc(v.feito || '—') + '</p>' + img(feito) : '')
       + (v.resolveu ? '<p class="ok">✓ Problema resolvido nesta visita</p>' : '') + '</div>';
   }).join('');
   var situacao = c.status === 'resolvido' ? 'Resolvido em ' + fmtData(c.resolvido_em)
     : c.status === 'cancelado' ? 'Encerrado' + (c.motivo ? ': ' + esc(c.motivo) : '')
+    : c.status === 'recusado' ? 'Não atendido pela garantia' + (c.motivo ? ': ' + esc(c.motivo) : '')
     : c.status === 'em_atendimento' ? 'Em atendimento' : c.status === 'novo' ? 'Recebido · em análise' : 'Aberto · aguardando visita';
   var assunto = 'Chamado de manutenção nº ' + c.numero + ' — ' + (o.nome || '');
   var corpo = 'Prezado(a),\n\nSegue o relatório do chamado de manutenção nº ' + c.numero + ' (' + (o.nome || '') + ').\n\nSituação: '
@@ -1046,7 +1122,7 @@ function relatorioCliente(c, vis, fotos, links){
     + '<div><p class="rot">Tipo de serviço</p><p>' + esc(nomeCat(c)) + '</p></div><div><p class="rot">Situação</p><p><span class="sit">' + situacao + '</span></p></div></div>'
     + '<p class="rot">Descrição</p><p class="pre">' + esc(c.descricao) + '</p>'
     + img(fotos.filter(function(f){ return !f.visita_id; }))
-    + '<h2>Atendimentos</h2>' + (visitas || '<p>Ainda sem visita registrada.</p>')
+    + '<h2>Atendimentos</h2>' + (visitas || '<p>Ainda sem atendimento registrado.</p>')
     + '<div class="rod">Brandão &amp; Marmo Engenharia e Construções · São Paulo</div></div>'
     + '<script>document.getElementById("doc").addEventListener("click",function(e){var i=e.target;if(i.tagName==="IMG"&&i.closest(".fotos")&&confirm("Tirar esta foto do relatório?")){i.remove();}});<\/script>'
     + '</body></html>';
@@ -1116,34 +1192,52 @@ async function enviarRelatorio(w, c, assunto){
 }
 
 /* ---------- VISITA ---------- */
+/* 10/11/2026 (pedido do dono, 0101): "registrar ATUALIZAÇÃO" — visita à obra ou
+   informação (contato, orçamento, aguardando fornecedor…). Antes da triagem só
+   informação. E-mail ao cliente: desmarcado; marca sozinho ao "Resolveu". */
 function formVisita(c){
-  var k = 'visita_' + c.id, r = lerRasc(k) || {};
+  var k = 'visita_' + c.id, r = lerRasc(k) || {}, novo = c.status === 'novo';
+  var tipo = novo ? 'informacao' : (r['v-tipo'] || 'visita');
   limparFotos();
+  var opc = function(val, rot, dica){ return '<label class="marcar" style="min-height:36px"><input type="radio" name="v-tipo" value="' + val + '"' + (tipo === val ? ' checked' : '')
+    + (novo && val === 'visita' ? ' disabled' : '') + '> ' + rot + ' <span class="dica" style="font-weight:400">' + dica + '</span></label>'; };
   var html =
       '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc((obraDe(c.obra_id) || {}).nome || '') + '</div>'
-    + '<div class="campo"><label class="rot" for="v-data">Data da visita</label><input id="v-data" type="date" max="' + hoje() + '" value="' + esc(r['v-data'] || hoje()) + '"></div>'
+    + '<div class="campo"><span class="rot">O que é</span>' + opc('visita', 'Visita à obra', 'foi ao local')
+    + opc('informacao', 'Informação', 'contato, orçamento, aguardando fornecedor…')
+    + (novo ? '<div class="dica">Visita só depois da triagem.</div>' : '') + '</div>'
+    + '<div class="campo"><label class="rot" for="v-data">Data</label><input id="v-data" type="date" max="' + hoje() + '" value="' + esc(r['v-data'] || hoje()) + '"></div>'
     /* 05/11/2026 (pedido do dono): um campo de registro e um de fotos/arquivos */
-    + '<div class="campo"><label class="rot" for="v-relato">Registro da visita *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" style="min-height:130px" placeholder="O que foi encontrado e o que foi feito. Ex.: ralo da laje sem caimento, manta descolada; refeita a impermeabilização do ralo">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + botaoCorrige('v-relato') + '</div></div>'
+    + '<div class="campo"><label class="rot" for="v-relato">O que aconteceu *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" style="min-height:130px" placeholder="Ex.: ralo da laje sem caimento, manta descolada; refeita a impermeabilização do ralo. Ou: fornecedor confirmou a peça para dia 20.">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + botaoCorrige('v-relato') + '</div></div>'
     + '<div class="campo"><label class="rot">Fotos e arquivos</label>' + gradeFotos('') + '</div>'
-    + '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>'
+    + (novo ? '' : '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>')
+    + blocoEmail('ve', c, false)
     + '<div class="erro-txt" id="v-erro"></div>';
-  abrirModal('Registrar visita', html, [
+  var tipoAgora = function(){ var x = document.querySelector('input[name="v-tipo"]:checked'); return x ? x.value : 'informacao'; };
+  var resolveu = function(){ return !!($('v-resolveu') && $('v-resolveu').checked); };
+  abrirModal('Registrar atualização', html, [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
-    { rotulo:'Salvar visita', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
-        var v = lerCampos(['v-data', 'v-relato', 'v-resolveu']);
-        if(v['v-relato'].trim().length < 3){ $('v-erro').textContent = 'Escreva o registro da visita.'; return false; }
+    { rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
+        var v = lerCampos(['v-data', 'v-relato']), t = tipoAgora(), res = resolveu();
+        if(v['v-relato'].trim().length < 3){ $('v-erro').textContent = 'Escreva o que aconteceu.'; return false; }
+        var em = lerEmail('ve');
+        if(em && em.erro){ $('v-erro').textContent = em.erro; return false; }
         var x = await M().rpc('registrar_visita', { p_chamado:c.id, p_data:v['v-data'] || hoje(), p_relato:v['v-relato'].trim(),
-                                                    p_feito:'', p_resolveu:!!v['v-resolveu'] });
+                                                    p_feito:'', p_resolveu:res, p_tipo:t });
         if(x.error) throw x.error;
         apagarRasc(k);
         var n = FOTOS.length ? await subirFotos(c.id, x.data) : 0;
-        toast(v['v-resolveu'] ? 'Visita salva e chamado resolvido.' : 'Visita salva' + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
-        avisarEquipe(c.id, v['v-resolveu'] ? 'resolvido' : 'visita');
+        toast(res ? 'Salvo e chamado resolvido.' : (t === 'visita' ? 'Visita salva' : 'Atualização salva') + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
+        avisarEquipe(c.id, res ? 'resolvido' : 'visita');
+        await avisarCliente(c, res ? 'resolvido' : 'atualizacao', em);
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
   ], function(){ limparFotos(); });
   vigiarRasc(k, ['v-data', 'v-relato', 'v-resolveu']);
+  var ec = ligarEmail('ve', function(){
+    return textoCliente(c, resolveu() ? 'resolvido' : 'atualizacao', { relato:$('v-relato').value.trim(), data:$('v-data').value }); }, ['v-relato', 'v-data']);
+  if($('v-resolveu')) $('v-resolveu').addEventListener('change', function(){ if(ec) ec.ligar(this.checked); });
 }
 
 /* ---------- + FOTOS (no chamado, fora de visita) ---------- */
@@ -1160,24 +1254,37 @@ function formFotos(c){
   ], function(){ limparFotos(); });
 }
 
-/* ---------- CANCELAR / REABRIR ---------- */
+/* ---------- CANCELAR / REABRIR / RECUSAR ----------
+   10/11 (0101): RECUSAR é a resposta ao cliente (fora da garantia, mau uso…):
+   o motivo vai no e-mail, já marcado. CANCELAR é interno (duplicidade, erro). */
 function formMotivo(c, acao){
-  var canc = acao === 'cancelar';
-  abrirModal((canc ? 'Cancelar' : 'Reabrir') + ' chamado #' + c.numero,
-    '<div class="campo"><label class="rot" for="m-motivo">' + (canc ? 'Por que cancelar? *' : 'Por que reabrir? *') + '</label>'
-    + '<textarea id="m-motivo" maxlength="1000" style="min-height:80px" placeholder="' + (canc ? 'Ex.: aberto em duplicidade; não é da garantia; cliente desistiu' : 'Ex.: cliente diz que voltou a pingar') + '"></textarea></div><div class="erro-txt" id="m-erro"></div>', [
+  var canc = acao === 'cancelar', rec = acao === 'recusar';
+  var titulo = rec ? 'Recusar' : canc ? 'Cancelar' : 'Reabrir';
+  var rot = rec ? 'Motivo da recusa — vai para o cliente *' : canc ? 'Por que cancelar? (interno) *' : 'Por que reabrir? *';
+  var ph = rec ? 'Ex.: fora do prazo de garantia (entrega em 03/2019); dano por uso inadequado; falta de manutenção preventiva; alteração feita por terceiros'
+         : canc ? 'Ex.: aberto em duplicidade; aberto por engano; cliente desistiu' : 'Ex.: cliente diz que voltou a pingar';
+  abrirModal(titulo + ' chamado #' + c.numero,
+    (canc ? '<div class="dica" style="margin-bottom:8px">Para responder ao cliente que não será atendido, use <b>Recusar</b>.</div>' : '')
+    + '<div class="campo"><label class="rot" for="m-motivo">' + rot + '</label>'
+    + '<textarea id="m-motivo" maxlength="1000" style="min-height:80px" placeholder="' + esc(ph) + '"></textarea></div>'
+    + (rec ? '<label class="marcar"><input type="checkbox" id="m-orc"> Oferecer orçamento para o serviço</label>' + blocoEmail('me', c, true) : '')
+    + '<div class="erro-txt" id="m-erro"></div>', [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
-    { rotulo:canc ? 'Cancelar chamado' : 'Reabrir', cls:canc ? 'btn-danger' : 'btn-primary', fn:async function(){
+    { rotulo:rec ? 'Recusar chamado' : canc ? 'Cancelar chamado' : 'Reabrir', cls:rec || canc ? 'btn-danger' : 'btn-primary', fn:async function(){
         var m = $('m-motivo').value.trim();
         if(m.length < 3){ $('m-erro').textContent = 'Escreva o motivo.'; return false; }
-        var r = await M().rpc(canc ? 'cancelar_chamado' : 'reabrir_chamado', { p_id:c.id, p_motivo:m });
+        var em = rec ? lerEmail('me') : null;
+        if(em && em.erro){ $('m-erro').textContent = em.erro; return false; }
+        var r = await M().rpc(rec ? 'recusar_chamado' : canc ? 'cancelar_chamado' : 'reabrir_chamado', { p_id:c.id, p_motivo:m });
         if(r.error) throw r.error;
-        toast(canc ? 'Chamado cancelado.' : 'Chamado reaberto.');
-        avisarEquipe(c.id, canc ? 'cancelado' : 'reaberto');
+        toast(rec ? 'Chamado recusado.' : canc ? 'Chamado cancelado.' : 'Chamado reaberto.');
+        avisarEquipe(c.id, rec ? 'recusado' : canc ? 'cancelado' : 'reaberto');
+        if(rec) await avisarCliente(c, 'recusado', em);
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
   ]);
+  if(rec) ligarEmail('me', function(){ return textoCliente(c, 'recusado', { motivo:$('m-motivo').value.trim(), orcamento:$('m-orc').checked }); }, ['m-motivo', 'm-orc']);
 }
 
 /* ---------- OBRAS ---------- */
