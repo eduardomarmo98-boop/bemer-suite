@@ -131,6 +131,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);bo
 .ch.st-aberto{border-left-color:var(--laranja)} .ch.st-em_atendimento{border-left-color:var(--azul)}
 .ch.st-resolvido{border-left-color:#2E7D32} .ch.st-cancelado{border-left-color:#9AA3AF} .ch.st-recusado{border-left-color:#B45309}
 .caixa-email{border:1px solid var(--borda);border-radius:10px;padding:6px 12px 2px;margin-top:10px;background:#F7F9FC}
+.reg{font-size:14px;line-height:1.5}.reg h3{font-size:15px;color:var(--azul);margin:16px 0 6px}.reg p{margin-bottom:8px}
+.reg ul,.reg ol{padding-left:20px;margin-bottom:8px}.reg li{margin-bottom:4px}
+.reg table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px}.reg th,.reg td{border-bottom:1px solid var(--borda);padding:6px 8px;text-align:left;vertical-align:top}
+.reg th{color:var(--texto2);font-weight:600;background:#F7F9FC}.reg td:last-child{white-space:nowrap}
+a.discreto{color:var(--texto2);text-decoration:underline;text-decoration-color:#C9D1DD}
 .ch.st-novo{border-left-color:#C62828}
 .selo.st-novo{background:#FDE7E7;color:#B71C1C}
 .selo.cliente{background:#FFF1DC;color:#8A5000}
@@ -274,7 +279,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.10.2';
+var APP_VERSION = '2026.11.11.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -900,7 +905,8 @@ function desenharChamado(c, vis, fotos, evs, links){
     + htmlFotos(fotosCh, links)
     + '<div class="card" style="margin-top:12px;padding:8px 12px">'
     + '<div class="det-linha"><b>Obra</b><span>' + esc(o ? o.nome : '—') + (o && o.cliente ? ' · ' + esc(o.cliente) : '') + (o && o.endereco ? '<br><span class="dica">' + esc(o.endereco) + (o.cidade ? ', ' + esc(o.cidade) : '') + '</span>' : '') + '</span></div>'
-    + '<div class="det-linha"><b>Garantia</b><span>' + (fg ? (gar ? 'Na garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : 'Obra sem data de entrega') + '</span></div>'
+    + '<div class="det-linha"><b>Garantia</b><span>' + (fg ? (gar ? 'Na garantia' : 'Fora da garantia') + ' (até ' + fmtData(fg) + ')' : 'Obra sem data de entrega')
+        + ' · <a href="#" class="discreto dica" data-reg-chamado="' + esc(c.id) + '">regulamento</a></span></div>'
     + (eng ? '<div class="det-linha"><b>Engenharia</b><span>' + eng + '</span></div>' : '')
     + (c.unidade ? '<div class="det-linha"><b>Unidade</b><span>' + esc(c.unidade) + '</span></div>' : '')
     + (c.solicitante || c.telefone || c.cliente_email ? '<div class="det-linha"><b>Quem pediu</b><span>' + esc(c.solicitante || '') + (c.telefone ? '<br>' + telLinks(c.telefone) : '')
@@ -935,6 +941,104 @@ function desenharChamado(c, vis, fotos, evs, links){
   if(podeTriar && c.status === 'novo') bts.push({ rotulo:'Fazer triagem', cls:'btn-laranja', fn:function(){ formTriagem(c); return 'manter'; } });
   if(!bts.length) bts.push({ rotulo:'Fechar' });
   abrirModal('Chamado #' + c.numero, html, bts);
+  var rg = document.querySelector('[data-reg-chamado]');
+  if(rg) rg.addEventListener('click', function(e){ e.preventDefault(); verRegulamento(c.id); });
+}
+
+/* ---------- REGULAMENTO DE GARANTIA (11/11/2026, pedido do dono) ----------
+   Só para a equipe interna e com acesso discreto: rodapé da aba Obras e
+   "regulamento" na linha Garantia do chamado. O link/QR do cliente NÃO mostra
+   (o dono decide depois). FONTE: o doc "Regulamento de Garantia B&M"
+   (claude.ai/artifact/SxArSWUQmnjx6UPN4DMZ5t) — mudou lá, muda aqui. A parte
+   "Uso interno" do doc fica de fora. Por enquanto é só leitura: a tabela ainda
+   não calcula a garantia por sistema (hoje é um prazo por obra). */
+var REG_PRAZOS = [
+  ['Estrutura: fundações, lajes, vigas, pilares, contenções, estrutura metálica, protendido', 'Solidez e segurança', '5 anos'],
+  ['Impermeabilização', 'Estanqueidade', '5 anos'],
+  ['Vedações: alvenaria, drywall, guarda-corpos, escadas', 'Integridade e segurança', '5 anos'],
+  ['Cobertura: telhas, calhas, rufos', 'Estanqueidade e fixação', '5 anos'],
+  ['Fachadas e pisos molháveis', 'Estanqueidade', '3 anos'],
+  ['Revestimento de argamassa, gesso liso, drywall', 'Má aderência', '5 anos'],
+  ['Revestimento de argamassa, gesso liso, drywall', 'Fissuras', '2 anos'],
+  ['Revestimento cerâmico, porcelanato, pedra', 'Peças soltas, gretadas, desgaste excessivo', '2 anos'],
+  ['Pisos especiais: vinílico, carpete, laminado, piso elevado', 'Aderência, desgaste excessivo, nivelamento', '2 anos'],
+  ['Rejuntes e selantes', 'Aderência', '1 ano'],
+  ['Forros: gesso, mineral, modular, metálico', 'Fissuras, fixação, nivelamento', '1 ano'],
+  ['Pintura e verniz', 'Empolamento, descascamento, alteração de cor', '2 anos'],
+  ['Esquadrias de alumínio: perfis, fixadores, painéis', 'Integridade e fixação', '5 anos'],
+  ['Esquadrias de alumínio: borrachas, escovas, fechos, roldanas', 'Desempenho', '2 anos'],
+  ['Esquadrias de alumínio: partes móveis e motores', 'Vedação e funcionamento', '1 ano'],
+  ['Esquadrias de madeira e ferro, portas, fechaduras, ferragens', 'Fixação, empenamento, oxidação, funcionamento', '1 ano'],
+  ['Vidros', 'Fixação', '1 ano'],
+  ['Divisórias, marcenaria, mobiliário fixo', 'Fixação e funcionamento', '1 ano'],
+  ['Elétrica: quadros, disjuntores, tomadas, fios, cabos, eletrodutos', 'Instalação', '3 anos'],
+  ['Luminárias e iluminação', 'Instalação', '1 ano'],
+  ['Cabeamento estruturado (dados e voz)', 'Instalação e certificação', '1 ano'],
+  ['Hidráulica: prumadas e tubos de queda', 'Vazamento por movimentação da estrutura', '5 anos'],
+  ['Hidráulica: coletores, ramais, louças, metais, registros, ralos', 'Instalação e vedação', '3 anos'],
+  ['Gás', 'Vedação das junções', '1 ano'],
+  ['Ar-condicionado e ventilação: rede frigorígena, dutos, drenos', 'Instalação', '1 ano'],
+  ['Bombas, exaustão, automação, CFTV, controle de acesso', 'Instalação', '1 ano'],
+  ['Incêndio, SPDA, iluminação de emergência, porta corta-fogo', 'Instalação', '1 ano'],
+  ['Equipamentos (ar-condicionado, bombas, aquecedores, elevadores)', 'Funcionamento do equipamento', 'prazo do fabricante']
+];
+function htmlRegulamento(){
+  var tab = function(cab, linhas){ return '<table><tr>' + cab.map(function(c){ return '<th>' + c + '</th>'; }).join('') + '</tr>'
+    + linhas.map(function(l){ return '<tr>' + l.map(function(x){ return '<td>' + esc(x) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>'; };
+  var li = function(xs){ return xs.map(function(x){ return '<li>' + x + '</li>'; }).join(''); };
+  return '<div class="reg">'
+    + '<div class="triagem-aviso" style="margin-top:0">Uso interno: o cliente ainda não vê este regulamento.</div>'
+    + '<p>A Brandão &amp; Marmo garante cada sistema da obra pelo prazo da tabela abaixo, contado da data do termo de recebimento, e atende os chamados pelo link da obra ou por manutencao@brandaoemarmo.com.br. Vale para as obras comerciais, corporativas, industriais e de saúde entregues pela B&amp;M. Quando o contrato fixar prazo maior ou condição diferente, vale o contrato.</p>'
+    + '<h3>Base legal</h3><p>A garantia da B&amp;M segue o contrato da obra e o Código Civil. Os prazos deste regulamento são um compromisso da B&amp;M e nunca reduzem o que a lei garante.</p>'
+    + tab(['Contrato', 'O que vale', 'Prazo legal mínimo'], [
+        ['Privado (empresa)', 'O contrato e o Código Civil, art. 618', '5 anos pela solidez e segurança da obra, pelos materiais e pelo solo. O contratante tem 180 dias, a partir do aparecimento do defeito, para entrar com ação'],
+        ['Público (licitação)', 'O edital, o contrato e a Lei 14.133/2021, art. 140, § 6º', '5 anos após o recebimento definitivo, por solidez, segurança e funcionalidade']])
+    + '<p>O Código de Defesa do Consumidor só se aplica quando o contratante é consumidor final, o que não é o caso das obras comerciais da B&amp;M.</p>'
+    + '<p>Normas técnicas usadas como referência:</p><ul>' + li([
+        '<b>NBR 15575</b> (desempenho): prazos recomendados por sistema no Anexo D. Vale para edificação habitacional; em saúde, indústria e escritório é referência, não obrigação.',
+        '<b>NBR 5674</b> (manutenção de edificações): o que o cliente precisa fazer para manter a garantia.',
+        '<b>NBR 14037</b> (manual de uso, operação e manutenção): o conteúdo do databook.']) + '</ul>'
+    + '<h3>Quando a garantia começa</h3><p>A garantia conta da data do <b>termo de recebimento</b> assinado pelo contratante, que fica registrada no databook da obra.</p><ul>' + li([
+        'Contrato público: conta do recebimento definitivo, como manda a Lei 14.133.',
+        'Entrega por etapas (pavimento, bloco, ala): cada etapa conta da data do seu termo.',
+        'Equipamentos e materiais de fabricante: além do prazo deste regulamento, valem a garantia e o prazo do fabricante, contados da nota fiscal e listados no databook.',
+        'Defeito aparente (peça quebrada, riscada, manchada ou faltando) é apontado na vistoria de recebimento e fica registrado no termo. Depois do recebimento, vale a tabela de prazos.']) + '</ul>'
+    + '<h3>Prazos por sistema</h3><p>Cada obra usa só as linhas do seu escopo, listadas no databook. O prazo cobre defeito de execução e de material fornecido pela B&amp;M.</p>'
+    + tab(['Sistema', 'O que cobre', 'Prazo'], REG_PRAZOS)
+    + '<p>Os prazos acima não se somam: cada defeito é enquadrado no sistema e no item que o causou.</p>'
+    + '<h3>O que a garantia não cobre</h3><p>A garantia deixa de valer para o sistema afetado quando o defeito vem de uso, manutenção ou intervenção fora do combinado:</p><ul>' + li([
+        'Falta da manutenção prevista no manual de uso, operação e manutenção (databook) e na NBR 5674, ou falta do registro de que ela foi feita.',
+        'Uso diferente do projetado: sobrecarga em lajes e instalações, equipamento novo ligado sem projeto, mudança de uso do ambiente.',
+        'Reforma, alteração ou reparo feito por terceiros no sistema afetado, ou troca de peça por outra sem desempenho equivalente.',
+        'Desgaste natural pelo uso e pelo tempo.',
+        'Dano causado por acidente, incêndio, inundação, fenômeno da natureza, agente químico ou vandalismo.',
+        'Defeito não comunicado no prazo legal ou no prazo do contrato.',
+        'Recusa de acesso da equipe da B&amp;M para a vistoria, ou providência indicada na vistoria que não foi tomada.',
+        'Itens fora do escopo da B&amp;M naquela obra (listados no databook como serviços exclusos) e materiais reaproveitados do prédio existente.']) + '</ul>'
+    + '<h3>Como pedir assistência técnica</h3><p>O pedido é sempre por escrito, pelo link (ou QR code) de chamado da obra ou pelo e-mail manutencao@brandaoemarmo.com.br. Pedido verbal só em emergência, e depois é registrado no sistema.</p><ol>' + li([
+        'O contratante abre o chamado: local, o que aconteceu, desde quando e fotos.',
+        'A B&amp;M confirma o recebimento na hora (e-mail automático com o número do chamado).',
+        'A Manutenção analisa com a Engenharia da obra e responde: <b>aceito</b> (responsável e previsão de visita) ou <b>recusado</b> (motivo e, se for o caso, orçamento).',
+        'Visita, serviço e encerramento, com e-mail ao contratante quando o chamado é concluído.']) + '</ol>'
+    + '<p>Prazos de resposta da B&amp;M, em dias úteis e contados da abertura do chamado:</p>'
+    + tab(['Situação', 'Primeiro contato', 'Visita'], [['Emergência', 'até 24 h', 'o mais rápido possível'], ['Normal', 'até 2 dias úteis', 'até 10 dias úteis']])
+    + '<p>É emergência o que para a operação do contratante ou põe pessoas em risco: vazamento ativo ou infiltração sobre equipamento, data center ou área de atendimento; falta de energia ou de água num setor; risco de queda de forro, revestimento, vidro ou fachada; falha no sistema de incêndio. Em emergência, o chamado é aberto pelo link e a B&amp;M é avisada também por telefone (11) 5085-2177.</p>'
+    + '<p>A visita de avaliação não é cobrada. Quando ela mostra que o defeito não está coberto pela garantia, a B&amp;M informa o motivo por escrito e, se o contratante quiser, envia orçamento para o serviço. Atender um chamado não significa reconhecer o defeito como de responsabilidade da B&amp;M.</p>'
+    + '<h3>Termos usados</h3>'
+    + tab(['Termo', 'Significado'], [
+        ['Contratante', 'A empresa ou órgão que contratou a obra'],
+        ['Termo de recebimento', 'Documento assinado na entrega da obra; marca o início da garantia'],
+        ['Defeito aparente', 'Visível na vistoria de recebimento: peça quebrada, riscada, manchada ou faltando'],
+        ['Defeito oculto', 'Aparece com o uso normal, depois do recebimento'],
+        ['Manutenção preventiva', 'Feita em datas programadas para evitar falha (NBR 5674)'],
+        ['Manutenção corretiva', 'Feita para corrigir uma falha que já aconteceu'],
+        ['Databook', 'Manual da obra: projetos, materiais, notas fiscais, ARTs, garantias e plano de manutenção']])
+    + '</div>';
+}
+function verRegulamento(idChamado){
+  abrirModal('Regulamento de garantia', htmlRegulamento(), [idChamado
+    ? { rotulo:'Voltar ao chamado', fn:function(){ abrirChamado(idChamado); return 'manter'; } }
+    : { rotulo:'Fechar' }]);
 }
 
 /* ---------- E-MAIL AO CLIENTE (10/11/2026, pedido do dono) ----------
@@ -1306,7 +1410,11 @@ function telaObras(){
           + (o.entrega ? '<span class="selo cinza">Entregue em ' + fmtData(o.entrega) + '</span>' : '') + '</div></div>'
           + '<div style="text-align:right;white-space:nowrap"><div class="v" style="font-weight:700;color:var(--azul);font-size:18px">' + ab + '</div><div class="dica">abertos<br>de ' + tot + '</div></div></button>';
       }).join('')
-      : '<div class="vazio">Nenhuma obra cadastrada.' + (PODE.obras ? ' Toque em <b>+ Nova obra</b>.' : '') + '</div>');
+      : '<div class="vazio">Nenhuma obra cadastrada.' + (PODE.obras ? ' Toque em <b>+ Nova obra</b>.' : '') + '</div>')
+    /* 11/11: acesso discreto ao regulamento (só equipe interna) */
+    + '<div class="dica" style="text-align:center;margin-top:16px"><a href="#" class="discreto" data-regulamento="1">Regulamento de garantia</a></div>';
+  var rg = document.querySelector('[data-regulamento]');
+  if(rg) rg.addEventListener('click', function(e){ e.preventDefault(); verRegulamento(); });
 }
 /* 05/11: obra e cliente num campo só — o que estava em "Cliente" vem junto */
 function nomeObraCliente(o){
