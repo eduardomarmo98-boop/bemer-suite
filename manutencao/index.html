@@ -279,7 +279,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.11.1';
+var APP_VERSION = '2026.11.11.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -989,17 +989,13 @@ function htmlRegulamento(){
   return '<div class="reg">'
     + '<div class="triagem-aviso" style="margin-top:0">Uso interno: o cliente ainda não vê este regulamento.</div>'
     + '<p>A Brandão &amp; Marmo garante cada sistema da obra pelo prazo da tabela abaixo, contado da data do termo de recebimento, e atende os chamados pelo link da obra ou por manutencao@brandaoemarmo.com.br. Vale para as obras comerciais, corporativas, industriais e de saúde entregues pela B&amp;M. Quando o contrato fixar prazo maior ou condição diferente, vale o contrato.</p>'
-    + '<h3>Base legal</h3><p>A garantia da B&amp;M segue o contrato da obra e o Código Civil. Os prazos deste regulamento são um compromisso da B&amp;M e nunca reduzem o que a lei garante.</p>'
-    + tab(['Contrato', 'O que vale', 'Prazo legal mínimo'], [
-        ['Privado (empresa)', 'O contrato e o Código Civil, art. 618', '5 anos pela solidez e segurança da obra, pelos materiais e pelo solo. O contratante tem 180 dias, a partir do aparecimento do defeito, para entrar com ação'],
-        ['Público (licitação)', 'O edital, o contrato e a Lei 14.133/2021, art. 140, § 6º', '5 anos após o recebimento definitivo, por solidez, segurança e funcionalidade']])
-    + '<p>O Código de Defesa do Consumidor só se aplica quando o contratante é consumidor final, o que não é o caso das obras comerciais da B&amp;M.</p>'
+    /* 11/11 (dono): a B&M não participa de licitação pública e o CDC não se aplica — os dois saíram, só confundiam */
+    + '<h3>Base legal</h3><p>A garantia da B&amp;M segue o contrato da obra e o Código Civil (art. 618): 5 anos pela solidez e segurança da obra, pelos materiais e pelo solo. Os prazos deste regulamento são um compromisso da B&amp;M e nunca reduzem o que a lei e o contrato garantem.</p>'
     + '<p>Normas técnicas usadas como referência:</p><ul>' + li([
         '<b>NBR 15575</b> (desempenho): prazos recomendados por sistema no Anexo D. Vale para edificação habitacional; em saúde, indústria e escritório é referência, não obrigação.',
         '<b>NBR 5674</b> (manutenção de edificações): o que o cliente precisa fazer para manter a garantia.',
         '<b>NBR 14037</b> (manual de uso, operação e manutenção): o conteúdo do databook.']) + '</ul>'
     + '<h3>Quando a garantia começa</h3><p>A garantia conta da data do <b>termo de recebimento</b> assinado pelo contratante, que fica registrada no databook da obra.</p><ul>' + li([
-        'Contrato público: conta do recebimento definitivo, como manda a Lei 14.133.',
         'Entrega por etapas (pavimento, bloco, ala): cada etapa conta da data do seu termo.',
         'Equipamentos e materiais de fabricante: além do prazo deste regulamento, valem a garantia e o prazo do fabricante, contados da nota fiscal e listados no databook.',
         'Defeito aparente (peça quebrada, riscada, manchada ou faltando) é apontado na vistoria de recebimento e fica registrado no termo. Depois do recebimento, vale a tabela de prazos.']) + '</ul>'
@@ -1026,7 +1022,7 @@ function htmlRegulamento(){
     + '<p>A visita de avaliação não é cobrada. Quando ela mostra que o defeito não está coberto pela garantia, a B&amp;M informa o motivo por escrito e, se o contratante quiser, envia orçamento para o serviço. Atender um chamado não significa reconhecer o defeito como de responsabilidade da B&amp;M.</p>'
     + '<h3>Termos usados</h3>'
     + tab(['Termo', 'Significado'], [
-        ['Contratante', 'A empresa ou órgão que contratou a obra'],
+        ['Contratante', 'A empresa que contratou a obra'],
         ['Termo de recebimento', 'Documento assinado na entrega da obra; marca o início da garantia'],
         ['Defeito aparente', 'Visível na vistoria de recebimento: peça quebrada, riscada, manchada ou faltando'],
         ['Defeito oculto', 'Aparece com o uso normal, depois do recebimento'],
