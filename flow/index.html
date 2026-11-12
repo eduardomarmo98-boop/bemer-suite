@@ -933,7 +933,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.11.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.12.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -954,7 +954,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.11.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.12.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -971,7 +971,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.11.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.12.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1096,7 +1096,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.11.1';
+var APP_VERSAO = '2026.11.12.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -4050,14 +4050,9 @@ var Detalhe = {
     return '<label class="primeiro">Nova data</label>'+
       '<div class="fichas">'+mais(3,'+3 dias')+mais(7,'+1 semana')+mais(15,'+15 dias')+'</div>'+
       '<input type="date" id="d-nova-data" min="'+comoInput(new Date())+'" style="margin-top:8px">'+
-      '<label>O que impediu</label>'+
-      '<div class="fichas">'+CAUSAS_COMUNS.map(function(k){
-        return '<button type="button" class="ficha" data-causa-d="'+k+'">'+esc(CAUSAS[k].split(' — ')[0])+'</button>'; }).join('')+'</div>'+
-      /* a lista só tem o que não está nas fichas; 06/11 (dono): o texto da caixa não é opção da lista */
-      '<input type="hidden" id="d-causa"><select id="d-causa-outro" style="margin-top:8px"><option value="" disabled selected hidden>Outros motivos…</option>'+
-      Object.keys(CAUSAS).filter(function(k){ return CAUSAS_COMUNS.indexOf(k) < 0; })
-        .map(function(k){ return '<option value="'+k+'">'+esc(CAUSAS[k])+'</option>'; }).join('')+
-      '</select><label for="d-motivo">O que aconteceu</label>'+
+      /* 12/11/2026 (dono): saiu o "O que impediu" (fichas + lista de causas).
+         O banco ainda exige a categoria: vai "outros". Fica só o texto. */
+      '<label for="d-motivo">O que aconteceu</label>'+
       '<textarea id="d-motivo" placeholder="O que aconteceu?"></textarea>';
   },
 
@@ -4400,7 +4395,7 @@ var Acoes = {
     return f;
   },
 
-  /* Adiar: motivo obrigatório (vira as causas do Painel). Tem Desfazer. */
+  /* Adiar: só a nova data e o que aconteceu (12/11: sem "o que impediu"). Tem Desfazer. */
   adiar: function(p){
     var atr = situacao(p)==='atrasada';
     var f = folha(atr ? 'Venceu em '+ddmm(p.prazo)+' · nova data' : 'Adiar o prazo ('+ddmm(p.prazo)+')',
@@ -4411,19 +4406,10 @@ var Acoes = {
       for(var k=0;k<fn.length;k++) fn[k].classList.remove('on');
       this.classList.add('on'); q('#d-nova-data').value = this.dataset.nova;
     });
-    var fc = f.querySelectorAll('[data-causa-d]');
-    for(var j=0;j<fc.length;j++) fc[j].addEventListener('click', function(){
-      for(var k=0;k<fc.length;k++) fc[k].classList.remove('on');
-      this.classList.add('on'); q('#d-causa').value = this.dataset.causaD; q('#d-causa-outro').value = '';
-    });
-    q('#d-causa-outro').addEventListener('change', function(){
-      for(var k=0;k<fc.length;k++) fc[k].classList.remove('on');
-      q('#d-causa').value = this.value;
-    });
     q('#d-reprogramar').addEventListener('click', function(){
       var v = q('#d-nova-data').value;
       if(!v){ aviso('Escolha a nova data.','erro'); return; }
-      var iso = fimDoDia(v), cat = q('#d-causa').value, mot = q('#d-motivo').value;
+      var iso = fimDoDia(v), cat = 'outros', mot = q('#d-motivo').value;
       try { RegrasBase.validarRepro(p, iso, cat, mot, EU.id); } catch(e){ aviso(e.message,'erro'); return; }
       f.remove();
       var snap = Instantaneo.tirar(p);
@@ -6355,6 +6341,16 @@ var Admin = {
     o.status = o.status==='ativa' ? 'encerrada' : 'ativa';
     return Promise.resolve(salvar());
   },
+  /* 12/11/2026 (dono): renomear a obra */
+  obraRenomear: function(o, nome){
+    nome = String(nome||'').trim();
+    if(nome.length < 2) return Promise.reject(new Error('Dê um nome à obra.'));
+    var chave = nome.toLowerCase();
+    var igual = DB.obras.filter(function(x){ return x.id!==o.id && x.nome.trim().toLowerCase()===chave; })[0];
+    if(igual) return Promise.reject(new Error('Já existe a obra "'+igual.nome+'".'));
+    o.nome = nome;
+    return Promise.resolve(salvar());
+  },
   pessoaNova: function(d){
     DB.colaboradores.push({id:uid(), nome:d.nome, email:d.email||'', setor:d.setor,
                            cargo:d.cargo, papel:d.papel, ativo:true, obras:[]});
@@ -6424,14 +6420,15 @@ $('btn-obras').addEventListener('click', function(){
         '<td class="num" data-l="Em aberto">'+ps.length+'</td>'+
         '<td class="num" data-l="Atrasadas" data-zero="'+(at?0:1)+'" style="color:'+
           (at?'var(--erro)':'var(--tinta3)')+'">'+at+'</td>'+
-        (podeNoFlow('obras')?'<td data-l="Situação"><button class="link-topo" data-obra="'+o.id+
+        (podeNoFlow('obras')?'<td data-l="Situação" style="white-space:nowrap"><button class="link-topo" data-renomear="'+o.id+
+          '" style="color:var(--tinta3);border-color:var(--linha);margin-right:6px">Renomear</button><button class="link-topo" data-obra="'+o.id+
           '" style="color:var(--tinta3);border-color:var(--linha)">'+
           (o.status==='ativa'?'Encerrar (arquivar)':'Reabrir')+'</button></td>':'')+'</tr>';
     }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--tinta3);padding:26px">Nenhuma obra cadastrada.</td></tr>';
 
     var vv = m.querySelectorAll('[data-ver]');
     for(var i=0;i<vv.length;i++) vv[i].addEventListener('click', function(e){
-      if(e.target.dataset.obra) return;
+      if(e.target.closest && e.target.closest('[data-obra],[data-renomear],.renomeando')) return;
       var o = obra(this.dataset.ver);
       Painel.abrirLista(o.nome, 'Obra ou local',
         visiveis().filter(function(p){ return p.obra_id===o.id && ABERTOS.indexOf(p.status)>=0; }));
@@ -6440,6 +6437,25 @@ $('btn-obras').addEventListener('click', function(){
     for(var k=0;k<bs.length;k++) bs[k].addEventListener('click', function(e){
       e.stopPropagation();
       Admin.obraStatus(obra(this.dataset.obra)).then(function(){ pintar(); desenhar(); });
+    });
+    /* 12/11/2026: renomear no lugar — o nome vira campo com Salvar */
+    var rn = m.querySelectorAll('[data-renomear]');
+    for(var r=0;r<rn.length;r++) rn[r].addEventListener('click', function(e){
+      e.stopPropagation();
+      var o = obra(this.dataset.renomear), td = this.closest('tr').querySelector('td');
+      td.innerHTML = '<div class="renomeando" style="display:flex;gap:6px;align-items:center">'+
+        '<input type="text" value="'+esc(o.nome)+'" maxlength="200" style="flex:1;min-width:160px">'+
+        '<button class="btn btn-p" type="button" data-salvar-nome>Salvar</button>'+
+        '<button class="btn btn-s" type="button" data-cancelar-nome>Cancelar</button></div>';
+      var campo = td.querySelector('input');
+      function salvarNome(){
+        Admin.obraRenomear(o, campo.value).then(function(){ pintar(); desenhar(); aviso('Obra renomeada.','ok'); })
+          .catch(function(err){ aviso(err.message||String(err),'erro'); });
+      }
+      td.querySelector('[data-salvar-nome]').addEventListener('click', salvarNome);
+      td.querySelector('[data-cancelar-nome]').addEventListener('click', function(){ pintar(); });
+      campo.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); salvarNome(); } if(ev.key==='Escape') pintar(); });
+      try { campo.focus(); campo.select(); } catch(x){}
     });
   }
   pintar();
@@ -7063,6 +7079,47 @@ function recarregarTudo(){
     function(e){ if(semRede(e)) Rede.falhou(); throw e; });
 }
 
+/* 12/11/2026 ("delay sinistro ao assumir prazo / adiar"): depois de cada ação
+   a tela baixava o Flow INTEIRO de novo (9 tabelas) — e de novo quando o
+   tempo real avisava da própria ação. Agora busca só as pendências que
+   mudaram e troca no lugar. O resto da lista fica como está.
+   Pendência que deixou de ser visível (ou foi apagada) sai da lista. */
+function recarregarPendencias(ids){
+  ids = (ids || []).map(Number).filter(function(x, i, a){ return x && a.indexOf(x) === i; });
+  if(!ids.length) return Promise.resolve();
+  var S = function(t){ return sb.schema('flow').from(t); };
+  /* Promise.resolve().then: erro ao montar a consulta também vira recusa (cai na carga completa) */
+  return Promise.resolve().then(function(){ return Promise.all([
+    S('v_pendencias').select('*').in('id', ids),
+    S('notas').select('*').in('pendencia_id', ids).order('criado_em'),
+    S('reprogramacoes').select('*').in('pendencia_id', ids).order('em'),
+    S('anexos').select('*').in('pendencia_id', ids).order('id'),
+    S('pendencia_envolvidos').select('*').in('pendencia_id', ids)
+  ]); }).then(function(r){
+    for(var i=0;i<r.length;i++) if(r[i].error) throw r[i].error;
+    var noIds = function(x){ return ids.indexOf(Number(x.pendencia_id)) >= 0; };
+    var novas = r[0].data || [];
+    novas.forEach(function(p){
+      p.frente = p.assunto;
+      p.reprogramacoes = (r[2].data || []).filter(function(x){ return mesmoId(x.pendencia_id, p.id); });
+      p.anexos = (r[3].data || []).filter(function(x){ return mesmoId(x.pendencia_id, p.id); });
+      p.envolvidos = (r[4].data || []).filter(function(x){ return mesmoId(x.pendencia_id, p.id); }).map(function(e){ return e.pessoa_id; });
+    });
+    DB.pendencias = DB.pendencias.filter(function(p){ return ids.indexOf(Number(p.id)) < 0; }).concat(novas)
+      .sort(function(a, b){ return Number(a.id) - Number(b.id); });
+    /* notas na fila ("enviando…"/"não enviado") ficam: ainda não estão no banco */
+    DB.notas = DB.notas.filter(function(n){ return !noIds(n) || n._pendente || n._falhou; }).concat(r[1].data || [])
+      .sort(function(a, b){ return String(a.criado_em).localeCompare(String(b.criado_em)); });
+    Rede.ok(); desenhar(); Sino.atualizar();
+  }, function(e){ if(semRede(e)) Rede.falhou(); throw e; });
+}
+/* depois de uma ação: só a pendência dela; se falhar, a carga completa de antes */
+function recarregarDepois(p){
+  var id = p && p.id;
+  return (id ? recarregarPendencias([id]) : Promise.reject(new Error('sem id')))
+    .catch(function(){ return recarregarTudo(); });
+}
+
 /* =====================================================================
    SEM CONEXÃO — faixa vermelho-clara sob o topo, "Sem conexão · lista
    das 9:32" + Tentar. A lista salva continua na tela.
@@ -7668,33 +7725,33 @@ Dados = {
     (p.envolvidos = p.envolvidos || []).push(EU.id);
     return envio(sb.schema('flow').from('pendencia_envolvidos')
       .insert({ pendencia_id:p.id, pessoa_id:EU.id }), 'o acompanhamento')
-      .then(recarregarTudo);
+      .then(function(){ return recarregarDepois(p); });
   },
   deixarDeAcompanhar: function(p){
     p.envolvidos = (p.envolvidos||[]).filter(function(x){ return !mesmoId(x, EU.id); });
     return envio(sb.schema('flow').from('pendencia_envolvidos').delete()
       .eq('pendencia_id', p.id).eq('pessoa_id', EU.id), 'a saída do acompanhamento')
-      .then(recarregarTudo);
+      .then(function(){ return recarregarDepois(p); });
   },
   /* Adiar e Redirecionar já foram aplicados na tela (Desfazer, 5 s): aqui
      só vão para o servidor. Se ele recusar, a verdade volta do banco. */
   enviarAdiamento: function(p, iso, cat, motivo){
     return envio(sb.schema('flow').rpc('reprogramar', { p_id:p.id, p_data:paraInput(iso),
       p_categoria:cat, p_motivo:String(motivo||'').trim() }), 'o adiamento', p.id)
-      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; })
+      .then(function(){ return recarregarDepois(p); }, function(e){ recarregarDepois(p).catch(nada); throw e; })
       .then(function(){ Detalhe.recarregarSeAberta(p.id); });
   },
   enviarRedirecionamento: function(p, para, motivo){
     return Promise.resolve(sb.schema('flow').rpc('redirecionar', { p_id:p.id, p_para:para, p_motivo:(motivo||'').trim() }))
       .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
-      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; })
+      .then(function(){ return recarregarDepois(p); }, function(e){ recarregarDepois(p).catch(nada); throw e; })
       .then(function(){ Detalhe.recarregarSeAberta(p.id); });
   },
   /* 10/10/2026: aguardando terceiros com o quê / quem (0058) */
   marcarAguardando: function(p, texto){
     return Promise.resolve(sb.schema('flow').rpc('marcar_aguardando', { p_id:p.id, p_texto:texto }))
       .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
-      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
+      .then(function(){ return recarregarDepois(p); }, function(e){ recarregarDepois(p).catch(nada); throw e; });
   },
   /* 15/10/2026: vincular como sub-item / soltar (0064) */
   vincular: function(p, pai){
@@ -7711,7 +7768,7 @@ Dados = {
   trocarQuemPediu: function(p, para){
     return Promise.resolve(sb.schema('flow').rpc('trocar_quem_pediu', { p_id:p.id, p_para:para }))
       .then(function(r){ if(r && r.error) throw new Error(traduzErro(r.error.message).replace(/<[^>]*>/g,'')); })
-      .then(function(){ return recarregarTudo(); }, function(e){ recarregarTudo().catch(nada); throw e; });
+      .then(function(){ return recarregarDepois(p); }, function(e){ recarregarDepois(p).catch(nada); throw e; });
   },
   soltar: function(p){
     return Promise.resolve(sb.schema('flow').rpc('soltar', { p_id:p.id }))
@@ -7784,6 +7841,15 @@ Admin = {
        apagá-la exigiria migração e não traz nada. */
     return envio(sb.schema('core').from('obras').insert({nome:nome}), 'a obra')
       .then(recarregarTudo);
+  },
+  /* 12/11/2026 (dono): renomear — core.obras, então muda em todos os módulos da suíte */
+  obraRenomear: function(o, nome){
+    nome = String(nome||'').trim();
+    if(nome.length < 2) return Promise.reject(new Error('Dê um nome à obra.'));
+    var igual = DB.obras.filter(function(x){ return x.id!==o.id && x.nome.trim().toLowerCase()===nome.toLowerCase(); })[0];
+    if(igual) return Promise.reject(new Error('Já existe a obra "'+igual.nome+'".'));
+    return envio(sb.schema('core').from('obras').update({nome:nome}).eq('id', o.id), 'o nome da obra')
+      .then(function(){ o.nome = nome; });
   },
   obraStatus: function(o){
     var novo = o.status==='ativa' ? 'encerrada' : 'ativa';
@@ -8402,22 +8468,41 @@ var TEMPO_REAL_ESPERA = 900;
 var relogioTempoReal = null;
 var canalTempoReal = null;
 
-function aoMudarNoServidor(){
+/* 12/11/2026: o aviso diz QUAL pendência mudou — junta os ids e busca só
+   elas (recarregarPendencias). Recarga completa só quando o aviso não traz o
+   id (ex.: nota apagada) ou quando são muitas de uma vez (carga em lote). */
+var TR_IDS = {}, TR_TUDO = false, TR_SINO = false;
+function idDoAviso(ev){
+  var t = ev && ev.table, r = (ev && (ev['new'] && Object.keys(ev['new']).length ? ev['new'] : ev.old)) || {};
+  if(t === 'notificacoes'){ TR_SINO = true; return; }
+  var id = t === 'pendencias' ? r.id : r.pendencia_id;
+  if(id) TR_IDS[id] = true; else TR_TUDO = true;
+}
+function aoMudarNoServidor(ev){
+  if(ev) idDoAviso(ev); else TR_TUDO = true;
+  agendarTempoReal();
+}
+function agendarTempoReal(){
   if(relogioTempoReal) clearTimeout(relogioTempoReal);
   relogioTempoReal = setTimeout(function(){
     /* modal aberto: não puxa o tapete — espera fechar e recarrega depois
        (antes o evento era jogado fora e quem estava com a pendência aberta
        não via a mudança nem ao fechar) */
     var folhas = document.querySelectorAll('.fundo-modal');
-    if(folhas.length){
+    var soConversa = folhas.length === 1 && folhas[0].classList.contains('f-detalhe') && !Detalhe.ocupado(folhas[0]);
+    if(folhas.length && !soConversa) return agendarTempoReal();
+    var ids = Object.keys(TR_IDS), tudo = TR_TUDO || ids.length > 15, sino = TR_SINO;
+    TR_IDS = {}; TR_TUDO = false; TR_SINO = false;
+    var feito = tudo ? recarregarTudo()
+              : ids.length ? recarregarPendencias(ids).catch(function(){ return recarregarTudo(); })
+              : Sino.carregar().then(function(){ Sino.atualizar(); });
+    feito.then(function(){
+      Sino.atualizar();
       /* só a conversa aberta e ninguém escrevendo: atualiza no lugar */
-      if(folhas.length === 1 && folhas[0].classList.contains('f-detalhe') && !Detalhe.ocupado(folhas[0])){
-        var id = folhas[0].dataset.p;
-        return recarregarTudo().then(function(){ Sino.atualizar(); if(pend(id) && document.querySelector('.fundo-modal.f-detalhe')) Detalhe.abrir(id); });
-      }
-      return aoMudarNoServidor();
-    }
-    recarregarTudo().then(Sino.atualizar);
+      var f = document.querySelector('.fundo-modal.f-detalhe');
+      if(f && !Detalhe.ocupado(f) && pend(f.dataset.p) && (tudo || ids.indexOf(String(f.dataset.p)) >= 0)) Detalhe.abrir(f.dataset.p);
+    }, nada);
+    if(sino && !tudo) Sino.carregar().then(function(){ Sino.atualizar(); }, nada);
   }, TEMPO_REAL_ESPERA);
 }
 
