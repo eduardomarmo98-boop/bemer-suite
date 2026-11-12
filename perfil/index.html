@@ -320,7 +320,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.04.2';
+var APP_VERSION = '2026.11.12.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -337,7 +337,7 @@ var FQ = { cat:'', nivel:'', busca:'', ativas:'todas' };
 var CMP = { vaga:'', sel:[] };
 
 /* colunas lidas de perfil.avaliacoes — o roteiro (gabarito) não é liberado para leitura */
-var COLS_AV = 'id,numero,candidato_id,vaga_id,vaga_nome,area,data,recrutador_id,processo,config,status,resultado,parecer,motivo,inicio_em,fim_em,criado_em,criado_por';
+var COLS_AV = 'id,numero,candidato_id,vaga_id,vaga_nome,area,data,recrutador_id,processo,config,status,resultado,parecer,motivo,inicio_em,fim_em,criado_em,criado_por,link_token,link_expira';
 
 var AREAS = { operacional:'Operacional', administrativa:'Administrativa', tecnica:'Técnica', engenharia:'Engenharia', lideranca:'Liderança e supervisão' };
 var STATUS = { aguardando:'Aguardando', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada' };
@@ -659,16 +659,58 @@ function abrirAvaliacao(id){
     + (a.processo ? '<div class="det-linha"><b>Processo</b><span>' + esc(a.processo) + '</span></div>' : '')
     + '<div class="det-linha"><b>Situação</b><span><span class="selo st-' + a.status + '">' + STATUS[a.status] + '</span>'
       + (a.inicio_em ? ' · início ' + fmtDataHora(a.inicio_em) : '') + (a.fim_em ? ' · fim ' + fmtDataHora(a.fim_em) : '') + (a.motivo ? ' · ' + esc(a.motivo) : '') + '</span></div>'
+    + (linkValido(a) ? '<div class="det-linha"><b>Link</b><span>Enviado ao candidato · vale até ' + fmtDataHora(a.link_expira) + '</span></div>' : '')
     + '<div class="det-linha"><b>Aplica</b><span>' + esc(mods.join(' · ') || '—') + (cfg.tempo_cog_min ? ' · ' + cfg.tempo_cog_min + ' min de raciocínio' : '') + '</span></div>'
     + (outras.length ? '<h2 style="font-size:14px;color:var(--azul);margin:14px 0 6px">Histórico do candidato</h2><div class="lista">' + outras.map(linhaAv).join('') + '</div>' : '');
   var bts = [];
   if(a.status === 'concluida') bts.push({ rotulo:'Ver relatório', cls:'btn-primary', fn:function(){ fecharModal(); abrirRelatorio(a.id); return 'manter'; } });
   if(PODE.aplicar && (a.status === 'aguardando' || a.status === 'em_andamento'))
     bts.push({ rotulo:a.status === 'aguardando' ? 'Aplicar agora' : 'Retomar', cls:'btn-laranja', fn:function(){ fecharModal(); aplicar(a.id); return 'manter'; } });
+  /* 12/11/2026 (0102): o candidato faz a distância, por um link que vale 24 h */
+  if(PODE.aplicar && (a.status === 'aguardando' || a.status === 'em_andamento'))
+    bts.push({ rotulo:'Link para o candidato', cls:'btn-secondary', fn:function(){ abrirLinkCand(a); return 'manter'; } });
   if(PODE.aplicar && (a.status === 'aguardando' || a.status === 'em_andamento'))
     bts.push({ rotulo:'Cancelar', cls:'btn-secondary', fn:function(){ return cancelarAv(a); } });
   if(PODE.excluir) bts.push({ rotulo:'Excluir', cls:'btn-danger', fn:function(){ return excluirAv(a); } });
   abrirModal('Avaliação nº ' + a.numero, html, bts);
+}
+/* ---------- LINK PARA O CANDIDATO (12/11/2026, 0102) ----------
+   Gera um endereço que vale 24 h (perfil/teste.html#t=<código>). Gerar de
+   novo troca o código e o anterior deixa de valer. O candidato faz sem conta;
+   as respostas ficam salvas a cada passo; no fim ele não vê resultado. */
+function linkValido(a){ return !!(a && a.link_token && a.link_expira && new Date(a.link_expira) > new Date()); }
+function urlTeste(tok){ return new URL('teste.html', location.href).href.split('#')[0] + '#t=' + tok; }
+function abrirLinkCand(a){
+  var c = candDe(a.candidato_id), nome = c ? c.nome : '';
+  function desenhar_(){
+    var ok = linkValido(a), url = ok ? urlTeste(a.link_token) : '';
+    var txt = 'Olá, ' + String(nome).split(' ')[0] + '! Segue o link da avaliação da Brandão & Marmo. Faça num lugar tranquilo, sozinho, pelo celular ou computador. O link vale até ' + (ok ? fmtDataHora(a.link_expira) : '') + '. ' + url;
+    var corpo = ok
+      ? '<p style="line-height:1.5;margin-bottom:10px">Envie ao candidato. O link vale até <b>' + fmtDataHora(a.link_expira) + '</b>.</p>'
+        + '<input id="lk-url" readonly value="' + esc(url) + '" style="width:100%;padding:10px;border:1px solid var(--borda-forte);border-radius:9px;font-size:13px">'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
+        + '<button type="button" class="btn btn-primary" id="lk-copiar">Copiar link</button>'
+        + '<a class="btn btn-secondary" id="lk-whats" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(txt) + '">Enviar pelo WhatsApp</a></div>'
+        + '<p class="dica" style="margin-top:12px">O candidato não precisa de conta. Se ele fechar a página, abre o mesmo link e continua. No fim ele não vê o resultado: o relatório aparece aqui, como no presencial.</p>'
+      : '<p style="line-height:1.5">Gere um link para o candidato fazer a avaliação a distância, pelo celular ou computador. Ele vale por <b>24 horas</b>.</p>'
+        + '<p class="dica" style="margin-top:10px">A distância não dá para garantir que o próprio candidato respondeu sozinho, principalmente na parte de raciocínio.</p>';
+    var bts = [{ rotulo:'Voltar', fn:function(){ abrirAvaliacao(a.id); return 'manter'; } }];
+    if(ok) bts.push({ rotulo:'Cancelar link', cls:'btn-danger', fn:async function(){
+      if(!confirm('Cancelar o link? O candidato não consegue mais abrir.')) return false;
+      var r = await P().rpc('cancelar_link', { p_id:a.id }); if(r.error) throw r.error;
+      a.link_token = null; a.link_expira = null; toast('Link cancelado.'); desenhar_(); return 'manter'; } });
+    bts.push({ rotulo:ok ? 'Gerar outro (24 h)' : 'Gerar link (24 h)', cls:'btn-laranja', fn:async function(){
+      if(ok && !confirm('Gerar outro link? O atual deixa de valer.')) return false;
+      var r = await P().rpc('gerar_link', { p_id:a.id }); if(r.error) throw r.error;
+      a.link_token = r.data.token; a.link_expira = r.data.expira; toast('Link gerado: vale 24 horas.'); desenhar_(); return 'manter'; } });
+    abrirModal('Link para o candidato · nº ' + a.numero, corpo, bts);
+    if(ok) $('lk-copiar').addEventListener('click', function(){
+      var campo = $('lk-url'), feito = function(){ toast('Link copiado.'); };
+      try { navigator.clipboard.writeText(campo.value).then(feito, function(){ campo.select(); document.execCommand('copy'); feito(); }); }
+      catch(e){ campo.select(); try { document.execCommand('copy'); feito(); } catch(x){} }
+    });
+  }
+  desenhar_();
 }
 async function cancelarAv(a){
   var m = prompt('Motivo do cancelamento (ex.: candidato desistiu, aplicação interrompida):'); if(m === null) return false;

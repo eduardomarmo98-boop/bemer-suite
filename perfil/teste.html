@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; media-src 'self' data: blob: https://cupdrskggjmhbzdxiume.supabase.co; connect-src 'self' https://cupdrskggjmhbzdxiume.supabase.co wss://cupdrskggjmhbzdxiume.supabase.co https://viacep.com.br https://generativelanguage.googleapis.com https://hook.eu2.make.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; frame-src 'self' blob: data: https://cupdrskggjmhbzdxiume.supabase.co https://www.youtube-nocookie.com https://drive.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="robots" content="noindex,nofollow"/>
+<meta name="referrer" content="no-referrer"/>
+<meta name="theme-color" content="#00296B"/>
+<title>Avaliação · Brandão &amp; Marmo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- GERADO por _fontes/montar-teste.js a partir do index.html. Não edite aqui. -->
+<style>
+:root{
+  --azul:#00296B; --azul-escuro:#001B4D; --laranja:#FE9400; --laranja-claro:#FFF1DC; --laranja-txt:#8A5000;
+  --texto:#0F1B2D; --texto2:#4F5B6D; --borda:#E3E7ED; --borda-forte:#C9D1DD;
+  --fundo:#F5F7FA; --campo:#F7F9FC; --erro:#9B1C14; --erro-fundo:#FDECEB; --ok:#1B5E34; --ok-fundo:#E7F5EC;
+  --shadow:0 1px 3px rgba(0,20,60,.07),0 1px 2px rgba(0,20,60,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:Poppins,system-ui,sans-serif;background:var(--fundo);color:var(--texto);-webkit-font-smoothing:antialiased;font-size:14px}
+.oculto{display:none!important}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--laranja);outline-offset:2px}
+a{color:var(--azul)}
+
+
+.btn{padding:9px 16px;border-radius:9px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  white-space:nowrap;min-height:42px;border:1px solid transparent}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--azul);color:#fff} .btn-primary:hover{background:var(--azul-escuro)}
+.btn-laranja{background:var(--laranja);color:var(--azul)} .btn-laranja:hover{filter:brightness(.96)}
+.btn-secondary{background:#fff;color:var(--azul);border-color:var(--azul)} .btn-secondary:hover{background:#EEF2F9}
+
+.dica{color:var(--texto2);font-size:12px;line-height:1.45}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:300;
+  background:var(--azul);color:#fff;border-radius:10px;padding:10px 16px;max-width:92%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast.err{background:var(--erro)}
+#cand{position:fixed;inset:0;z-index:90;background:var(--fundo);overflow:auto;display:flex;flex-direction:column}
+.c-topo{background:var(--azul);color:#fff;padding:12px 18px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;gap:12px}
+.c-topo .t{font-weight:700;font-size:16px;letter-spacing:.3px}
+.c-topo .t small{display:block;font-weight:500;font-size:11px;opacity:.8;letter-spacing:0}
+.c-topo .rel{margin-left:auto;font-weight:700;font-size:18px;background:rgba(255,255,255,.12);border-radius:10px;padding:6px 12px;font-variant-numeric:tabular-nums}
+.c-topo .rel.pouco{background:var(--laranja);color:var(--azul)}
+.c-sair{color:#fff;opacity:.55;width:40px;height:40px;border-radius:8px;font-size:20px}
+.c-barra{height:6px;background:rgba(0,41,107,.12)}
+.c-barra i{display:block;height:100%;background:var(--laranja);transition:width .3s}
+.c-corpo{flex:1;width:100%;max-width:760px;margin:0 auto;padding:22px 18px 30px}
+.c-etapa{font-size:12px;font-weight:700;color:var(--laranja-txt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.c-h{font-size:22px;font-weight:700;color:var(--azul);line-height:1.3;margin-bottom:10px}
+.c-p{font-size:16px;line-height:1.55;color:var(--texto);margin-bottom:12px}
+.c-inst{background:#fff;border:1px solid var(--borda);border-left:4px solid var(--laranja);border-radius:10px;padding:12px 14px;font-size:15px;line-height:1.5;margin-bottom:16px}
+.c-rodape{display:flex;gap:10px;justify-content:space-between;margin-top:22px}
+.c-rodape .btn{min-height:54px;font-size:17px;padding:0 24px;border-radius:12px}
+.c-rodape .btn-primary{flex:1;max-width:340px;margin-left:auto}
+/* bloco: 👍 / 👎 */
+.blc{display:flex;flex-direction:column;gap:10px}
+.blc-l{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--borda);border-radius:12px;padding:10px 10px 10px 14px}
+.blc-l .tx{flex:1;font-size:17px;line-height:1.4}
+.blc-l.mais{border-color:#2E7D32;background:#F1FAF4}
+.blc-l.menos{border-color:#C62828;background:#FDF2F2}
+.blc-b{width:58px;height:54px;border-radius:10px;border:2px solid var(--borda-forte);background:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.blc-b.on.m{background:#2E7D32;border-color:#2E7D32;color:#fff}
+.blc-b.on.n{background:#C62828;border-color:#C62828;color:#fff}
+.blc-leg{display:flex;justify-content:flex-end;gap:10px;font-size:12px;font-weight:700;color:var(--texto2);padding-right:10px}
+.blc-leg span{width:58px;text-align:center}
+/* par: escala de 5 */
+.par{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:18px}
+.par-txt{display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:17px;line-height:1.4;font-weight:600;color:var(--azul);margin-bottom:16px}
+.par-txt div:last-child{text-align:right}
+.par-esc{display:flex;justify-content:space-between;gap:8px}
+.par-esc button{flex:1;min-height:58px;border-radius:12px;border:2px solid var(--borda-forte);background:#fff;font-weight:700;font-size:13px;color:var(--texto2);line-height:1.2;padding:4px}
+.par-esc button.on{background:var(--azul);border-color:var(--azul);color:#fff}
+/* opções (cenário e cognitivo) */
+.ops{display:flex;flex-direction:column;gap:10px}
+.op{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;background:#fff;border:2px solid var(--borda);border-radius:12px;padding:13px 14px;font-size:17px;line-height:1.4;min-height:56px}
+.op .l{width:30px;height:30px;border-radius:50%;background:#EEF2F9;color:var(--azul);font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:15px}
+.op.on{border-color:var(--azul);background:#EEF2F9}
+.op.on .l{background:var(--azul);color:#fff}
+.c-enun{font-size:18px;line-height:1.55;white-space:pre-wrap;margin-bottom:14px;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px 16px}
+.c-tab{margin:-4px 0 14px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--borda)}
+.c-tab td,.c-tab th{font-size:15px;text-align:center}
+.c-fim{text-align:center;padding-top:40px}
+.c-fim .ic{font-size:64px}
+.c-ex{background:#fff;border:1px dashed var(--borda-forte);border-radius:12px;padding:12px 14px;margin:8px 0 14px;font-size:15px;line-height:1.5}
+
+
+.msg{max-width:560px;margin:60px auto;background:#fff;border:1px solid var(--borda);border-radius:14px;padding:26px;text-align:center;box-shadow:var(--shadow)}
+.msg .ic{font-size:48px;margin-bottom:8px}
+.msg p{font-size:15px;line-height:1.55;color:var(--texto2);margin-top:8px}
+</style>
+</head>
+<body>
+<div id="cand"><div class="msg"><div class="ic">⏳</div><p>Carregando a avaliação…</p></div></div>
+<script>
+/* o publicar.js troca estes dois pela produção */
+var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
+var FUNCAO = SUPABASE_URL + '/functions/v1/perfil-teste';
+var TOKEN = (((location.hash || '') + '&' + (location.search || '')).match(/[#&?]t=([0-9a-f]{64})/) || [])[1] || '';
+function $(id){ return document.getElementById(id); }
+var C = null;
+var INST = {
+  eu:'Pense em como você é de verdade, no seu jeito natural. Não existe resposta certa ou errada.',
+  amb:'Agora pense no que o seu trabalho ou a função que você procura ESPERA de você — não em como você é. Não existe resposta certa ou errada.'
+};
+
+/* ---- copiadas do index.html (modo presencial), sem edição ---- */
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function montarPassos(cad){
+  var p = [{ k:'boas' }];
+  if((cad.eu || []).length){
+    p.push({ k:'intro', e:'eu' }); (cad.eu || []).forEach(function(it){ p.push({ k:'item', e:'eu', it:it }); });
+    p.push({ k:'intro', e:'amb' }); (cad.amb || []).forEach(function(it){ p.push({ k:'item', e:'amb', it:it }); });
+  }
+  if((cad.cog || []).length){ p.push({ k:'intro', e:'cog' }); (cad.cog || []).forEach(function(q){ p.push({ k:'item', e:'cog', it:q }); }); }
+  p.push({ k:'fim' });
+  return p;
+}
+function respondido(pa, resp){
+  if(pa.k !== 'item') return false;
+  var r = (resp[pa.e] || {})[pa.it.c]; if(!r) return false;
+  if(pa.e === 'cog') return 'r' in r;
+  if(pa.it.t === 'bloco') return r.mais != null && r.menos != null;
+  if(pa.it.t === 'par') return r.v != null;
+  return r.o != null;
+}
+function contarTempo(){
+  if(!C) return;
+  var pa = C.passos[C.i], agora = Date.now(), dt = (agora - C.tPasso) / 1000; C.tPasso = agora;
+  if(pa.k === 'item'){
+    C.resp.tempos[pa.e] = Math.round(((C.resp.tempos[pa.e] || 0) + dt) * 10) / 10;
+    if(pa.e === 'cog'){ var r = C.resp.cog[pa.it.c] = C.resp.cog[pa.it.c] || {}; r.t = Math.round(((r.t || 0) + dt) * 10) / 10; }
+  }
+}
+function cogRestante(){ return C.resp.cogInicio ? C.limCog - (Date.now() - C.resp.cogInicio) / 1000 : C.limCog; }
+function totalItens(){ return C.passos.filter(function(p){ return p.k === 'item'; }).length; }
+function feitos(){ var n = 0; C.passos.forEach(function(p){ if(respondido(p, C.resp)) n++; }); return n; }
+function ir(delta){ contarTempo(); C.i = Math.max(0, Math.min(C.passos.length - 1, C.i + delta)); C.sujo = true; salvarParcial(C.passos[C.i].k === 'intro'); passo(); }
+function letra(n){ return 'ABCDEF'.charAt(n); }
+function itemHtml(pa){
+  var it = pa.it, r = (C.resp[pa.e] || {})[it.c] || {};
+  if(pa.e === 'cog'){
+    var tab = it.tab && it.tab.length ? '<table class="c-tab"><tr>' + it.tab[0].map(function(x){ return '<th>' + esc(x) + '</th>'; }).join('') + '</tr>'
+      + it.tab.slice(1).map(function(l){ return '<tr>' + l.map(function(x){ return '<td>' + esc(x) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>' : '';
+    var n = C.passos.filter(function(p){ return p.e === 'cog' && p.k === 'item'; }).indexOf(pa) + 1;
+    return '<div class="dica" style="margin-bottom:6px">Questão ' + n + ' de ' + C.cad.cog.length + '</div>'
+      + '<div class="c-enun">' + esc(it.e) + '</div>' + tab
+      + '<div class="ops">' + it.o.map(function(o, k){ return '<button type="button" class="op' + (r.r === o.i ? ' on' : '') + '" data-op="' + o.i + '"><span class="l">' + letra(k) + '</span><span>' + esc(o.t) + '</span></button>'; }).join('') + '</div>';
+  }
+  var inst = pa.e === 'eu' ? 'com você' : 'com o que o trabalho espera de você';
+  if(it.t === 'bloco'){
+    return '<div class="c-h" style="font-size:19px">Toque em 👍 na frase MAIS parecida ' + inst + ' e em 👎 na MENOS parecida.</div>'
+      + '<div class="blc-leg"><span>mais</span><span>menos</span></div><div class="blc">'
+      + it.f.map(function(f){
+          var cls = r.mais === f.i ? ' mais' : r.menos === f.i ? ' menos' : '';
+          return '<div class="blc-l' + cls + '"><div class="tx">' + esc(f.t) + '</div>'
+            + '<button type="button" class="blc-b m' + (r.mais === f.i ? ' on' : '') + '" data-mais="' + f.i + '" aria-label="Mais parecida">👍</button>'
+            + '<button type="button" class="blc-b n' + (r.menos === f.i ? ' on' : '') + '" data-menos="' + f.i + '" aria-label="Menos parecida">👎</button></div>';
+        }).join('') + '</div>';
+  }
+  if(it.t === 'par'){
+    var rot = ['Muito mais<br>a da esquerda', 'Mais a da<br>esquerda', 'As duas<br>igualmente', 'Mais a da<br>direita', 'Muito mais<br>a da direita'];
+    return '<div class="c-h" style="font-size:19px">Qual das duas frases combina mais ' + inst + '?</div>'
+      + '<div class="par"><div class="par-txt"><div>' + esc(it.a) + '</div><div>' + esc(it.b) + '</div></div>'
+      + '<div class="par-esc">' + [1, 2, 3, 4, 5].map(function(v){ return '<button type="button" data-v="' + v + '"' + (r.v === v ? ' class="on"' : '') + '>' + rot[v - 1] + '</button>'; }).join('') + '</div></div>';
+  }
+  return '<div class="c-h" style="font-size:19px">' + (pa.e === 'eu' ? 'O que você faria?' : 'O que o trabalho espera que você faça?') + '</div>'
+    + '<div class="c-enun">' + esc(it.e) + '</div>'
+    + '<div class="ops">' + it.f.map(function(o, k){ return '<button type="button" class="op' + (r.o === o.i ? ' on' : '') + '" data-cen="' + o.i + '"><span class="l">' + letra(k) + '</span><span>' + esc(o.t) + '</span></button>'; }).join('') + '</div>';
+}
+function ligarItem(pa){
+  var raiz = $('cand');
+  raiz.querySelectorAll('[data-ir]').forEach(function(b){ b.addEventListener('click', function(){ if(!b.disabled) ir(+b.getAttribute('data-ir')); }); });
+  var pul = raiz.querySelector('[data-pular]'); if(pul) pul.addEventListener('click', function(){ ir(1); });
+  if(pa.k !== 'item') return;
+  var bag = C.resp[pa.e], c = pa.it.c;
+  function marcar(fn){ bag[c] = bag[c] || {}; fn(bag[c]); C.sujo = true; passo(); salvarParcial(false); }
+  raiz.querySelectorAll('[data-mais]').forEach(function(b){ b.addEventListener('click', function(){ var v = +b.getAttribute('data-mais'); marcar(function(r){ r.mais = v; if(r.menos === v) delete r.menos; }); }); });
+  raiz.querySelectorAll('[data-menos]').forEach(function(b){ b.addEventListener('click', function(){ var v = +b.getAttribute('data-menos'); marcar(function(r){ r.menos = v; if(r.mais === v) delete r.mais; }); }); });
+  raiz.querySelectorAll('[data-v]').forEach(function(b){ b.addEventListener('click', function(){ var v = +b.getAttribute('data-v'); marcar(function(r){ r.v = v; }); }); });
+  raiz.querySelectorAll('[data-cen]').forEach(function(b){ b.addEventListener('click', function(){ var v = +b.getAttribute('data-cen'); marcar(function(r){ r.o = v; }); }); });
+  raiz.querySelectorAll('[data-op]').forEach(function(b){ b.addEventListener('click', function(){ var v = +b.getAttribute('data-op'); marcar(function(r){ r.r = v; }); }); });
+}
+function ligarRelogio(){
+  if(!C.resp.cogInicio) C.resp.cogInicio = Date.now();
+  function tic(){
+    if(!C) return;
+    var s = Math.max(0, Math.ceil(cogRestante())), el = $('c-rel'); if(!el) return;
+    el.classList.remove('oculto'); el.classList.toggle('pouco', s <= 120);
+    el.textContent = '⏱ ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    if(s <= 0){ clearInterval(C.timer); contarTempo(); C.resp.esgotou = true; C.i = C.passos.length - 1; passo(); }
+  }
+  tic(); C.timer = setInterval(tic, 1000);
+}
+
+/* ---- só do link ---- */
+function chamar(corpo){
+  corpo.token = TOKEN;
+  return fetch(FUNCAO, { method:'POST', headers:{ 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY }, body:JSON.stringify(corpo) })
+    .then(function(r){ return r.json().catch(function(){ return { ok:false, erro:'resposta inválida (' + r.status + ')' }; }); },
+          function(){ return { ok:false, erro:'sem conexão com a internet' }; });
+}
+function mensagem(ic, titulo, txt){
+  $('cand').innerHTML = '<div class="msg"><div class="ic">' + ic + '</div><div class="c-h">' + esc(titulo) + '</div><p>' + txt + '</p></div>';
+}
+function nomeCand(){ return C.nome || ''; }
+async function salvarParcial(forcar){
+  if(!C || (!C.sujo && !forcar)) return;
+  if(!forcar && Date.now() - C.tSalvo < 8000) return;
+  C.sujo = false; C.tSalvo = Date.now();
+  var r = await chamar({ acao:'salvar', respostas:C.resp });
+  if(!r.ok){ C.sujo = true; console.warn('[salvar]', r.erro); }
+}
+function passo(){
+  if(!C) return;
+  var pa = C.passos[C.i], h = '';
+  var etapaNome = { eu:'Parte 1 · Como eu sou', amb:'Parte 2 · O que o trabalho espera de mim', cog:'Parte 3 · Raciocínio' };
+  var temCog = (C.cad.cog || []).length > 0, temComp = (C.cad.eu || []).length > 0;
+  clearInterval(C.timer); C.timer = null;
+  var topo = '<div class="c-topo"><div class="t">AVALIAÇÃO<small>Brandão &amp; Marmo Engenharia</small></div>'
+    + '<div class="rel oculto" id="c-rel"></div></div>'
+    + '<div class="c-barra"><i style="width:' + Math.round(100 * feitos() / Math.max(1, totalItens())) + '%"></i></div>';
+  if(pa.k === 'boas'){
+    var partes = [];
+    if(temComp){ partes.push('<b>Parte 1 e 2</b> — perguntas sobre o seu jeito de trabalhar. Não há resposta certa ou errada e não tem tempo marcado.'); }
+    if(temCog){ partes.push('<b>' + (temComp ? 'Parte 3' : 'Parte 1') + '</b> — exercícios de raciocínio, com tempo marcado na tela (' + Math.round(C.limCog / 60) + ' minutos).'); }
+    h = '<div class="c-h">Olá' + (nomeCand() ? ', ' + esc(nomeCand()) : '') + '!</div>'
+      + '<p class="c-p">Esta avaliação ajuda a Brandão &amp; Marmo a conhecer o seu jeito de trabalhar. Ela tem:</p>'
+      + '<div class="c-inst">' + partes.join('<br><br>') + '</div>'
+      + '<p class="c-p">Responda com calma, sozinho, sem pedir ajuda, num lugar tranquilo. O que você responde fica salvo a cada passo: se a conexão cair, abra o mesmo link de novo para continuar.</p>'
+      + '<div class="c-rodape"><span></span><button type="button" class="btn btn-primary" data-ir="1">Começar</button></div>';
+  } else if(pa.k === 'intro'){
+    if(pa.e === 'eu') h = '<div class="c-etapa">' + etapaNome.eu + '</div><div class="c-h">Como eu sou</div>'
+      + '<div class="c-inst">' + INST.eu + '</div>'
+      + '<p class="c-p">Você vai ver três tipos de pergunta:</p>'
+      + '<div class="c-ex"><b>Grupo de 4 frases</b> — toque em 👍 na frase MAIS parecida com você e em 👎 na MENOS parecida.</div>'
+      + '<div class="c-ex"><b>Duas frases opostas</b> — escolha um dos 5 botões, do lado da frase que tem mais a ver com você.</div>'
+      + '<div class="c-ex"><b>Situação de trabalho</b> — escolha o que você faria.</div>';
+    else if(pa.e === 'amb') h = '<div class="c-etapa">' + etapaNome.amb + '</div><div class="c-h">O que o trabalho espera de mim</div>'
+      + '<div class="c-inst">' + INST.amb + '</div>'
+      + '<p class="c-p">As perguntas são parecidas com as da Parte 1, mas agora a pergunta é outra: <b>como o trabalho quer que você seja</b>.</p>';
+    else h = '<div class="c-etapa">' + (temComp ? etapaNome.cog : 'Parte 1 · Raciocínio') + '</div><div class="c-h">Raciocínio</div>'
+      + '<div class="c-inst">São ' + C.cad.cog.length + ' questões de múltipla escolha, das mais fáceis para as mais difíceis. Você tem <b>' + Math.round(C.limCog / 60) + ' minutos</b>: o relógio aparece no alto da tela e começa quando você tocar em "Começar". Depois de começar, o tempo corre mesmo se você fechar a página.</div>'
+      + '<p class="c-p">Escolha uma resposta e toque em "Próxima". Se não souber, pode pular e voltar depois, enquanto houver tempo. Pode usar papel para rascunho.</p>'
+      + '<div class="c-ex"><b>Exemplo:</b> 2, 4, 6, 8, ? → a resposta é <b>10</b> (soma 2 a cada número).</div>';
+    h += '<div class="c-rodape"><span></span><button type="button" class="btn btn-primary" data-ir="1">' + (pa.e === 'cog' ? 'Começar' : 'Continuar') + '</button></div>';
+  } else if(pa.k === 'item'){
+    h = '<div class="c-etapa">' + (pa.e === 'cog' && !temComp ? 'Parte 1 · Raciocínio' : etapaNome[pa.e]) + '</div>' + itemHtml(pa);
+    var ok = respondido(pa, C.resp);
+    var anterior = C.passos[C.i - 1] && C.passos[C.i - 1].k === 'item' && C.passos[C.i - 1].e === pa.e;
+    h += '<div class="c-rodape">' + (anterior ? '<button type="button" class="btn btn-secondary" data-ir="-1">Voltar</button>' : '<span></span>')
+      + (pa.e === 'cog' && !ok ? '<button type="button" class="btn btn-secondary" data-pular="1">Pular</button>' : '')
+      + '<button type="button" class="btn btn-primary" data-ir="1" id="c-prox"' + (ok ? '' : ' disabled') + '>Próxima</button></div>';
+  } else {
+    h = '<div class="c-fim"><div class="ic">✅</div><div class="c-h" style="margin-top:10px">Avaliação concluída!</div>'
+      + '<p class="c-p">Obrigado pela sua participação. A Brandão &amp; Marmo vai entrar em contato.</p>'
+      + '<div id="c-env" class="dica">Enviando…</div></div>';
+  }
+  $('cand').innerHTML = topo + '<div class="c-corpo">' + h + '</div>';
+  $('cand').scrollTop = 0; window.scrollTo(0, 0);
+  ligarItem(pa);
+  if(pa.k === 'item' && pa.e === 'cog') ligarRelogio();
+  if(pa.k === 'intro' && pa.e === 'cog'){
+    $('cand').querySelector('[data-ir]').addEventListener('click', function(){ if(!C.resp.cogInicio) C.resp.cogInicio = Date.now(); }, true);
+  }
+  if(pa.k === 'fim') concluirCand();
+}
+async function concluirCand(){
+  if(C.concluindo) return; C.concluindo = true;
+  if(C.resp.cogInicio) C.resp.tempos.cog = Math.min(C.limCog, Math.round((Date.now() - C.resp.cogInicio) / 1000));
+  async function enviar(){
+    $('c-env').textContent = 'Enviando…';
+    var r = await chamar({ acao:'concluir', respostas:C.resp });
+    if(!r.ok){
+      $('c-env').innerHTML = 'Não consegui enviar (' + esc(r.erro || 'erro') + '). <button type="button" class="btn btn-sm btn-secondary" id="c-tenta">Tentar de novo</button>';
+      $('c-tenta').addEventListener('click', enviar);
+      return;
+    }
+    C.enviado = true; window.removeEventListener('beforeunload', avisoSaida);
+    $('c-env').textContent = 'Respostas enviadas. Pode fechar esta página.';
+  }
+  await enviar();
+}
+function avisoSaida(e){ if(C && !C.enviado && C.passos[C.i].k !== 'boas'){ salvarParcial(true); e.preventDefault(); e.returnValue = ''; } }
+
+(async function iniciar(){
+  if(!TOKEN){ mensagem('🔗', 'Link incompleto', 'Confira se o endereço foi copiado inteiro. Se não der certo, peça um novo link ao recrutador.'); return; }
+  var r = await chamar({ acao:'abrir' });
+  if(!r.ok){ mensagem('⚠️', 'Não foi possível abrir', esc(r.erro || 'Tente de novo em instantes.')); return; }
+  var dados = r.dados || {}, resp = dados.respostas || {};
+  resp.eu = resp.eu || {}; resp.amb = resp.amb || {}; resp.cog = resp.cog || {}; resp.tempos = resp.tempos || {};
+  var passos = montarPassos(dados.caderno || {});
+  /* retomada: vai para o primeiro item ainda sem resposta (igual ao presencial) */
+  var i = 0, algum = false;
+  for(var k = 0; k < passos.length; k++){ if(respondido(passos[k], resp)) algum = true; }
+  if(algum){
+    for(i = 0; i < passos.length; i++){ if(passos[i].k === 'item' && !respondido(passos[i], resp)) break; }
+    if(i >= passos.length) i = passos.length - 1;
+    else if(passos[i - 1] && passos[i - 1].k === 'intro' && passos[i - 1].e === passos[i].e && !(passos[i].e === 'cog' && resp.cogInicio)) i--;
+  }
+  C = { nome:dados.nome || '', cad:dados.caderno || {}, resp:resp, passos:passos, i:i, limCog:(dados.tempo_cog_min || 20) * 60,
+        tSalvo:0, sujo:false, timer:null, tPasso:Date.now() };
+  if(resp.cogInicio && (cogRestante() <= 0)){ C.i = passos.length - 1; }
+  window.addEventListener('beforeunload', avisoSaida);
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) salvarParcial(true); });
+  passo();
+})();
+</script>
+</body>
+</html>
