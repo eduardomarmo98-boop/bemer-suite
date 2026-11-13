@@ -933,7 +933,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.12.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.13.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -954,7 +954,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.12.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.13.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -971,7 +971,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.12.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.13.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1096,7 +1096,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.12.1';
+var APP_VERSAO = '2026.11.13.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1648,10 +1648,7 @@ var Regras = {
     if(p.prazo_original)
       throw new Error('Depois do prazo assumido a pendência não muda de responsável. Adie ou peça para quem abriu cancelar.');
     if(!para || mesmoId(para, p.responsavel_id)) throw new Error('Escolha outra pessoa.');
-    /* 10/10/2026: devolver para quem abriu não é redirecionar — é conversa */
-    if(mesmoId(para, p.criado_por))
-      throw new Error((mesmoId(para, ator) ? 'Você abriu' : primeiro(pessoa(para).nome)+' abriu')+
-        ' esta pendência. Não dá para redirecionar para quem abriu: resolva pela conversa desta pendência.');
+    /* 13/11/2026 (0104, pedido do dono): pode devolver para quem abriu */
   },
   redirecionar: function(p, para, motivo, ator){
     RegrasBase.validarRedir(p, para, ator);
@@ -4453,8 +4450,7 @@ var Acoes = {
       '<label for="d-redir-motivo">Por quê <span class="opcional">(opcional)</span></label>'+
       '<input type="text" id="d-redir-motivo" maxlength="300" placeholder="Ex.: isso é com o almoxarifado">',
       '<button class="bt-pri" id="d-redir-ok">Redirecionar</button>');
-    var escolha = Escolha.pessoas(f.querySelector('#d-redir-escolha'), { dica:'Digite o nome', excluir:[p.responsavel_id],
-      aoMudar: function(v){ if(v[0] && mesmoId(v[0], p.criado_por)) try { RegrasBase.validarRedir(p, v[0], EU.id); } catch(e){ aviso(e.message,'erro'); } } });
+    var escolha = Escolha.pessoas(f.querySelector('#d-redir-escolha'), { dica:'Digite o nome', excluir:[p.responsavel_id] });
     f._escolha = escolha;
     setTimeout(function(){ try { escolha.campo.focus(); } catch(e){} }, 120);
     f.querySelector('#d-redir-ok').addEventListener('click', function(){
