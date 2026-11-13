@@ -1052,7 +1052,7 @@ function abrirRelatorio(id){
   var c = candDe(a.candidato_id) || {};
   var h = '<div class="cab nao-imprimir"><button type="button" class="btn btn-secondary" id="rel-voltar">← Voltar</button>'
     + '<button type="button" class="btn btn-primary" onclick="window.print()">⬇ Exportar PDF</button></div>'
-    + '<div class="rel-doc"><div class="rel-cab"><div><div class="m1">AVALIAÇÃO DE CANDIDATO</div><div class="m2">Perfil comportamental e raciocínio · Brandão &amp; Marmo Engenharia</div></div>'
+    + '<div class="rel-doc"><div class="rel-cab"><div><div class="m1">AVALIAÇÃO DE CANDIDATO</div><div class="m2">Perfil comportamental, raciocínio' + (grupoCog(r.cog, true).total ? ' e conhecimentos técnicos' : '') + ' · Brandão &amp; Marmo Engenharia</div></div>'
     + '<div class="m2" style="text-align:right">Relatório individual<br>Avaliação nº ' + a.numero + '</div></div>'
     + '<div class="rel-id"><div><b>Candidato</b>' + esc(c.nome) + '</div><div><b>Vaga pretendida</b>' + esc(a.vaga_nome) + '</div><div><b>Área</b>' + esc(AREAS[a.area] || a.area) + '</div>'
     + '<div><b>Data da avaliação</b>' + fmtData(a.data) + '</div><div><b>Recrutador</b>' + esc(nomePessoa(a.recrutador_id)) + '</div><div><b>Processo</b>' + esc(a.processo || '—') + '</div></div>';
@@ -1060,7 +1060,7 @@ function abrirRelatorio(id){
   (function(){
     var l = [], g0 = r.cog, r0 = grupoCog(g0, false), t0 = grupoCog(g0, true);
     var melhor = function(x, sinal){ var cs = x.cats.slice().sort(function(a, b){ return sinal * (pctCat(g0.categorias[b]) - pctCat(g0.categorias[a])); }); return cs[0] ? nomeCat(cs[0]) + ' (' + pctCat(g0.categorias[cs[0]]) + '%)' : ''; };
-    if(eu) l.push('<b>Perfil:</b> ' + esc(resumoPerfil(eu).split('. ')[0].replace(/\.$/, '')) + '.');
+    if(eu) l.push('<b>Perfil:</b> ' + esc(resumoPerfil(eu).split('. ')[0].replace(/\.$/, '').replace(/^Perfil equilibrado:/, 'equilibrado —')) + '.');
     if(r0.total) l.push('<b>Raciocínio:</b> ' + r0.pct + '% de aproveitamento ' + leituraHtml(r0.pct) + (r0.cats.length > 1 ? ' — melhor em ' + esc(melhor(r0, 1)) + '; mais fraco em ' + esc(melhor(r0, -1)) : '') + '.');
     if(t0.total) l.push('<b>Conhecimentos técnicos:</b> ' + t0.certas + ' de ' + t0.total + ' certas, ' + t0.pct + '% ' + leituraHtml(t0.pct) + (t0.cats.length > 1 ? ' — melhor em ' + esc(melhor(t0, 1)) + '; mais fraco em ' + esc(melhor(t0, -1)) : '') + '.');
     if(l.length > 1) h += '<div class="rel-sec">Resumo da avaliação</div><div class="resumo-box">' + l.map(function(x){ return '<div>' + x + '</div>'; }).join('') + '</div>';
@@ -1137,7 +1137,8 @@ function abrirRelatorio(id){
     if(gt.total){
       var tecItens = itens.filter(function(i){ return ehTec(i.cat); });
       var acertou = tecItens.filter(function(i){ return i.s === 'c'; }), errou = tecItens.filter(function(i){ return i.s !== 'c'; });
-      var liAss = function(l){ return l.length ? l.map(function(i){ return '<li>' + esc(i.a || i.c) + '<span class="dica">· ' + esc(nomeCat(i.cat).split(',')[0]) + ' · ' + ['', 'fácil', 'médio', 'difícil'][i.n] + (i.s === 'b' ? ' · em branco' : '') + '</span></li>'; }).join('') : '<li class="dica">Nenhum.</li>'; };
+      var posCat = function(c){ return CATS.findIndex(function(k){ return k.c === c; }); };
+      var liAss = function(l){ return l.length ? l.slice().sort(function(x, y){ return posCat(x.cat) - posCat(y.cat) || x.n - y.n; }).map(function(i){ return '<li>' + esc(i.a || i.c) + ' <span class="dica">· ' + esc(nomeCat(i.cat).split(',')[0]) + ' · ' + ['', 'fácil', 'médio', 'difícil'][i.n] + (i.s === 'b' ? ' · em branco' : '') + '</span></li>'; }).join('') : '<li class="dica">Nenhum.</li>'; };
       h += '<div class="rel-sec">' + n + '. Conhecimentos técnicos de engenharia</div>'
         + '<p class="rel-p">' + totais(gt) + (gr.total ? '' : tempo) + '.</p>'
         + (destaque(gt.cats) ? '<p class="rel-p">' + esc(destaque(gt.cats)) + '</p>' : '')
