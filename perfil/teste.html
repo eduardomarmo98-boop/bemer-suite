@@ -197,6 +197,10 @@ function ligarRelogio(){
   }
   tic(); C.timer = setInterval(tic, 1000);
 }
+function rotuloCog(cad){
+  var cs = (cad && cad.cog) || [], tec = cs.filter(function(q){ return String(q.cat || '').indexOf('tec_') === 0; }).length;
+  return !tec ? 'Raciocínio' : tec === cs.length ? 'Conhecimentos técnicos' : 'Raciocínio e conhecimentos técnicos';
+}
 
 /* ---- só do link ---- */
 function chamar(corpo){
@@ -219,7 +223,8 @@ async function salvarParcial(forcar){
 function passo(){
   if(!C) return;
   var pa = C.passos[C.i], h = '';
-  var etapaNome = { eu:'Parte 1 · Como eu sou', amb:'Parte 2 · O que o trabalho espera de mim', cog:'Parte 3 · Raciocínio' };
+  var rotCog = rotuloCog(C.cad);
+  var etapaNome = { eu:'Parte 1 · Como eu sou', amb:'Parte 2 · O que o trabalho espera de mim', cog:'Parte 3 · ' + rotCog };
   var temCog = (C.cad.cog || []).length > 0, temComp = (C.cad.eu || []).length > 0;
   clearInterval(C.timer); C.timer = null;
   var topo = '<div class="c-topo"><div class="t">AVALIAÇÃO<small>Brandão &amp; Marmo Engenharia</small></div>'
@@ -228,7 +233,7 @@ function passo(){
   if(pa.k === 'boas'){
     var partes = [];
     if(temComp){ partes.push('<b>Parte 1 e 2</b> — perguntas sobre o seu jeito de trabalhar. Não há resposta certa ou errada e não tem tempo marcado.'); }
-    if(temCog){ partes.push('<b>' + (temComp ? 'Parte 3' : 'Parte 1') + '</b> — exercícios de raciocínio, com tempo marcado na tela (' + Math.round(C.limCog / 60) + ' minutos).'); }
+    if(temCog){ partes.push('<b>' + (temComp ? 'Parte 3' : 'Parte 1') + '</b> — questões de ' + rotCog.toLowerCase() + ', com tempo marcado na tela (' + Math.round(C.limCog / 60) + ' minutos).'); }
     h = '<div class="c-h">Olá' + (nomeCand() ? ', ' + esc(nomeCand()) : '') + '!</div>'
       + '<p class="c-p">Esta avaliação ajuda a Brandão &amp; Marmo a conhecer o seu jeito de trabalhar. Ela tem:</p>'
       + '<div class="c-inst">' + partes.join('<br><br>') + '</div>'
@@ -244,13 +249,13 @@ function passo(){
     else if(pa.e === 'amb') h = '<div class="c-etapa">' + etapaNome.amb + '</div><div class="c-h">O que o trabalho espera de mim</div>'
       + '<div class="c-inst">' + INST.amb + '</div>'
       + '<p class="c-p">As perguntas são parecidas com as da Parte 1, mas agora a pergunta é outra: <b>como o trabalho quer que você seja</b>.</p>';
-    else h = '<div class="c-etapa">' + (temComp ? etapaNome.cog : 'Parte 1 · Raciocínio') + '</div><div class="c-h">Raciocínio</div>'
+    else h = '<div class="c-etapa">' + (temComp ? etapaNome.cog : 'Parte 1 · ' + rotCog) + '</div><div class="c-h">' + rotCog + '</div>'
       + '<div class="c-inst">São ' + C.cad.cog.length + ' questões de múltipla escolha, das mais fáceis para as mais difíceis. Você tem <b>' + Math.round(C.limCog / 60) + ' minutos</b>: o relógio aparece no alto da tela e começa quando você tocar em "Começar". Depois de começar, o tempo corre mesmo se você fechar a página.</div>'
       + '<p class="c-p">Escolha uma resposta e toque em "Próxima". Se não souber, pode pular e voltar depois, enquanto houver tempo. Pode usar papel para rascunho.</p>'
-      + '<div class="c-ex"><b>Exemplo:</b> 2, 4, 6, 8, ? → a resposta é <b>10</b> (soma 2 a cada número).</div>';
+      + (rotCog !== 'Conhecimentos técnicos' ? '<div class="c-ex"><b>Exemplo:</b> 2, 4, 6, 8, ? → a resposta é <b>10</b> (soma 2 a cada número).</div>' : '');
     h += '<div class="c-rodape"><span></span><button type="button" class="btn btn-primary" data-ir="1">' + (pa.e === 'cog' ? 'Começar' : 'Continuar') + '</button></div>';
   } else if(pa.k === 'item'){
-    h = '<div class="c-etapa">' + (pa.e === 'cog' && !temComp ? 'Parte 1 · Raciocínio' : etapaNome[pa.e]) + '</div>' + itemHtml(pa);
+    h = '<div class="c-etapa">' + (pa.e === 'cog' && !temComp ? 'Parte 1 · ' + rotCog : etapaNome[pa.e]) + '</div>' + itemHtml(pa);
     var ok = respondido(pa, C.resp);
     var anterior = C.passos[C.i - 1] && C.passos[C.i - 1].k === 'item' && C.passos[C.i - 1].e === pa.e;
     h += '<div class="c-rodape">' + (anterior ? '<button type="button" class="btn btn-secondary" data-ir="-1">Voltar</button>' : '<span></span>')

@@ -249,6 +249,14 @@ td.c,th.c{text-align:center}
 .barra-pct{height:8px;background:#EEF0F3;border-radius:4px;overflow:hidden;min-width:60px}
 .barra-pct i{display:block;height:100%;background:var(--azul)}
 .cmp-cel{min-width:110px}
+/* 13/11/2026: leitura do aproveitamento e resumo geral */
+.leit{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 9px;white-space:nowrap}
+.leit.l4{background:#E2F3E8;color:#1D6B3A} .leit.l3{background:#E3ECFA;color:var(--azul)} .leit.l2{background:var(--laranja-claro);color:var(--laranja-txt)} .leit.l1{background:#FBE6E6;color:#9B1C1C}
+.resumo-box{border:1px solid var(--borda);border-left:4px solid var(--laranja);border-radius:10px;padding:10px 14px;margin:4px 0 6px;background:#FCFDFE;break-inside:avoid}
+.resumo-box div{font-size:13.5px;line-height:1.6;margin:2px 0}
+.ass-lista{list-style:none;padding:0;margin:0;font-size:13px;line-height:1.5}
+.ass-lista li{padding:3px 0;border-bottom:1px dashed #E6E9EF}
+.ass-lista .dica{margin-left:4px}
 
 @media (max-width:768px){
   main{padding:12px 12px 96px}
@@ -320,7 +328,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.12.1';
+var APP_VERSION = '2026.11.13.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -353,9 +361,30 @@ var CATS = [
   { c:'decisao',       n:'Tomada de decisão',        g:'s' },
   { c:'comunicacao',   n:'Comunicação',              g:'s' },
   { c:'lideranca',     n:'Liderança',                g:'s' },
-  { c:'conflitos',     n:'Resolução de conflitos',   g:'s' }
+  { c:'conflitos',     n:'Resolução de conflitos',   g:'s' },
+  /* 13/11/2026 (0105): conhecimentos técnicos de engenharia */
+  { c:'tec_estruturas',   n:'Estruturas, concreto e fundações',      g:'t' },
+  { c:'tec_instalacoes',  n:'Instalações prediais',                  g:'t' },
+  { c:'tec_planejamento', n:'Planejamento e controle de obra',       g:'t' },
+  { c:'tec_orcamento',    n:'Orçamento, quantitativos e custos',     g:'t' },
+  { c:'tec_normas',       n:'Normas, NRs e responsabilidade técnica', g:'t' },
+  { c:'tec_execucao',     n:'Execução, materiais e qualidade',       g:'t' }
 ];
 function nomeCat(c){ var x = CATS.find(function(k){ return k.c === c; }); return x ? x.n : c; }
+function ehTec(c){ return String(c || '').indexOf('tec_') === 0; }
+/* soma das categorias de um grupo (técnico ou raciocínio) de um resultado */
+function grupoCog(g, tec){
+  var t = { total:0, certas:0, erradas:0, brancos:0, pontos:0, max:0, cats:[] };
+  Object.keys((g && g.categorias) || {}).forEach(function(k){
+    if(ehTec(k) !== tec) return;
+    var x = g.categorias[k]; ['total','certas','erradas','brancos','pontos','max'].forEach(function(f){ t[f] += +x[f] || 0; }); t.cats.push(k);
+  });
+  t.pct = t.max ? Math.round(100 * t.pontos / t.max) : null;
+  return t;
+}
+function pctCat(x){ return x && x.max ? Math.round(100 * x.pontos / x.max) : 0; }
+function leitura(p){ return p == null ? '' : p >= 80 ? 'Domina' : p >= 60 ? 'Bom' : p >= 40 ? 'Parcial' : 'Fraco'; }
+function leituraHtml(p){ return p == null ? '—' : '<span class="leit l' + (p >= 80 ? 4 : p >= 60 ? 3 : p >= 40 ? 2 : 1) + '">' + leitura(p) + '</span>'; }
 var DIMS = ['D','E','P','F','O'];
 var NOME_DIM = { D:'Dominância', E:'Extroversão', P:'Paciência', F:'Formalidade', O:'Objetividade' };
 
@@ -870,7 +899,8 @@ function ir(delta){ contarTempo(); C.i = Math.max(0, Math.min(C.passos.length - 
 function passo(){
   if(!C) return;
   var pa = C.passos[C.i], h = '';
-  var etapaNome = { eu:'Parte 1 · Como eu sou', amb:'Parte 2 · O que o trabalho espera de mim', cog:'Parte 3 · Raciocínio' };
+  var rotCog = rotuloCog(C.cad);
+  var etapaNome = { eu:'Parte 1 · Como eu sou', amb:'Parte 2 · O que o trabalho espera de mim', cog:'Parte 3 · ' + rotCog };
   var temCog = (C.cad.cog || []).length > 0, temComp = (C.cad.eu || []).length > 0;
   clearInterval(C.timer); C.timer = null;
   var topo = '<div class="c-topo"><div class="t">AVALIAÇÃO<small>Brandão &amp; Marmo Engenharia</small></div>'
@@ -880,7 +910,7 @@ function passo(){
   if(pa.k === 'boas'){
     var partes = [];
     if(temComp){ partes.push('<b>Parte 1 e 2</b> — perguntas sobre o seu jeito de trabalhar. Não há resposta certa ou errada e não tem tempo marcado.'); }
-    if(temCog){ partes.push('<b>' + (temComp ? 'Parte 3' : 'Parte 1') + '</b> — exercícios de raciocínio, com tempo marcado na tela (' + Math.round(C.limCog / 60) + ' minutos).'); }
+    if(temCog){ partes.push('<b>' + (temComp ? 'Parte 3' : 'Parte 1') + '</b> — questões de ' + rotCog.toLowerCase() + ', com tempo marcado na tela (' + Math.round(C.limCog / 60) + ' minutos).'); }
     h = '<div class="c-h">Olá, ' + esc(nomeCand(C.av).split(' ')[0]) + '!</div>'
       + '<p class="c-p">Esta avaliação ajuda a Brandão &amp; Marmo a conhecer o seu jeito de trabalhar. Ela tem:</p>'
       + '<div class="c-inst">' + partes.join('<br><br>') + '</div>'
@@ -896,13 +926,13 @@ function passo(){
     else if(pa.e === 'amb') h = '<div class="c-etapa">' + etapaNome.amb + '</div><div class="c-h">O que o trabalho espera de mim</div>'
       + '<div class="c-inst">' + INST.amb + '</div>'
       + '<p class="c-p">As perguntas são parecidas com as da Parte 1, mas agora a pergunta é outra: <b>como o trabalho quer que você seja</b>.</p>';
-    else h = '<div class="c-etapa">' + (temComp ? etapaNome.cog : 'Parte 1 · Raciocínio') + '</div><div class="c-h">Raciocínio</div>'
+    else h = '<div class="c-etapa">' + (temComp ? etapaNome.cog : 'Parte 1 · ' + rotCog) + '</div><div class="c-h">' + rotCog + '</div>'
       + '<div class="c-inst">São ' + C.cad.cog.length + ' questões de múltipla escolha, das mais fáceis para as mais difíceis. Você tem <b>' + Math.round(C.limCog / 60) + ' minutos</b>: o relógio aparece no alto da tela e começa quando você tocar em "Começar".</div>'
       + '<p class="c-p">Escolha uma resposta e toque em "Próxima". Se não souber, pode pular e voltar depois, enquanto houver tempo. Rascunho no papel é permitido se o recrutador entregar.</p>'
-      + '<div class="c-ex"><b>Exemplo:</b> 2, 4, 6, 8, ? → a resposta é <b>10</b> (soma 2 a cada número).</div>';
+      + (rotCog !== 'Conhecimentos técnicos' ? '<div class="c-ex"><b>Exemplo:</b> 2, 4, 6, 8, ? → a resposta é <b>10</b> (soma 2 a cada número).</div>' : '');
     h += '<div class="c-rodape"><span></span><button type="button" class="btn btn-primary" data-ir="1">' + (pa.e === 'cog' ? 'Começar' : 'Continuar') + '</button></div>';
   } else if(pa.k === 'item'){
-    h = '<div class="c-etapa">' + (pa.e === 'cog' && !temComp ? 'Parte 1 · Raciocínio' : etapaNome[pa.e]) + '</div>' + itemHtml(pa);
+    h = '<div class="c-etapa">' + (pa.e === 'cog' && !temComp ? 'Parte 1 · ' + rotCog : etapaNome[pa.e]) + '</div>' + itemHtml(pa);
     var ok = respondido(pa, C.resp);
     var anterior = C.passos[C.i - 1] && C.passos[C.i - 1].k === 'item' && C.passos[C.i - 1].e === pa.e;
     h += '<div class="c-rodape">' + (anterior ? '<button type="button" class="btn btn-secondary" data-ir="-1">Voltar</button>' : '<span></span>')
@@ -925,6 +955,11 @@ function passo(){
   if(pa.k === 'fim') concluirCand();
 }
 function letra(n){ return 'ABCDEF'.charAt(n); }
+/* 13/11/2026: a parte com tempo pode ter raciocínio, conhecimentos técnicos ou os dois */
+function rotuloCog(cad){
+  var cs = (cad && cad.cog) || [], tec = cs.filter(function(q){ return String(q.cat || '').indexOf('tec_') === 0; }).length;
+  return !tec ? 'Raciocínio' : tec === cs.length ? 'Conhecimentos técnicos' : 'Raciocínio e conhecimentos técnicos';
+}
 function itemHtml(pa){
   var it = pa.it, r = (C.resp[pa.e] || {})[it.c] || {};
   if(pa.e === 'cog'){
@@ -1021,6 +1056,15 @@ function abrirRelatorio(id){
     + '<div class="m2" style="text-align:right">Relatório individual<br>Avaliação nº ' + a.numero + '</div></div>'
     + '<div class="rel-id"><div><b>Candidato</b>' + esc(c.nome) + '</div><div><b>Vaga pretendida</b>' + esc(a.vaga_nome) + '</div><div><b>Área</b>' + esc(AREAS[a.area] || a.area) + '</div>'
     + '<div><b>Data da avaliação</b>' + fmtData(a.data) + '</div><div><b>Recrutador</b>' + esc(nomePessoa(a.recrutador_id)) + '</div><div><b>Processo</b>' + esc(a.processo || '—') + '</div></div>';
+  /* 13/11/2026: resumo da avaliação em poucas linhas (pedido do RH) */
+  (function(){
+    var l = [], g0 = r.cog, r0 = grupoCog(g0, false), t0 = grupoCog(g0, true);
+    var melhor = function(x, sinal){ var cs = x.cats.slice().sort(function(a, b){ return sinal * (pctCat(g0.categorias[b]) - pctCat(g0.categorias[a])); }); return cs[0] ? nomeCat(cs[0]) + ' (' + pctCat(g0.categorias[cs[0]]) + '%)' : ''; };
+    if(eu) l.push('<b>Perfil:</b> ' + esc(resumoPerfil(eu).split('. ')[0].replace(/\.$/, '')) + '.');
+    if(r0.total) l.push('<b>Raciocínio:</b> ' + r0.pct + '% de aproveitamento ' + leituraHtml(r0.pct) + (r0.cats.length > 1 ? ' — melhor em ' + esc(melhor(r0, 1)) + '; mais fraco em ' + esc(melhor(r0, -1)) : '') + '.');
+    if(t0.total) l.push('<b>Conhecimentos técnicos:</b> ' + t0.certas + ' de ' + t0.total + ' certas, ' + t0.pct + '% ' + leituraHtml(t0.pct) + (t0.cats.length > 1 ? ' — melhor em ' + esc(melhor(t0, 1)) + '; mais fraco em ' + esc(melhor(t0, -1)) : '') + '.');
+    if(l.length > 1) h += '<div class="rel-sec">Resumo da avaliação</div><div class="resumo-box">' + l.map(function(x){ return '<div>' + x + '</div>'; }).join('') + '</div>';
+  })();
   if(eu){
     h += '<div class="rel-sec">1. Resumo do perfil identificado</div><p class="rel-p">' + esc(resumoPerfil(eu)) + '</p>'
       + '<div class="rel-sec">2. As cinco dimensões</div>'
@@ -1052,19 +1096,61 @@ function abrirRelatorio(id){
       + '<div><h4>Como gerir e motivar</h4><ul>' + li(GESTAO) + '</ul></div></div>';
   }
   if(r.cog){
-    var g = r.cog, n = eu ? 6 : 1;
-    h += '<div class="rel-sec">' + n + '. Desempenho no questionário de raciocínio</div>'
-      + '<p class="rel-p"><b>' + g.certas + ' de ' + g.total + '</b> questões certas · ' + g.erradas + ' erradas · ' + g.brancos + ' em branco · aproveitamento de <b>' + g.pct + '%</b>'
-      + ' · tempo ' + fmtTempo(g.tempo_seg) + ' de ' + fmtTempo(g.tempo_lim_seg) + (g.esgotou ? ' (o tempo acabou)' : '') + '.</p>'
-      + '<div class="rolar"><table><tr><th>Categoria</th><th class="c">Questões</th><th class="c">Certas</th><th class="c">Erradas</th><th class="c">Em branco</th><th>Aproveitamento</th></tr>'
-      + Object.keys(g.categorias || {}).map(function(k){
-          var x = g.categorias[k], pct = x.max ? Math.round(100 * x.pontos / x.max) : 0;
-          return '<tr><td>' + esc(nomeCat(k)) + '</td><td class="c">' + x.total + '</td><td class="c">' + x.certas + '</td><td class="c">' + x.erradas + '</td><td class="c">' + x.brancos + '</td>'
-            + '<td><div style="display:flex;gap:8px;align-items:center"><div class="barra-pct" style="flex:1"><i style="width:' + pct + '%"></i></div><b>' + pct + '%</b></div></td></tr>';
-        }).join('') + '</table></div>'
-      + '<p class="dica" style="margin-top:6px">Por nível: ' + ['1', '2', '3'].filter(function(k){ return g.niveis && g.niveis[k]; }).map(function(k){ return ['', 'fácil', 'médio', 'difícil'][+k] + ' ' + g.niveis[k].certas + '/' + g.niveis[k].total; }).join(' · ')
-      + '. Nas situações de trabalho (segurança, decisão, comunicação, liderança, conflitos) cada resposta vale de 0 a 3 pontos conforme a melhor conduta.</p>'
-      + '<p class="rel-p" style="margin-top:6px"><i>Resultado do desempenho observado neste questionário. Não é quociente de inteligência nem medida cognitiva validada.</i></p>';
+    var g = r.cog, n = eu ? 6 : 1, gr = grupoCog(g, false), gt = grupoCog(g, true), itens = g.itens || [];
+    var ordemCat = function(cs){ return cs.slice().sort(function(a, b){ return CATS.findIndex(function(k){ return k.c === a; }) - CATS.findIndex(function(k){ return k.c === b; }); }); };
+    var tabelaCats = function(cs, rotulo){
+      return '<div class="rolar"><table><tr><th>' + rotulo + '</th><th class="c">Questões</th><th class="c">Certas</th><th class="c">Erradas</th><th class="c">Em branco</th><th>Aproveitamento</th><th>Leitura</th></tr>'
+        + ordemCat(cs).map(function(k){
+            var x = g.categorias[k], pct = pctCat(x);
+            return '<tr><td>' + esc(nomeCat(k)) + '</td><td class="c">' + x.total + '</td><td class="c">' + x.certas + '</td><td class="c">' + x.erradas + '</td><td class="c">' + x.brancos + '</td>'
+              + '<td><div style="display:flex;gap:8px;align-items:center"><div class="barra-pct" style="flex:1"><i style="width:' + pct + '%"></i></div><b>' + pct + '%</b></div></td><td>' + leituraHtml(pct) + '</td></tr>';
+          }).join('') + '</table></div>';
+    };
+    /* acertos por nível: pela lista de questões (0105); avaliação antiga só tem o total geral */
+    var porNivel = function(tec){
+      var nv = {};
+      if(itens.length) itens.filter(function(i){ return ehTec(i.cat) === tec; }).forEach(function(i){ var k = String(i.n); nv[k] = nv[k] || { total:0, certas:0 }; nv[k].total++; if(i.s === 'c') nv[k].certas++; });
+      else if(!gt.total) nv = g.niveis || {};
+      return ['1', '2', '3'].filter(function(k){ return nv[k]; }).map(function(k){ return ['', 'fácil', 'médio', 'difícil'][+k] + ' ' + nv[k].certas + '/' + nv[k].total; }).join(' · ');
+    };
+    var destaque = function(cs){
+      var fortes = ordemCat(cs).filter(function(k){ return pctCat(g.categorias[k]) >= 70; }), fracos = ordemCat(cs).filter(function(k){ return pctCat(g.categorias[k]) < 40; });
+      var txt = function(l){ return l.map(function(k){ return nomeCat(k) + ' (' + pctCat(g.categorias[k]) + '%)'; }).join('; '); };
+      if(cs.length < 2) return '';
+      if(!fortes.length && !fracos.length) return 'Desempenho parecido entre as categorias, sem ponto muito forte nem muito fraco.';
+      return (fortes.length ? 'Vai bem em: ' + txt(fortes) + '. ' : '') + (fracos.length ? 'Precisa reforçar: ' + txt(fracos) + '.' : '');
+    };
+    var tempo = ' · tempo ' + fmtTempo(g.tempo_seg) + ' de ' + fmtTempo(g.tempo_lim_seg) + (g.esgotou ? ' (o tempo acabou)' : '');
+    var totais = function(x){ return '<b>' + x.certas + ' de ' + x.total + '</b> questões certas · ' + x.erradas + ' erradas · ' + x.brancos + ' em branco · aproveitamento de <b>' + x.pct + '%</b> ' + leituraHtml(x.pct); };
+    if(gr.total){
+      var temSit = gr.cats.some(function(k){ var c = CATS.find(function(x){ return x.c === k; }); return c && c.g === 's'; });
+      h += '<div class="rel-sec">' + n + '. Desempenho no questionário de raciocínio' + (temSit ? ' e situações de trabalho' : '') + '</div>'
+        + '<p class="rel-p">' + totais(gr) + tempo + '.</p>'
+        + (destaque(gr.cats) ? '<p class="rel-p">' + esc(destaque(gr.cats)) + '</p>' : '')
+        + tabelaCats(gr.cats, 'Categoria')
+        + '<p class="dica" style="margin-top:6px">' + (porNivel(false) ? 'Por nível: ' + porNivel(false) + '. ' : '')
+        + (temSit ? 'Nas situações de trabalho (segurança, decisão, comunicação, liderança, conflitos) cada resposta vale de 0 a 3 pontos conforme a melhor conduta. ' : '')
+        + 'Leitura: Domina ≥ 80% · Bom 60–79% · Parcial 40–59% · Fraco &lt; 40%.</p>'
+        + '<p class="rel-p" style="margin-top:6px"><i>Resultado do desempenho observado neste questionário. Não é quociente de inteligência nem medida cognitiva validada.</i></p>';
+      n++;
+    }
+    if(gt.total){
+      var tecItens = itens.filter(function(i){ return ehTec(i.cat); });
+      var acertou = tecItens.filter(function(i){ return i.s === 'c'; }), errou = tecItens.filter(function(i){ return i.s !== 'c'; });
+      var liAss = function(l){ return l.length ? l.map(function(i){ return '<li>' + esc(i.a || i.c) + '<span class="dica">· ' + esc(nomeCat(i.cat).split(',')[0]) + ' · ' + ['', 'fácil', 'médio', 'difícil'][i.n] + (i.s === 'b' ? ' · em branco' : '') + '</span></li>'; }).join('') : '<li class="dica">Nenhum.</li>'; };
+      h += '<div class="rel-sec">' + n + '. Conhecimentos técnicos de engenharia</div>'
+        + '<p class="rel-p">' + totais(gt) + (gr.total ? '' : tempo) + '.</p>'
+        + (destaque(gt.cats) ? '<p class="rel-p">' + esc(destaque(gt.cats)) + '</p>' : '')
+        + tabelaCats(gt.cats, 'Tema')
+        + (porNivel(true) ? '<p class="dica" style="margin-top:6px">Por nível: ' + porNivel(true) + '.</p>' : '');
+      if(tecItens.length){
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">'
+          + '<div><h4 style="font-size:13px;color:#1D6B3A;margin-bottom:4px">Acertou (' + acertou.length + ')</h4><ul class="ass-lista">' + liAss(acertou) + '</ul></div>'
+          + '<div><h4 style="font-size:13px;color:#9B1C1C;margin-bottom:4px">Errou ou deixou em branco (' + errou.length + ')</h4><ul class="ass-lista">' + liAss(errou) + '</ul></div></div>'
+          + (errou.length ? '<p class="rel-p" style="margin-top:10px"><b>Para a entrevista técnica:</b> peça exemplos de obra sobre ' + esc(lista(errou.slice(0, 5).map(function(i){ return i.a || i.c; }))) + (errou.length > 5 ? ' e os demais assuntos da lista' : '') + '.</p>' : '');
+      }
+      h += '<p class="rel-p" style="margin-top:6px"><i>Questões objetivas de conhecimento técnico, conteúdo próprio da B&amp;M. Mostram domínio de conceitos; a experiência prática se confirma na entrevista técnica e nas referências.</i></p>';
+    }
   }
   /* qualidade da aplicação */
   var avisos = [];
@@ -1119,7 +1205,12 @@ function telaComparar(){
           }).join('') + '</tr>';
         }).join('');
     var cats = []; sel.forEach(function(a){ var g = (a.resultado || {}).cog; if(g) Object.keys(g.categorias || {}).forEach(function(k){ if(cats.indexOf(k) < 0) cats.push(k); }); });
-    h += '<tr><td><b>Raciocínio — total</b></td>' + sel.map(function(a){ var g = (a.resultado || {}).cog; return '<td>' + (g ? '<b>' + g.pct + '%</b> <span class="dica">(' + g.certas + '/' + g.total + ' · ' + fmtTempo(g.tempo_seg) + ')</span>' : '—') + '</td>'; }).join('') + '</tr>'
+    var linhaGrupo = function(tec, rot){
+      if(!sel.some(function(a){ return grupoCog((a.resultado || {}).cog, tec).total; })) return '';
+      return '<tr><td><b>' + rot + '</b></td>' + sel.map(function(a){ var g = (a.resultado || {}).cog, x = grupoCog(g, tec); return '<td>' + (x.total ? '<b>' + x.pct + '%</b> ' + leituraHtml(x.pct) + ' <span class="dica">(' + x.certas + '/' + x.total + (tec ? '' : ' · ' + fmtTempo(g.tempo_seg)) + ')</span>' : '—') + '</td>'; }).join('') + '</tr>';
+    };
+    cats = cats.filter(function(k){ return !ehTec(k); }).concat(cats.filter(ehTec));
+    h += linhaGrupo(false, 'Raciocínio — total') + linhaGrupo(true, 'Conhecimentos técnicos — total')
       + cats.map(function(k){ return '<tr><td>' + esc(nomeCat(k)) + '</td>' + sel.map(function(a){ var g = (a.resultado || {}).cog, x = g && g.categorias ? g.categorias[k] : null; return '<td>' + (x ? Math.round(100 * x.pontos / (x.max || 1)) + '%' : '—') + '</td>'; }).join('') + '</tr>'; }).join('')
       + '<tr class="nao-imprimir"><td></td>' + sel.map(function(a){ return '<td><button type="button" class="btn btn-sm btn-secondary" onclick="abrirRelatorio(\'' + a.id + '\')">Relatório</button></td>'; }).join('') + '</tr>'
       + '</table></div><div class="leg"><span><i style="background:var(--azul)"></i>Autopercepção</span><span><i style="background:var(--laranja)"></i>Ambiente</span></div>'
@@ -1159,8 +1250,10 @@ function editarVaga(id){
     + '<label class="marcar"><input type="checkbox" id="v-comp"' + (cfg.comportamental !== false ? ' checked' : '') + '> Aplicar o perfil comportamental (partes 1 e 2, ~15 min)</label>'
     + '<h2 style="font-size:14px;color:var(--azul);margin:12px 0 4px">Questões por categoria</h2>'
     + '<div class="rolar"><table><tr><th>Raciocínio</th><th class="c">Quantas</th><th class="c">No banco</th></tr>' + grade('r')
-    + '<tr><th>Situações de trabalho</th><th></th><th></th></tr>' + grade('s') + '</table></div>'
-    + '<div class="lado" style="margin-top:12px"><div class="campo"><label class="rot" for="v-tempo">Tempo da parte de raciocínio (minutos)</label><input type="number" id="v-tempo" min="5" max="90" value="' + (cfg.tempo_cog_min || 20) + '"></div>'
+    + '<tr><th>Situações de trabalho</th><th></th><th></th></tr>' + grade('s')
+    + '<tr><th>Conhecimentos técnicos (engenharia)</th><th></th><th></th></tr>' + grade('t') + '</table></div>'
+    + '<p class="dica">Técnicas: conte cerca de 1,5 minuto por questão no tempo abaixo.</p>'
+    + '<div class="lado" style="margin-top:12px"><div class="campo"><label class="rot" for="v-tempo">Tempo das questões — raciocínio e técnicas (minutos)</label><input type="number" id="v-tempo" min="5" max="90" value="' + (cfg.tempo_cog_min || 20) + '"></div>'
     + '<div class="campo"><label class="rot">&nbsp;</label><label class="marcar"><input type="checkbox" id="v-ativa"' + (v.ativa ? ' checked' : '') + '> Vaga ativa</label></div></div>'
     + '<p class="dica">As questões são sorteadas do banco, misturando os níveis fácil, médio e difícil, e aparecem da mais fácil para a mais difícil.</p>';
   abrirModal(id ? 'Editar vaga' : 'Nova vaga', html, [{ rotulo:'Cancelar' }, { rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
@@ -1217,12 +1310,13 @@ function desenharQuestoes(){
     if(FQ.cat && q.categoria !== FQ.cat) return false;
     if(FQ.nivel && String(q.nivel) !== FQ.nivel) return false;
     if(FQ.ativas !== 'todas' && (FQ.ativas === 'ativas') !== q.ativa) return false;
-    if(b && sem(q.codigo + ' ' + q.enunciado).indexOf(b) < 0) return false;
+    if(b && sem(q.codigo + ' ' + q.enunciado + ' ' + (q.assunto || '')).indexOf(b) < 0) return false;
     return true;
   });
   alvo.innerHTML = '<div class="dica" style="margin-bottom:6px">' + qs.length + ' pergunta(s)</div>' + (qs.length ? qs.map(function(q){
     return '<div class="q-item' + (q.ativa ? '' : ' inativa') + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>' + esc(q.codigo) + '</b> <span class="selo">' + esc(nomeCat(q.categoria)) + '</span> <span class="selo cinza">' + ['', 'fácil', 'médio', 'difícil'][q.nivel] + '</span>' + (q.origem === 'rh' ? ' <span class="selo cinza">criada pelo RH</span>' : '') + '</div>'
       + '<button type="button" class="btn btn-sm btn-secondary" onclick="editarQuestao(\'' + q.id + '\')">Editar</button></div>'
+      + (q.assunto ? '<div class="dica" style="margin-top:4px">Assunto no relatório: <b>' + esc(q.assunto) + '</b></div>' : '')
       + '<div class="pre" style="margin:6px 0">' + esc(q.enunciado) + '</div>'
       + (q.opcoes || []).map(function(o, k){ return '<div class="q-op' + (k === q.correta ? ' certa' : '') + '">' + letra(k) + ') ' + esc(o) + (q.pontos ? ' <span class="dica">(' + q.pontos[k] + ' pt)</span>' : '') + '</div>'; }).join('')
       + (q.explicacao ? '<div class="dica" style="margin-top:4px">💡 ' + esc(q.explicacao) + '</div>' : '') + '</div>';
@@ -1234,6 +1328,7 @@ function editarQuestao(id){
   var html = '<div class="lado"><div class="campo"><label class="rot" for="e-cat">Categoria</label><select id="e-cat"' + (id ? ' disabled' : '') + '>' + CATS.map(function(k){ return '<option value="' + k.c + '"' + (q.categoria === k.c ? ' selected' : '') + '>' + esc(k.n) + '</option>'; }).join('') + '</select></div>'
     + '<div class="campo"><label class="rot" for="e-niv">Nível</label><select id="e-niv"' + (id ? ' disabled' : '') + '><option value="1">Fácil</option><option value="2">Médio</option><option value="3">Difícil</option></select></div></div>'
     + '<div class="campo"><label class="rot" for="e-enun">Enunciado *</label><textarea id="e-enun" maxlength="3000">' + esc(q.enunciado) + '</textarea></div>'
+    + '<div class="campo"><label class="rot" for="e-ass">Assunto (aparece no relatório, sem o gabarito)</label><input id="e-ass" maxlength="120" placeholder="Ex.: Cura do concreto" value="' + esc(q.assunto || '') + '"></div>'
     + '<div id="e-ops"></div>'
     + '<div class="campo"><label class="rot" for="e-exp">Explicação do gabarito (só o RH vê)</label><input id="e-exp" maxlength="1000" value="' + esc(q.explicacao || '') + '"></div>'
     + '<label class="marcar"><input type="checkbox" id="e-ativa"' + (q.ativa ? ' checked' : '') + '> Ativa (entra no sorteio)</label>'
@@ -1247,7 +1342,7 @@ function editarQuestao(id){
     if(enun.length < 5){ toast('Escreva o enunciado.', 'err'); return false; }
     if(ops.some(function(o){ return !o; })){ toast('Preencha todas as alternativas (ou tire as vazias).', 'err'); return false; }
     if(new Set(ops.map(sem)).size !== ops.length){ toast('Há alternativas repetidas.', 'err'); return false; }
-    var linha = { enunciado:enun, opcoes:ops, explicacao:$('e-exp').value.trim() || null, ativa:$('e-ativa').checked };
+    var linha = { enunciado:enun, opcoes:ops, explicacao:$('e-exp').value.trim() || null, assunto:$('e-ass').value.trim() || null, ativa:$('e-ativa').checked };
     if(sit(cat)){
       if(pts.filter(function(p){ return p === 3; }).length !== 1){ toast('Situação: exatamente uma alternativa vale 3 pontos (a melhor conduta).', 'err'); return false; }
       linha.pontos = pts; linha.correta = pts.indexOf(3);
