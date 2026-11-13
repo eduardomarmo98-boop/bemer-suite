@@ -257,6 +257,13 @@ td.c,th.c{text-align:center}
 .ass-lista{list-style:none;padding:0;margin:0;font-size:13px;line-height:1.5}
 .ass-lista li{padding:3px 0;border-bottom:1px dashed #E6E9EF}
 .ass-lista .dica{margin-left:4px}
+.ia-box{border:1px solid var(--borda);border-radius:10px;padding:4px 14px 10px;background:#FCFDFE}
+.ia-box h4{font-size:13.5px;color:var(--azul);margin:12px 0 4px;break-after:avoid}
+.ia-box ul,.ia-box ol{padding-left:20px;font-size:13.5px;line-height:1.6}
+.ia-box ol li{margin-bottom:6px}
+.ia-area{border-left:3px solid var(--laranja);padding:4px 10px;margin:6px 0;break-inside:avoid}
+.ia-area .l{font-size:13px;line-height:1.55;margin-top:2px}
+.ia-area .r{font-weight:600;color:var(--texto2)}
 
 @media (max-width:768px){
   main{padding:12px 12px 96px}
@@ -328,7 +335,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.13.2';
+var APP_VERSION = '2026.11.13.3';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -345,7 +352,7 @@ var FQ = { cat:'', nivel:'', busca:'', ativas:'todas' };
 var CMP = { vaga:'', sel:[] };
 
 /* colunas lidas de perfil.avaliacoes — o roteiro (gabarito) não é liberado para leitura */
-var COLS_AV = 'id,numero,candidato_id,vaga_id,vaga_nome,area,data,recrutador_id,processo,config,status,resultado,parecer,motivo,inicio_em,fim_em,criado_em,criado_por,link_token,link_expira';
+var COLS_AV = 'id,numero,candidato_id,vaga_id,vaga_nome,area,data,recrutador_id,processo,config,status,resultado,parecer,motivo,inicio_em,fim_em,criado_em,criado_por,link_token,link_expira,parecer_ia';
 
 var AREAS = { operacional:'Operacional', administrativa:'Administrativa', tecnica:'Técnica', engenharia:'Engenharia', lideranca:'Liderança e supervisão' };
 var STATUS = { aguardando:'Aguardando', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada' };
@@ -1043,6 +1050,42 @@ async function concluirCand(){
    RELATÓRIO
    ===================================================================== */
 var _relCamada = null, _abaAnt = 'avaliacoes';
+/* ---------- análise da IA (0106, edge perfil-parecer) ---------- */
+function parecerIaHtml(a){
+  var p = a.parecer_ia;
+  var bt = PODE.aplicar && a.status === 'concluida' ? '<button type="button" class="btn btn-sm ' + (p ? 'btn-secondary' : 'btn-primary') + ' nao-imprimir" id="rel-ia-gerar">' + (p ? '🤖 Gerar de novo' : '🤖 Gerar análise') + '</button>' : '';
+  if(!p) return '<p class="rel-p dica">' + (PODE.aplicar
+      ? 'A IA lê as questões, o que o candidato marcou, os tempos e o perfil, e escreve a análise para a gestão: conhecimentos por área, lacunas, confiança na interpretação e 5 perguntas para a entrevista. Leva cerca de 1 minuto.'
+      : 'Ainda não gerada (quem aplica a avaliação gera).') + '</p>' + bt;
+  var par = function(t){ return t ? '<p class="rel-p">' + esc(t) + '</p>' : '<p class="rel-p dica">—</p>'; };
+  var linha = function(r, t){ return t ? '<div class="l"><span class="r">' + r + ':</span> ' + esc(t) + '</div>' : ''; };
+  return '<div class="ia-box">'
+    + '<h4>Resumo para a gestão</h4>' + par(p.resumo)
+    + ((p.conhecimentos || []).length ? '<h4>Conhecimentos técnicos demonstrados</h4>' + p.conhecimentos.map(function(c){
+        return '<div class="ia-area"><b>' + esc(c.area) + '</b>' + linha('Reconheceu', c.reconheceu) + linha('Possíveis lacunas', c.lacunas)
+          + linha('Na rotina da obra', c.rotina_obra) + linha('Confirmar na prática', c.confirmar) + '</div>'; }).join('') : '')
+    + ((p.lacunas || []).length ? '<h4>Lacunas e pontos de atenção</h4><ul>' + p.lacunas.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
+    + '<h4>Tendências comportamentais</h4>' + par(p.comportamental)
+    + '<h4>Confiança na interpretação</h4>' + par(p.confianca)
+    + '<h4>Originalidade: evidências disponíveis e limites</h4>' + par(p.originalidade)
+    + '<h4>Perguntas para a entrevista</h4><ol>' + (p.perguntas || []).map(function(q){ return '<li><b>' + esc(q.pergunta) + '</b>' + (q.observar ? '<div class="dica">O que observar: ' + esc(q.observar) + '</div>' : '') + '</li>'; }).join('') + '</ol>'
+    + '<p class="dica" style="margin-top:8px">Análise gerada por IA em ' + fmtDataHora(p.gerado_em) + (p.gerado_por ? ' (pedida por ' + esc(nomePessoa(p.gerado_por)) + ')' : '') + ', só com os dados desta avaliação. É leitura de apoio: revise antes de usar e não decida só por ela.</p></div>' + bt;
+}
+function ligarIa(a){
+  var b = $('rel-ia-gerar'); if(!b) return;
+  b.addEventListener('click', async function(){
+    if(a.parecer_ia && !confirm('Gerar a análise de novo? A atual será substituída.')) return;
+    b.disabled = true; b.textContent = '🤖 Analisando… (cerca de 1 minuto)';
+    var r = await sb.functions.invoke('perfil-parecer', { body:{ id:a.id } }).then(function(x){ return x; }, function(e){ return { error:e }; });
+    var d = r && r.data;
+    if(!d && r && r.error && r.error.context && r.error.context.json){ try { d = await r.error.context.json(); } catch(e){} }
+    if(!d || !d.ok){
+      b.disabled = false; b.textContent = a.parecer_ia ? '🤖 Gerar de novo' : '🤖 Gerar análise';
+      return toast((d && d.erro) || msgErro(r && r.error) || 'Não foi possível gerar a análise.', 'err');
+    }
+    a.parecer_ia = d.parecer; $('rel-ia').innerHTML = parecerIaHtml(a); ligarIa(a); toast('Análise pronta.');
+  });
+}
 function abrirRelatorio(id){
   var a = avDe(id); if(!a || !a.resultado) return toast('Relatório ainda não disponível.', 'err');
   if(ABA !== 'rel') _abaAnt = ABA;
@@ -1059,12 +1102,21 @@ function abrirRelatorio(id){
   /* 13/11/2026: resumo da avaliação em poucas linhas (pedido do RH) */
   (function(){
     var l = [], g0 = r.cog, r0 = grupoCog(g0, false), t0 = grupoCog(g0, true);
-    var melhor = function(x, sinal){ var cs = x.cats.slice().sort(function(a, b){ return sinal * (pctCat(g0.categorias[b]) - pctCat(g0.categorias[a])); }); return cs[0] ? nomeCat(cs[0]) + ' (' + pctCat(g0.categorias[cs[0]]) + '%)' : ''; };
+    /* 13/11 (RH): empate se informa como empate — não se escolhe um tema "melhor" à toa */
+    var extremos = function(x){
+      var ps = x.cats.map(function(k){ return pctCat(g0.categorias[k]); }), mx = Math.max.apply(null, ps), mn = Math.min.apply(null, ps);
+      var nomes = function(v){ return lista(x.cats.filter(function(k){ return pctCat(g0.categorias[k]) === v; }).map(nomeCat)) + ' (' + v + '%)'; };
+      if(x.cats.length < 2) return '';
+      if(mx === mn) return ' — mesmo aproveitamento em todos (' + mx + '%)';
+      return ' — melhor em ' + nomes(mx) + '; mais fraco em ' + nomes(mn);
+    };
     if(eu) l.push('<b>Perfil:</b> ' + esc(resumoPerfil(eu).split('. ')[0].replace(/\.$/, '').replace(/^Perfil equilibrado:/, 'equilibrado —')) + '.');
-    if(r0.total) l.push('<b>Raciocínio:</b> ' + r0.pct + '% de aproveitamento ' + leituraHtml(r0.pct) + (r0.cats.length > 1 ? ' — melhor em ' + esc(melhor(r0, 1)) + '; mais fraco em ' + esc(melhor(r0, -1)) : '') + '.');
-    if(t0.total) l.push('<b>Conhecimentos técnicos:</b> ' + t0.certas + ' de ' + t0.total + ' certas, ' + t0.pct + '% ' + leituraHtml(t0.pct) + (t0.cats.length > 1 ? ' — melhor em ' + esc(melhor(t0, 1)) + '; mais fraco em ' + esc(melhor(t0, -1)) : '') + '.');
+    if(r0.total) l.push('<b>Raciocínio:</b> ' + r0.pct + '% de aproveitamento ' + leituraHtml(r0.pct) + esc(extremos(r0)) + '.');
+    if(t0.total) l.push('<b>Conhecimentos técnicos:</b> ' + t0.certas + ' de ' + t0.total + ' certas, ' + t0.pct + '% ' + leituraHtml(t0.pct) + esc(extremos(t0)) + '.');
     if(l.length > 1) h += '<div class="rel-sec">Resumo da avaliação</div><div class="resumo-box">' + l.map(function(x){ return '<div>' + x + '</div>'; }).join('') + '</div>';
   })();
+  /* 13/11/2026 (0106): análise escrita pela IA com o prompt do RH */
+  h += '<div class="rel-sec">Análise da avaliação (IA)</div><div id="rel-ia">' + parecerIaHtml(a) + '</div>';
   if(eu){
     h += '<div class="rel-sec">1. Resumo do perfil identificado</div><p class="rel-p">' + esc(resumoPerfil(eu)) + '</p>'
       + '<div class="rel-sec">2. As cinco dimensões</div>'
@@ -1171,6 +1223,7 @@ function abrirRelatorio(id){
   $('main').innerHTML = h;
   window.scrollTo(0, 0);
   $('rel-voltar').addEventListener('click', function(){ if(_relCamada){ var cm = _relCamada; _relCamada = null; Volta.fechou(cm); } fecharRel(); });
+  ligarIa(a);
   if($('rel-salvar')){
     $('rel-salvar').addEventListener('click', async function(){
       var b = this; b.disabled = true;
