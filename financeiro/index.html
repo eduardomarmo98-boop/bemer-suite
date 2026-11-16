@@ -939,6 +939,7 @@ function renderHeader(){
       ${permVer('config')?`<button id="h-cfg" class="text-sm px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-600 font-medium">⚙</button>`:""}
       
       <button id="h-trocar" type="button" class="bm-portal" style="margin-left:4px" title="Voltar ao portal BeMer">&#8592; Portal</button>
+      <button id="h-sair" type="button" class="bm-portal" style="margin-left:4px" title="Sair do sistema">Sair</button>
       <button id="h-menu" class="md:hidden text-xl leading-none px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700" aria-label="Menu">☰</button>
     </div>
   </div></header>`;
@@ -947,6 +948,9 @@ function bindHeader(){
   document.getElementById("h-home").onclick=()=>go("home");
   const _hcfg=document.getElementById("h-cfg");if(_hcfg)_hcfg.onclick=()=>go("config");
   document.getElementById("h-trocar").onclick=()=>{S.usuarioAtual=null;S.perfilAtual=null;save();render();};
+  /* 16/11/2026: Sair em todos os módulos — encerra a sessão da suíte e volta ao login do portal */
+  const _hSair=document.getElementById("h-sair");
+  if(_hSair)_hSair.onclick=async()=>{ if(!confirm('Sair do sistema?'))return; try{ const c=window._bemerSb||(typeof sb!=='undefined'?sb:null); if(c&&c.auth) await c.auth.signOut(); }catch(e){} location.replace('../'); };
   const hMenu=document.getElementById("h-menu"),hNav=document.getElementById("h-nav");
   if(hMenu&&hNav){
     hMenu.onclick=e=>{e.stopPropagation();hNav.classList.toggle("bm-open");hMenu.textContent=hNav.classList.contains("bm-open")?"✕":"☰";};
@@ -16104,7 +16108,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.11.04.2';
+var APP_VERSION = '2026.11.16.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',

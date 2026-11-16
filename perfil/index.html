@@ -304,7 +304,7 @@ td.c,th.c{text-align:center}
   <span class="modulo"><span class="tile"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4"/><path d="M16 11l2 2 4-4"/></svg></span><span class="nome-mod">Avaliações</span></span>
   <div class="direita">
     <a class="bm-portal" href="../" title="Voltar ao portal BeMer">&#8592; Portal</a>
-    <button class="btn-topo so-icone" type="button" id="btn-sair" title="Sair" aria-label="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
+    <button class="bm-portal" type="button" id="btn-sair" title="Sair do sistema">Sair</button>
   </div>
 </header>
 
@@ -335,7 +335,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.13.3';
+var APP_VERSION = '2026.11.16.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -396,7 +396,7 @@ var DIMS = ['D','E','P','F','O'];
 var NOME_DIM = { D:'Dominância', E:'Extroversão', P:'Paciência', F:'Formalidade', O:'Objetividade' };
 
 $('rodape').textContent = 'BeMer · Avaliações · v' + APP_VERSION + (AMBIENTE ? ' · ' + AMBIENTE : '');
-$('btn-sair').addEventListener('click', function(){ sb.auth.signOut().then(function(){ location.replace('../'); }); });
+$('btn-sair').addEventListener('click', function(){ if(!confirm('Sair do sistema?')) return; sb.auth.signOut().then(function(){ location.replace('../'); }); });
 
 /* ---------- utilidades ---------- */
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
