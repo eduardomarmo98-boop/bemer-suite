@@ -16108,7 +16108,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.11.16.1';
+var APP_VERSION = '2026.11.17.1';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -19528,6 +19528,399 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
 </script>
 <script>
 /* =====================================================================
+   17/11/2026 — PLANILHA DE VENDA EM ÁRVORE (pedido do dono, etapa 1)
+   Entra no fim do <body> pelo montar.js, ANTES do custos-receber.js.
+
+   · Cada item guarda o caminho dos grupos: it.grupo = ["GALPÃO",
+     "DIRETOS", "FUNDAÇÕES", "FUNDAÇÃO PROFUNDA"]. Item sem grupo (os de
+     antes) fica na raiz — nada do que já foi lançado muda.
+   · Material e mão de obra (it.mat / it.mo, unitários) quando a planilha
+     tem essas colunas.
+   · Importa o .xlsx direto (leitor próprio, sem biblioteca: zip +
+     DecompressionStream) e o "Colar do Excel" passa a manter os grupos.
+     Os níveis saem dos subtotais da planilha (um grupo "cabe" no de cima)
+     e a prévia deixa acertar (◀ ▶ ✕) antes de gravar.
+   ===================================================================== */
+(function(){
+  "use strict";
+  function r2(v){ return Math.round((+v || 0) * 100) / 100; }
+  function r6(v){ return Math.round((+v || 0) * 1e6) / 1e6; }
+  function semAcento(s){ return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim(); }
+  function txt(v){ return String(v == null ? "" : v).replace(/\s+/g, " ").trim(); }
+  /* número de célula: do .xlsx vem Number; colado vem "1.234,56" */
+  function numero(v){
+    if(typeof v === "number") return isFinite(v) ? v : 0;
+    var s = String(v == null ? "" : v).replace(/[^0-9.,-]/g, "");
+    if(!s) return 0;
+    if(s.indexOf(",") >= 0) s = s.replace(/\./g, "").replace(",", ".");
+    else if((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, "");
+    return parseFloat(s) || 0;
+  }
+
+  /* ---------------------------------------------------------------- árvore
+     Linhas para desenhar: grupos (tipo "g") e itens (tipo "i"), na ordem.
+     Código 1, 1.1, 1.1.1 pela posição; anc = chaves dos grupos acima. */
+  function arvore(itens){
+    var rows = [], pilha = [], raiz = { filhos: 0, codigo: "" };
+    (itens || []).forEach(function(it, idx){
+      var p = Array.isArray(it.grupo) ? it.grupo : [];
+      var k = 0; while(k < pilha.length && k < p.length && pilha[k].nome === p[k]) k++;
+      pilha.length = k;
+      for(var j = k; j < p.length; j++){
+        var pai = j ? pilha[j - 1] : raiz; pai.filhos++;
+        var cod = (pai.codigo ? pai.codigo + "." : "") + pai.filhos;
+        var g = { tipo: "g", nome: p[j], nivel: j, codigo: cod, key: "g" + cod, anc: pilha.map(function(x){ return x.key; }), itens: [], filhos: 0 };
+        rows.push(g); pilha.push(g);
+      }
+      var pa = pilha.length ? pilha[pilha.length - 1] : raiz; pa.filhos++;
+      pilha.forEach(function(g){ g.itens.push(idx); });
+      rows.push({ tipo: "i", it: it, idx: idx, nivel: pilha.length, codigo: (pa.codigo ? pa.codigo + "." : "") + pa.filhos, anc: pilha.map(function(x){ return x.key; }) });
+    });
+    return rows;
+  }
+  function temGrupos(itens){ return (itens || []).some(function(it){ return Array.isArray(it.grupo) && it.grupo.length; }); }
+  function temMatMo(itens){ return (itens || []).some(function(it){ return it.mat != null || it.mo != null; }); }
+
+  /* grupos recolhidos (por obra e tela). Primeira vez: planilha grande
+     abre só até o 2º nível. */
+  var _fech = {};
+  function fechados(chave, itens){
+    if(!_fech[chave]){
+      _fech[chave] = {};
+      if((itens || []).length > 40) arvore(itens).forEach(function(r){ if(r.tipo === "g" && r.nivel >= 2) _fech[chave][r.key] = true; });
+    }
+    return _fech[chave];
+  }
+  function aplicaFech(raiz, fech){
+    if(!raiz) return;
+    raiz.querySelectorAll("tr[data-anc]").forEach(function(tr){
+      var a = tr.dataset.anc ? tr.dataset.anc.split(" ") : [];
+      tr.style.display = a.some(function(k){ return fech[k]; }) ? "none" : "";
+    });
+    raiz.querySelectorAll("tr[data-gk]").forEach(function(tr){
+      var b = tr.querySelector("[data-tg]"); if(b) b.textContent = fech[tr.dataset.gk] ? "▸" : "▾";
+    });
+  }
+  /* liga ▸/▾ e "abrir tudo / fechar tudo" de uma tabela */
+  function ligaFech(raiz, fech, barra){
+    if(!raiz) return;
+    raiz.addEventListener("click", function(e){
+      var b = e.target.closest && e.target.closest("[data-tg]"); if(!b) return;
+      var tr = b.closest("tr[data-gk]"); if(!tr) return;
+      var k = tr.dataset.gk; if(fech[k]) delete fech[k]; else fech[k] = true;
+      aplicaFech(raiz, fech);
+    });
+    if(barra) barra.addEventListener("click", function(e){
+      var a = e.target.dataset && e.target.dataset.fech; if(!a) return;
+      raiz.querySelectorAll("tr[data-gk]").forEach(function(tr){ if(a === "abrir") delete fech[tr.dataset.gk]; else fech[tr.dataset.gk] = true; });
+      aplicaFech(raiz, fech);
+    });
+    aplicaFech(raiz, fech);
+  }
+  function barraFech(id){
+    return '<div id="' + id + '" class="flex gap-3 text-xs mb-2"><button type="button" data-fech="abrir" class="text-indigo-600 underline">▾ abrir todos os grupos</button><button type="button" data-fech="fechar" class="text-indigo-600 underline">▸ fechar todos</button></div>';
+  }
+  /* estilo da linha de grupo por nível */
+  function corGrupo(n){ return n === 0 ? "background:#e0e7ff;font-weight:700" : n === 1 ? "background:#eef2ff;font-weight:600" : "background:#f8fafc;font-weight:600"; }
+  function recuo(n){ return "padding-left:" + (6 + n * 14) + "px"; }
+
+  /* ------------------------------------------------- leitor de .xlsx (zip) */
+  async function abrirZip(buf){
+    var dv = new DataView(buf), u8 = new Uint8Array(buf), td = new TextDecoder("utf-8");
+    var e = -1;
+    for(var i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--){ if(dv.getUint32(i, true) === 0x06054b50){ e = i; break; } }
+    if(e < 0) throw new Error("O arquivo não é um .xlsx (salve no Excel como \"Pasta de Trabalho do Excel\").");
+    var n = dv.getUint16(e + 10, true), off = dv.getUint32(e + 16, true), arq = {};
+    for(var k = 0; k < n; k++){
+      if(dv.getUint32(off, true) !== 0x02014b50) break;
+      var nl = dv.getUint16(off + 28, true), xl = dv.getUint16(off + 30, true), cl = dv.getUint16(off + 32, true);
+      arq[td.decode(u8.subarray(off + 46, off + 46 + nl)).replace(/^\//, "")] = { met: dv.getUint16(off + 10, true), csz: dv.getUint32(off + 20, true), lho: dv.getUint32(off + 42, true) };
+      off += 46 + nl + xl + cl;
+    }
+    return async function(nome){
+      var f = arq[nome]; if(!f) return null;
+      var ini = f.lho + 30 + dv.getUint16(f.lho + 26, true) + dv.getUint16(f.lho + 28, true);
+      var dados = u8.slice(ini, ini + f.csz);
+      if(f.met === 0) return td.decode(dados);
+      if(f.met !== 8) throw new Error("Compactação do .xlsx não suportada.");
+      if(typeof DecompressionStream === "undefined") throw new Error("Este navegador não abre .xlsx. Use o \"Colar do Excel\" ou atualize o navegador.");
+      return await new Response(new Blob([dados]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+    };
+  }
+  function desXml(s){
+    return String(s).replace(/&#x([0-9a-f]+);/gi, function(m, h){ return String.fromCodePoint(parseInt(h, 16)); })
+      .replace(/&#(\d+);/g, function(m, d){ return String.fromCodePoint(+d); })
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+  }
+  function textoSi(si){ return desXml((si.match(/<t(?:\s[^>]*)?>[\s\S]*?<\/t>/g) || []).map(function(t){ return t.replace(/<[^>]+>/g, ""); }).join("")); }
+  function colIdx(l){ var n = 0; for(var i = 0; i < l.length; i++) n = n * 26 + (l.charCodeAt(i) - 64); return n - 1; }
+  function atr(tag, nome){ var m = tag.match(new RegExp("\\s" + nome + "=\"([^\"]*)\"")); return m ? desXml(m[1]) : null; }
+  /* → [{ nome, oculta, grade: [[valor...]...] }] */
+  async function lerXlsx(buf){
+    var ler = await abrirZip(buf);
+    var wb = await ler("xl/workbook.xml"); if(!wb) throw new Error("O arquivo não é um .xlsx válido.");
+    var rels = (await ler("xl/_rels/workbook.xml.rels")) || "", alvo = {};
+    (rels.match(/<Relationship\s[^>]*>/g) || []).forEach(function(r){ alvo[atr(r, "Id")] = atr(r, "Target"); });
+    var ssx = await ler("xl/sharedStrings.xml"), sst = ssx ? (ssx.match(/<si>[\s\S]*?<\/si>|<si\/>/g) || []).map(textoSi) : [];
+    var abas = [];
+    for(var s of (wb.match(/<sheet\s[^>]*>/g) || [])){
+      var t = alvo[atr(s, "r:id")] || ""; t = t.replace(/^\/?xl\//, "").replace(/^\//, "");
+      var xml = await ler("xl/" + t); if(!xml) continue;
+      var grade = [];
+      (xml.match(/<row[\s>][\s\S]*?<\/row>/g) || []).forEach(function(row){
+        var r = +(atr(row.slice(0, row.indexOf(">") + 1), "r") || grade.length + 1) - 1, lin = [];
+        (row.match(/<c\s[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g) || []).forEach(function(c){
+          var abre = c.slice(0, c.indexOf(">") + 1), ref = atr(abre, "r"), tp = atr(abre, "t");
+          var v = (c.match(/<v>([\s\S]*?)<\/v>/) || [])[1], val;
+          if(tp === "s") val = v != null ? sst[+v] : "";
+          else if(tp === "inlineStr") val = textoSi(c);
+          else if(tp === "str" || tp === "e") val = v != null ? desXml(v) : "";
+          else if(tp === "b") val = v === "1";
+          else val = v != null && v !== "" ? +v : null;
+          if(val == null || val === "") return;
+          lin[ref ? colIdx(ref.replace(/\d+/g, "")) : lin.length] = val;
+        });
+        grade[r] = lin;
+      });
+      abas.push({ nome: atr(s, "name") || "Planilha", oculta: /hidden/i.test(atr(s, "state") || ""), grade: grade });
+    }
+    return abas;
+  }
+
+  /* ------------------------------------- linhas da planilha → itens e grupos */
+  function mapaColunas(lin){
+    var m = {};
+    (lin || []).forEach(function(v, i){
+      var s = semAcento(v); if(!s || typeof v === "number") return;
+      if(m.desc == null && /DESCRI|DISCRIMINA|^SERVICO/.test(s)) m.desc = i;
+      else if(m.item == null && /^(ITEM|COD|REF|N[O°º.]?$)/.test(s)) m.item = i;
+      else if(m.un == null && /^UN(D|ID|\.|$)/.test(s)) m.un = i;
+      else if(m.qtd == null && /^(QT|QUANT)/.test(s)) m.qtd = i;
+      else if(m.mat == null && /^MAT/.test(s)) m.mat = i;
+      else if(m.mo == null && /^(M\.? ?O\.?$|MAO)/.test(s)) m.mo = i;
+      else if(m.unit == null && (/UNIT/.test(s) || (/PRECO|^P\.? ?U\.?$/.test(s) && !/TOTAL/.test(s)))) m.unit = i;
+      else if(m.total == null && /TOTAL|VALOR/.test(s)) m.total = i;
+    });
+    return (m.desc != null && (m.qtd != null || m.total != null)) ? m : null;
+  }
+  /* uma linha → item, grupo, total ou nada */
+  function classifica(cel, m){
+    function c(k){ return m[k] != null ? cel[m[k]] : null; }
+    var desc = txt(c("desc")), cod = txt(c("item"));
+    if(!desc && !cod) return null;
+    var tot = numero(c("total"));
+    if(/^(SUB)?TOTAL\b/.test(semAcento(desc || cod))) return { tipo: "t", valor: tot };
+    var qtd = numero(c("qtd")), mat = numero(c("mat")), mo = numero(c("mo")), unit = numero(c("unit")), un = txt(c("un"));
+    /* título na coluna do item (ex.: "GALPÃO" na coluna B): parte da obra */
+    if(!desc){ if(/[A-Za-zÀ-ú]{3}/.test(cod) && !qtd && !un) return { tipo: "g", nome: cod, valor: tot > 0 ? tot : 0, parte: true }; return null; }
+    /* só valor (colado com 2 ou 3 colunas): todo valor é um item "1 vb" */
+    if(m.qtd == null && m.un == null && m.unit == null){
+      if(tot > 0) return { tipo: "i", referencia: cod, descricao: desc, unidade: "vb", qtd: 1, valorUnit: tot };
+      return { tipo: "g", nome: desc, valor: 0 };
+    }
+    if(un && !qtd && tot > 0) qtd = 1;
+    var vu = unit || (mat + mo) || (qtd && tot ? tot / qtd : 0);
+    if(qtd > 0 && vu > 0){
+      var it = { tipo: "i", referencia: cod, descricao: desc, unidade: un || "vb", qtd: qtd, valorUnit: vu };
+      if(m.mat != null || m.mo != null){ it.mat = mat; it.mo = mo; }
+      return it;
+    }
+    if(!un && !qtd) return { tipo: "g", nome: desc, valor: tot > 0 ? tot : 0 };
+    return { tipo: "x" };   // tem unidade/quantidade mas não tem preço: fica de fora
+  }
+  /* níveis pelos subtotais: um grupo com valor entra no de cima se cabe no
+     que falta dele; grupo sem valor é subgrupo do último com valor; um
+     grupo com valor fecha quando os itens somam o valor dele. */
+  function inferirNiveis(lin){
+    var pilha = [];
+    function tol(v){ return 0.05 + Math.abs(v) * 1e-6; }
+    function limpa(){ for(var i = 0; i < pilha.length; i++){ var e = pilha[i]; if(e.valor && e.acc >= e.valor - tol(e.valor)){ pilha.length = i; return; } } }
+    lin.forEach(function(l){
+      if(l.tipo === "g"){
+        if(l.parte) pilha.length = 0;
+        else {
+          limpa();
+          while(pilha.length){
+            var t = pilha[pilha.length - 1];
+            if(!t.valor && !t.parte){ pilha.pop(); continue; }                        // irmão do subgrupo
+            if(l.valor && t.valor && t.valor - t.acc < l.valor - tol(l.valor)){ pilha.pop(); continue; }   // não cabe
+            break;
+          }
+        }
+        l.nivel = pilha.length;
+        pilha.push({ valor: l.valor || 0, acc: 0, parte: !!l.parte });
+      } else if(l.tipo === "i"){
+        limpa();
+        l.nivel = pilha.length;
+        var v = l.qtd * l.valorUnit;
+        pilha.forEach(function(e){ e.acc += v; });
+      }
+    });
+    return lin;
+  }
+  /* grade (linhas × colunas) → { lin, cols, ignoradas, totalPlanilha } */
+  function lerGrade(grade, posicional){
+    var m = null, ini = 0;
+    for(var i = 0; i < Math.min(grade.length, 60); i++){ var mm = mapaColunas(grade[i]); if(mm){ m = mm; ini = i + 1; break; } }
+    if(!m && posicional){
+      var larg = grade.reduce(function(a, l){ return Math.max(a, (l || []).length); }, 0);
+      m = larg >= 5 ? { item: 0, desc: 1, un: 2, qtd: 3, unit: 4, total: 5 } : larg === 4 ? { desc: 0, un: 1, qtd: 2, unit: 3 } : larg === 3 ? { item: 0, desc: 1, total: 2 } : { desc: 0, total: 1 };
+      ini = 0;
+    }
+    if(!m) return null;
+    var lin = [], ign = 0, totPl = 0;
+    /* título solto logo acima do cabeçalho (ex.: "GALPÃO"): primeira parte */
+    for(var a = ini - 2; a >= Math.max(0, ini - 4); a--){
+      var cs = (grade[a] || []).filter(function(v){ return txt(v); });
+      if(!cs.length) continue;
+      if(cs.length === 1 && typeof cs[0] === "string" && !/:/.test(cs[0]) && /[A-Za-zÀ-ú]{3}/.test(cs[0])) lin.push({ tipo: "g", nome: txt(cs[0]), valor: 0, parte: true });
+      break;
+    }
+    for(var r = ini; r < grade.length; r++){
+      var x = classifica(grade[r] || [], m);
+      if(!x) continue;
+      if(x.tipo === "x"){ ign++; continue; }
+      if(x.tipo === "t"){ if(x.valor > totPl) totPl = x.valor; continue; }
+      lin.push(x);
+    }
+    /* parte sem nada embaixo (cabeçalho perdido) sai */
+    lin = lin.filter(function(l, i){ return !(l.tipo === "g" && (i === lin.length - 1)); });
+    return { lin: inferirNiveis(lin), cols: m, ignoradas: ign, totalPlanilha: totPl };
+  }
+  function lerColado(texto){
+    var grade = String(texto || "").split(/\r?\n/).filter(function(l){ return l.trim(); }).map(function(line){
+      var sep = line.indexOf("\t") >= 0 ? "\t" : ";";
+      var c = line.split(sep).map(function(s){ return String(s || "").replace(/^"|"$/g, "").trim(); });
+      while(c.length && c[c.length - 1] === "") c.pop();
+      return c;
+    });
+    return lerGrade(grade, true);
+  }
+
+  /* --------------------------------------- linhas (com nível) → itens */
+  function paraItens(lin){
+    var pilha = [], out = [];
+    lin.forEach(function(l){
+      if(l.tipo === "g"){ var n = Math.min(l.nivel, pilha.length); pilha.length = n; pilha.push(l.nome); }
+      else if(l.tipo === "i"){
+        var ni = Math.min(l.nivel, pilha.length); pilha.length = ni;
+        var it = { referencia: l.referencia || "", descricao: l.descricao, unidade: l.unidade, qtd: r6(l.qtd), valorUnit: l.valorUnit };   // preço com todas as casas, como no Excel (senão o total erra centavos)
+        if(l.mat != null || l.mo != null){ it.mat = l.mat || 0; it.mo = l.mo || 0; }
+        if(pilha.length) it.grupo = pilha.slice();
+        out.push(it);
+      }
+    });
+    /* sem código na planilha: numera pela árvore (1.2.3) */
+    if(!out.some(function(it){ return it.referencia; })) arvore(out).forEach(function(r){ if(r.tipo === "i") r.it.referencia = r.codigo; });
+    return out;
+  }
+  /* subárvore de um grupo na prévia: até a próxima linha de nível ≤ */
+  function fimSub(lin, i){ var n = lin[i].nivel, j = i + 1; while(j < lin.length && lin[j].nivel > n) j++; return j; }
+  function nivelMax(lin, i){
+    var prof = 0;
+    for(var k = 0; k < i; k++){ var l = lin[k]; prof = l.tipo === "g" ? Math.min(l.nivel, prof) + 1 : Math.min(l.nivel, prof); }
+    return prof;
+  }
+
+  /* ----------------------------------------------------------- prévia */
+  function abrirPrevia(abas, temAtual, aoUsar){
+    var ai = 0;
+    abas.forEach(function(a, i){ if(a.itens > abas[ai].itens) ai = i; });
+    var fundo = document.createElement("div");
+    fundo.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto";
+    document.body.appendChild(fundo);
+    function fecha(){ fundo.remove(); }
+    function desenha(){
+      var a = abas[ai], lin = a.res.lin;
+      var itens = paraItens(lin), soma = r2(itens.reduce(function(s, it){ return s + it.qtd * it.valorUnit; }, 0));
+      var nG = lin.filter(function(l){ return l.tipo === "g"; }).length;
+      var soltos = 0, j0 = 0; while(j0 < lin.length && lin[j0].tipo === "i"){ soltos++; j0++; }
+      var linhas = lin.map(function(l, i){
+        if(l.tipo !== "g") return "";
+        var f = fimSub(lin, i), q = 0, s = 0;
+        for(var k = i + 1; k < f; k++) if(lin[k].tipo === "i"){ q++; s += lin[k].qtd * lin[k].valorUnit; }
+        s = r2(s);
+        var conf = l.valor ? (Math.abs(s - l.valor) <= 0.05 + l.valor * 1e-6 ? '<span style="color:#15803d" title="Soma dos itens = valor do grupo na planilha">✓</span>' : '<span style="color:#b45309" title="Na planilha: ' + esc(brl(l.valor)) + '">⚠ planilha ' + esc(brl(l.valor)) + '</span>') : "";
+        return '<tr style="' + corGrupo(l.nivel) + '"><td style="' + recuo(l.nivel) + ';padding-top:3px;padding-bottom:3px">' +
+            '<button type="button" data-pv="-1" data-i="' + i + '" title="Subir um nível" class="text-xs px-1 border rounded bg-white">◀</button> ' +
+            '<button type="button" data-pv="1" data-i="' + i + '" title="Descer um nível (vira subgrupo do de cima)" class="text-xs px-1 border rounded bg-white">▶</button> ' +
+            esc(l.nome) + '</td>' +
+          '<td class="text-xs text-right" style="padding:0 6px;white-space:nowrap">' + q + ' itens</td>' +
+          '<td class="text-xs text-right" style="padding:0 6px;white-space:nowrap">' + brl(s) + '</td>' +
+          '<td class="text-xs" style="padding:0 6px;white-space:nowrap">' + conf + '</td>' +
+          '<td style="padding:0 6px"><button type="button" data-px="' + i + '" title="Tirar este grupo (os itens sobem para o grupo de cima)" class="text-xs text-red-600">✕</button></td></tr>';
+      }).join("");
+      var confTot = a.res.totalPlanilha ? (Math.abs(soma - a.res.totalPlanilha) <= 0.05 + soma * 1e-6 ? ' <span style="color:#15803d">✓ igual ao total da planilha</span>' : ' <span style="color:#b45309">⚠ total da planilha: ' + esc(brl(a.res.totalPlanilha)) + '</span>') : "";
+      fundo.innerHTML = '<div class="bg-white rounded-xl shadow-xl w-full p-5" style="max-width:920px">' +
+        '<div class="flex items-center justify-between gap-2 mb-2"><h3 class="font-semibold text-indigo-700">📥 Importar planilha de venda</h3><button type="button" data-pf class="text-slate-500 text-xl leading-none">×</button></div>' +
+        (abas.length > 1 ? '<label class="text-xs font-semibold uppercase text-slate-600">Aba</label> <select id="pv-aba" class="border rounded px-2 py-1 text-sm mb-2">' + abas.map(function(x, i){ return '<option value="' + i + '"' + (i === ai ? " selected" : "") + '>' + esc(x.nome) + ' (' + x.itens + ' itens)</option>'; }).join("") + '</select>' : "") +
+        '<div class="text-sm mb-1"><b>' + itens.length + '</b> itens · <b class="text-indigo-700">' + brl(soma) + '</b>' + confTot + ' · ' + nG + ' grupos' +
+          (a.res.ignoradas ? ' · <span class="text-slate-500">' + a.res.ignoradas + ' linha(s) sem preço ficaram de fora</span>' : "") +
+          (a.res.cols.mat != null || a.res.cols.mo != null ? ' · material e mão de obra separados' : "") + '</div>' +
+        '<p class="text-xs text-slate-500 mb-2">Confira os grupos. Os níveis saíram dos subtotais da planilha; ✓ = a soma dos itens bate com o valor do grupo. Use ◀ ▶ para mudar o nível (leva os subgrupos junto) e ✕ para tirar um grupo.</p>' +
+        (soltos ? '<p class="text-xs text-slate-500 mb-1">' + soltos + ' item(ns) antes do primeiro grupo ficam sem grupo.</p>' : "") +
+        '<div class="border rounded-lg overflow-auto" style="max-height:55vh"><table class="w-full text-sm"><tbody>' + (linhas || '<tr><td class="p-4 text-center text-slate-400">Sem grupos: os itens entram numa lista só.</td></tr>') + '</tbody></table></div>' +
+        '<div class="flex gap-2 flex-wrap justify-end mt-3">' +
+          '<button type="button" data-pf class="text-sm px-4 py-2 rounded-lg border">Cancelar</button>' +
+          (temAtual ? '<button type="button" data-pu="somar" class="text-sm px-4 py-2 rounded-lg border font-semibold">Adicionar ao fim da planilha atual</button>' : "") +
+          '<button type="button" data-pu="trocar" class="text-sm px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold"' + (itens.length ? "" : " disabled") + '>' + (temAtual ? "Substituir a planilha atual" : "Usar esta planilha") + '</button>' +
+        '</div></div>';
+      var sel = fundo.querySelector("#pv-aba"); if(sel) sel.onchange = function(){ ai = +sel.value; desenha(); };
+    }
+    fundo.addEventListener("click", function(e){
+      var t = e.target.closest ? e.target.closest("button") : null;
+      if(!t){ return; }
+      var lin = abas[ai].res.lin;
+      if(t.hasAttribute("data-pf")){ fecha(); return; }
+      if(t.dataset.pv){
+        var i = +t.dataset.i, d = +t.dataset.pv, novo = lin[i].nivel + d;
+        if(novo < 0 || novo > nivelMax(lin, i)) return;
+        var f = fimSub(lin, i); for(var k = i; k < f; k++) lin[k].nivel += d;
+        desenha(); return;
+      }
+      if(t.dataset.px){
+        var x = +t.dataset.px, fx = fimSub(lin, x);
+        for(var k2 = x + 1; k2 < fx; k2++) lin[k2].nivel--;
+        lin.splice(x, 1); desenha(); return;
+      }
+      if(t.dataset.pu){ var its = paraItens(lin); if(!its.length) return; fecha(); aoUsar(its, t.dataset.pu); }
+    });
+    desenha();
+  }
+  function brl(v){ return fmtBRL(v) || "R$ 0,00"; }
+
+  /* abre o seletor de arquivo e a prévia */
+  async function importarArquivo(file, temAtual, aoUsar){
+    if(!/\.xlsx$/i.test(file.name)) return alert("Use um arquivo .xlsx (Excel). Para .xls ou .csv: abra no Excel e salve como .xlsx, ou use o \"Colar do Excel\".");
+    var abas;
+    try { abas = await lerXlsx(await file.arrayBuffer()); }
+    catch(e){ return alert("Não consegui ler a planilha: " + (e && e.message || e)); }
+    var ok = [];
+    abas.forEach(function(a){
+      var res = lerGrade(a.grade, false); if(!res) return;
+      var n = res.lin.filter(function(l){ return l.tipo === "i"; }).length; if(!n) return;
+      ok.push({ nome: a.nome + (a.oculta ? " (oculta)" : ""), res: res, itens: n, oculta: a.oculta });
+    });
+    var vis = ok.filter(function(a){ return !a.oculta; });
+    if(vis.length) ok = vis;
+    if(!ok.length) return alert("Não achei a tabela de itens. A planilha precisa de uma linha de cabeçalho com DESCRIÇÃO e QUANTIDADE (ou VALOR/TOTAL); UNIDADE, PREÇO UNITÁRIO, MATERIAL, MÃO DE OBRA e ITEM entram se existirem.");
+    abrirPrevia(ok, temAtual, aoUsar);
+  }
+  function previaColado(texto, temAtual, aoUsar){
+    var res = lerColado(texto);
+    if(!res || !res.lin.some(function(l){ return l.tipo === "i"; })) return false;
+    abrirPrevia([{ nome: "Colado", res: res, itens: res.lin.filter(function(l){ return l.tipo === "i"; }).length }], temAtual, aoUsar);
+    return true;
+  }
+
+  window.bmPlanilha = { arvore: arvore, temGrupos: temGrupos, temMatMo: temMatMo, fechados: fechados, aplicaFech: aplicaFech, ligaFech: ligaFech,
+    barraFech: barraFech, corGrupo: corGrupo, recuo: recuo, importarArquivo: importarArquivo, previaColado: previaColado,
+    /* para os testes */ _lerXlsx: lerXlsx, _lerGrade: lerGrade, _lerColado: lerColado, _paraItens: paraItens, _semAcento: semAcento };
+})();
+
+</script>
+<script>
+/* =====================================================================
    29/10/2026 (noite) — PLANILHA DE VENDA no cadastro da obra + medição de receita
    por VALOR em cada item (pedido do dono, 29/10; entra no fim do <body>
    pelo montar.js)
@@ -19568,8 +19961,33 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     var x = { id: it.id || uid(), referencia: String(it.referencia || ""), descricao: String(it.descricao || ""), unidade: String(it.unidade || "vb") };
     if(it.qtd == null && it.valorUnit == null){ x.qtd = 1; x.valorUnit = r2(it.valor); }
     else { x.qtd = +it.qtd || 0; x.valorUnit = +it.valorUnit || 0; }
-    x.valor = r2(x.qtd * x.valorUnit);
+    /* 17/11/2026: grupos (caminho) e material / mão de obra (unitários) */
+    if(it.mat != null || it.mo != null){ x.mat = +it.mat || 0; x.mo = +it.mo || 0; }
+    if(Array.isArray(it.grupo) && it.grupo.length) x.grupo = it.grupo.map(String);
+    /* 17/11/2026: sem arredondar o item (como o Excel): a soma bate com o total da planilha; a tela arredonda */
+    x.valor = Math.round(x.qtd * x.valorUnit * 1e6) / 1e6;
     return x;
+  }
+  /* R$ medido de cada item da obra, de uma vez (planilha grande: medido() por item ficava lento) */
+  function medidoMapa(obraId){
+    var m = {};
+    (S.contasReceber || []).forEach(function(l){
+      if(l.obraId !== obraId) return;
+      (l.itensMed || []).forEach(function(x){ m[x.itemId] = (m[x.itemId] || 0) + (+x.valor || 0); });
+    });
+    Object.keys(m).forEach(function(k){ m[k] = r2(m[k]); });
+    return m;
+  }
+  /* chave para manter o id do item ao reimportar (e não perder o medido) */
+  function chaveItem(it){ return (it.grupo || []).join("›") + "|" + window.bmPlanilha._semAcento(it.descricao); }
+  function manterIds(novos, antigos){
+    var porChave = {}, porDesc = {};
+    antigos.forEach(function(a){ (porChave[chaveItem(a)] = porChave[chaveItem(a)] || []).push(a); var d = window.bmPlanilha._semAcento(a.descricao); (porDesc[d] = porDesc[d] || []).push(a); });
+    var usados = {};
+    function pega(lista){ if(!lista) return null; for(var i = 0; i < lista.length; i++){ if(!usados[lista[i].id]){ usados[lista[i].id] = 1; return lista[i]; } } return null; }
+    novos.forEach(function(n){ var a = pega(porChave[chaveItem(n)]); if(a) n.id = a.id; });
+    novos.forEach(function(n){ if(n.id) return; var a = pega(porDesc[window.bmPlanilha._semAcento(n.descricao)]); n.id = a ? a.id : uid(); });
+    return antigos.filter(function(a){ return !usados[a.id]; });
   }
   function total(itens){ return r2((itens || []).reduce(function(a, it){ return a + (+it.valor || 0); }, 0)); }
   /* R$ já medido do item (medições de receita lançadas) */
@@ -19585,50 +20003,50 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
   }
   window.bmVenda = { norm: norm, total: total, medido: medido, copia: copia, num: num };
 
-  /* ---- colar do Excel ---- */
-  function colar(txt){
-    var out = [];
-    String(txt || "").split(/\r?\n/).forEach(function(line){
-      if(!line.trim()) return;
-      var sep = line.indexOf("\t") >= 0 ? "\t" : ";";
-      var c = line.split(sep).map(function(s){ return String(s || "").replace(/^"|"$/g, "").trim(); });
-      while(c.length && c[c.length - 1] === "") c.pop();
-      if(c.length < 2) return;
-      var it;
-      if(c.length >= 5){
-        it = { referencia: c[0], descricao: c[1], unidade: c[2] || "vb", qtd: num(c[3]), valorUnit: num(c[4]) };
-        var tot = c.length >= 6 ? num(c[5]) : 0;
-        if(!it.valorUnit && tot && it.qtd) it.valorUnit = tot / it.qtd;
-      }
-      else if(c.length === 4) it = { referencia: "", descricao: c[0], unidade: c[1] || "vb", qtd: num(c[2]), valorUnit: num(c[3]) };
-      else if(c.length === 3) it = { referencia: c[0], descricao: c[1], unidade: "vb", qtd: 1, valorUnit: num(c[2]) };
-      else it = { referencia: "", descricao: c[0], unidade: "vb", qtd: 1, valorUnit: num(c[1]) };
-      /* cabeçalho e título de grupo (sem valor) ficam de fora */
-      if(!it.descricao || !(it.qtd * it.valorUnit)) return;
-      out.push(norm(it));
-    });
-    return out;
-  }
-
-  /* ---- 1) aba no cadastro da obra ---- */
+  /* ---- 1) aba no cadastro da obra ----
+     17/11/2026: em árvore (grupos com subtotal, ▸/▾), importa .xlsx e o
+     colar mantém os grupos (prévia em custos-planilha.js). */
   window.bmVendaForm = function(o){
     var box = el("of-venda"); if(!box) return;
     var cr = window._obraVenda = window._obraVenda || { valor: 0, anexo: null, itens: [] };
     var obraId = o ? o.id : null;
+    var P = window.bmPlanilha;
+    var fech = P.fechados("venda:" + (obraId || "nova"), cr.itens);
     function rotulo(){ var b = document.querySelector('[data-otab="venda"]'); if(b) b.textContent = "🧾 Planilha de venda (" + cr.itens.length + ")"; }
-    function rodape(){ var f = el("of-venda-tot"); if(f) f.textContent = brl(total(cr.itens)); }
+    function subtotais(){
+      var f = el("of-venda-tot"); if(f) f.textContent = brl(total(cr.itens));
+      P.arvore(cr.itens).forEach(function(r){
+        if(r.tipo !== "g") return;
+        var c = box.querySelector('[data-gt="' + r.key + '"]');
+        if(c) c.textContent = brl(r.itens.reduce(function(a, i){ return a + (+cr.itens[i].valor || 0); }, 0));
+      });
+    }
+    function inp(v, val, cls, extra){ return '<input data-v="' + v + '" value="' + esc(val) + '" ' + (extra || "") + ' class="w-full border-0 text-xs bg-transparent outline-none ' + (cls || "") + '"/>'; }
     function desenha(){
-      var tem = cr.itens.length > 0;
-      var linhas = cr.itens.map(function(it, i){
-        var med = obraId ? medido(obraId, it.id) : 0;
-        return '<tr data-vi="' + i + '">' +
-          '<td class="border p-1"><input data-v="ref" value="' + esc(it.referencia) + '" class="w-full border-0 text-xs bg-transparent outline-none"/></td>' +
-          '<td class="border p-1"><input data-v="desc" value="' + esc(it.descricao) + '" class="w-full border-0 text-xs bg-transparent outline-none"/></td>' +
-          '<td class="border p-1"><input data-v="un" value="' + esc(it.unidade) + '" class="w-full border-0 text-xs bg-transparent outline-none text-center"/></td>' +
-          '<td class="border p-1"><input data-v="qtd" inputmode="decimal" value="' + fq(it.qtd) + '" class="w-full border-0 text-xs bg-transparent outline-none text-right"/></td>' +
-          '<td class="border p-1"><input data-v="vu" inputmode="decimal" value="' + fpu(it.valorUnit) + '" class="w-full border-0 text-xs bg-transparent outline-none text-right"/></td>' +
+      var tem = cr.itens.length > 0, mm = P.temMatMo(cr.itens), med = obraId ? medidoMapa(obraId) : {};
+      var nCol = mm ? 10 : 8;
+      var linhas = P.arvore(cr.itens).map(function(r){
+        var anc = ' data-anc="' + r.anc.join(" ") + '"';
+        if(r.tipo === "g"){
+          var sub = r.itens.reduce(function(a, i){ return a + (+cr.itens[i].valor || 0); }, 0);
+          return '<tr data-gk="' + r.key + '"' + anc + ' style="' + P.corGrupo(r.nivel) + '">' +
+            '<td class="border p-1 text-xs whitespace-nowrap"><button type="button" data-tg class="w-4 text-slate-500">▾</button>' + esc(r.codigo) + '</td>' +
+            '<td class="border p-1" colspan="' + (mm ? 6 : 4) + '"><div style="' + P.recuo(r.nivel) + ';display:flex;gap:6px;align-items:center">' +
+              '<input data-gn="' + r.itens[0] + '" data-gnv="' + r.nivel + '" value="' + esc(r.nome) + '" title="Nome do grupo" class="flex-1 border-0 text-xs bg-transparent outline-none font-semibold"/>' +
+              '<button type="button" data-gadd="' + r.itens[r.itens.length - 1] + '" data-gnv="' + r.nivel + '" class="text-[11px] text-indigo-600 whitespace-nowrap">+ item</button></div></td>' +
+            '<td class="border p-1 text-right text-xs font-bold" data-gt="' + r.key + '">' + brl(sub) + '</td><td class="border p-1" colspan="2"></td></tr>';
+        }
+        var it = r.it, i = r.idx, m = med[it.id] || 0;
+        return '<tr data-vi="' + i + '"' + anc + '>' +
+          '<td class="border p-1">' + inp("ref", it.referencia, "", 'placeholder="' + esc(r.codigo) + '"') + '</td>' +
+          '<td class="border p-1"><div style="' + P.recuo(r.nivel) + '">' + inp("desc", it.descricao) + '</div></td>' +
+          '<td class="border p-1">' + inp("un", it.unidade, "text-center") + '</td>' +
+          '<td class="border p-1">' + inp("qtd", fq(it.qtd), "text-right", 'inputmode="decimal"') + '</td>' +
+          (mm ? '<td class="border p-1">' + inp("mat", fpu(it.mat || 0), "text-right", 'inputmode="decimal"') + '</td>' +
+                '<td class="border p-1">' + inp("mo", fpu(it.mo || 0), "text-right", 'inputmode="decimal"') + '</td>' : "") +
+          '<td class="border p-1">' + inp("vu", fpu(it.valorUnit), "text-right", 'inputmode="decimal"' + (mm && (it.mat != null || it.mo != null) ? ' readonly title="Material + mão de obra"' : "")) + '</td>' +
           '<td class="border p-1 text-right text-xs font-semibold" data-vt>' + brl(it.valor) + '</td>' +
-          '<td class="border p-1 text-right text-xs ' + (med > it.valor + 0.005 ? "text-red-600 font-semibold" : "text-slate-500") + '" title="Já lançado em medições de receita">' + (med ? brl(med) : "—") + '</td>' +
+          '<td class="border p-1 text-right text-xs ' + (m > it.valor + 0.005 ? "text-red-600 font-semibold" : "text-slate-500") + '" title="Já lançado em medições de receita">' + (m ? brl(m) : "—") + '</td>' +
           '<td class="border p-1 text-center"><button type="button" data-v="del" class="text-red-500">✕</button></td></tr>';
       }).join("");
       box.innerHTML =
@@ -19637,45 +20055,84 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
           '<div><label class="text-xs font-semibold uppercase text-slate-600">Arquivo da planilha de venda (PDF/Excel)</label>' +
             '<div class="text-xs mt-1">' + (cr.anexo ? '<button type="button" id="of-venda-anx-ver" class="text-indigo-600 underline">📎 ' + esc(cr.anexo.nome || "anexo") + '</button> · <button type="button" id="of-venda-anx-del" class="text-red-500">remover</button>' : '<span class="text-slate-400">sem arquivo</span>') + '</div>' +
             '<input id="of-venda-file" type="file" class="block mt-1 text-xs"/></div>' +
-          (tem ? '<div><label class="text-xs font-semibold uppercase text-slate-600">Valor do contrato</label><div class="mt-1 text-lg font-bold text-indigo-700">' + brl(total(cr.itens)) + '</div><p class="text-[11px] text-slate-500">soma dos itens</p></div>'
+          (tem ? '<div><label class="text-xs font-semibold uppercase text-slate-600">Valor do contrato</label><div class="mt-1 text-lg font-bold text-indigo-700">' + brl(total(cr.itens)) + '</div><p class="text-[11px] text-slate-500">soma dos ' + cr.itens.length + ' itens</p></div>'
                : '<div><label class="text-xs font-semibold uppercase text-slate-600">Valor do contrato (sem itens)</label><input id="of-venda-val" value="' + (cr.valor ? fmtBRLInput(String(Math.round(cr.valor * 100))) : "") + '" placeholder="R$ 0,00" class="w-full border rounded-lg px-3 py-2 mt-1"/><p class="text-[11px] text-slate-500">Sem itens, a medição de receita é lançada só por valor.</p></div>') +
         '</div>' +
         '<div class="flex gap-2 mb-2 flex-wrap">' +
-          '<button type="button" id="of-venda-add" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg">+ Linha</button>' +
+          '<button type="button" id="of-venda-xlsx" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg">📥 Importar Excel (.xlsx)</button>' +
+          '<input id="of-venda-xlsx-file" type="file" accept=".xlsx" class="hidden"/>' +
           '<button type="button" id="of-venda-colar" class="text-xs bg-slate-200 px-3 py-1.5 rounded-lg">📋 Colar do Excel</button>' +
+          '<button type="button" id="of-venda-add" class="text-xs bg-slate-200 px-3 py-1.5 rounded-lg">+ Linha</button>' +
+          (tem ? '<button type="button" id="of-venda-limpar" class="text-xs text-red-600 px-2 py-1.5">Limpar planilha</button>' : "") +
         '</div>' +
-        '<textarea id="of-venda-paste" rows="4" placeholder="Cole do Excel (TAB): Item | Descrição | Un | Qtd | Preço unit. — a coluna Total, se vier, completa o preço que faltar. Títulos de grupo (sem valor) são ignorados." class="w-full border rounded-lg px-3 py-2 text-xs hidden mb-2"></textarea>' +
-        (tem ? '<div class="overflow-x-auto"><table class="w-full text-sm border"><thead class="bg-slate-100 text-xs"><tr>' +
-            '<th class="border p-1 w-20">Item</th><th class="border p-1">Descrição</th><th class="border p-1 w-14">Un</th><th class="border p-1 w-24">Qtd</th><th class="border p-1 w-28">Preço unit.</th><th class="border p-1 w-32">Total</th><th class="border p-1 w-28">Medido</th><th class="border p-1 w-8"></th>' +
-            '</tr></thead><tbody>' + linhas + '</tbody>' +
-            '<tfoot class="bg-slate-50 text-sm"><tr><td colspan="5" class="border p-1 text-right font-semibold">Total da planilha de venda:</td><td id="of-venda-tot" class="border p-1 text-right font-bold text-indigo-700">' + brl(total(cr.itens)) + '</td><td colspan="2" class="border"></td></tr></tfoot></table></div>'
-             : '<p class="text-sm text-slate-400 text-center p-4">Sem itens. Cole a planilha de venda do Excel ou use "+ Linha".</p>');
+        '<textarea id="of-venda-paste" rows="4" placeholder="Cole aqui as linhas do Excel, com a linha do cabeçalho (ITEM, DESCRIÇÃO, UN, QTDE, MAT, MO, UNIT, VALOR) — os títulos de grupo viram grupos. Sem cabeçalho: Item | Descrição | Un | Qtd | Preço unit. [| Total]." class="w-full border rounded-lg px-3 py-2 text-xs hidden mb-2"></textarea>' +
+        (tem ? (P.temGrupos(cr.itens) ? P.barraFech("of-venda-fech") : "") +
+            '<div class="overflow-x-auto"><table class="w-full text-sm border"><thead class="bg-slate-100 text-xs"><tr>' +
+            '<th class="border p-1 w-20">Item</th><th class="border p-1">Descrição</th><th class="border p-1 w-14">Un</th><th class="border p-1 w-24">Qtd</th>' +
+            (mm ? '<th class="border p-1 w-24">Material</th><th class="border p-1 w-24">Mão de obra</th>' : "") +
+            '<th class="border p-1 w-28">Preço unit.</th><th class="border p-1 w-32">Total</th><th class="border p-1 w-28">Medido</th><th class="border p-1 w-8"></th>' +
+            '</tr></thead><tbody id="of-venda-corpo">' + linhas + '</tbody>' +
+            '<tfoot class="bg-slate-50 text-sm"><tr><td colspan="' + (nCol - 3) + '" class="border p-1 text-right font-semibold">Total da planilha de venda:</td><td id="of-venda-tot" class="border p-1 text-right font-bold text-indigo-700">' + brl(total(cr.itens)) + '</td><td colspan="2" class="border"></td></tr></tfoot></table></div>'
+             : '<p class="text-sm text-slate-400 text-center p-4">Sem itens. Importe o Excel da planilha de venda, cole as linhas ou use "+ Linha".</p>');
       var va = el("of-venda-val");
       if(va){ maskBRLOnInput(va); va.addEventListener("input", function(){ cr.valor = parseBRL(va.value); }); }
+      if(tem) P.ligaFech(el("of-venda-corpo"), fech, el("of-venda-fech"));
       rotulo();
     }
     desenha();
 
+    /* importar / colar: troca ou soma, mantendo o id (e o medido) de quem já existia */
+    function usar(novos, modo){
+      if(modo === "somar"){ novos.forEach(function(n){ cr.itens.push(norm(n)); }); desenha(); showToast("✅ " + novos.length + " itens adicionados — clique em Salvar Obra", "green"); return; }
+      var sobra = manterIds(novos, cr.itens);
+      var med = obraId ? medidoMapa(obraId) : {};
+      var perde = sobra.filter(function(a){ return med[a.id]; });
+      if(perde.length && !confirm(perde.length + " item(ns) com medição lançada não estão na planilha nova:\n\n" + perde.slice(0, 8).map(function(a){ return "• " + a.descricao + " (" + brl(med[a.id]) + ")"; }).join("\n") + (perde.length > 8 ? "\n…" : "") + "\n\nAs medições continuam no histórico, mas saem do saldo por item. Substituir mesmo assim?")) return;
+      cr.itens = novos.map(norm);
+      Object.keys(fech).forEach(function(k){ delete fech[k]; });
+      if(cr.itens.length > 40) P.arvore(cr.itens).forEach(function(r){ if(r.tipo === "g" && r.nivel >= 2) fech[r.key] = true; });
+      desenha(); showToast("✅ Planilha com " + cr.itens.length + " itens — clique em Salvar Obra", "green");
+    }
+
     box.addEventListener("input", function(e){
-      var t = e.target, tr = t.closest && t.closest("[data-vi]"); if(!tr) return;
+      var t = e.target;
+      if(t.dataset && t.dataset.gn != null){   // renomear grupo
+        var i0 = +t.dataset.gn, nv = +t.dataset.gnv, ref = cr.itens[i0]; if(!ref || !ref.grupo) return;
+        var pre = ref.grupo.slice(0, nv + 1).join("›");
+        /* o bloco do grupo: itens seguidos com o mesmo começo de caminho */
+        for(var k = i0; k < cr.itens.length; k++){
+          var g = cr.itens[k].grupo; if(!g || g.slice(0, nv + 1).join("›") !== pre) break;
+          g[nv] = t.value;
+        }
+        return;
+      }
+      var tr = t.closest && t.closest("[data-vi]"); if(!tr) return;
       var it = cr.itens[+tr.dataset.vi]; if(!it) return;
-      var k = t.dataset.v;
-      if(k === "ref") it.referencia = t.value;
-      else if(k === "desc") it.descricao = t.value;
-      else if(k === "un") it.unidade = t.value;
-      else if(k === "qtd") it.qtd = num(t.value);
-      else if(k === "vu") it.valorUnit = num(t.value);
-      if(k === "qtd" || k === "vu"){
-        it.valor = r2(it.qtd * it.valorUnit);
+      var k2 = t.dataset.v;
+      if(k2 === "ref") it.referencia = t.value;
+      else if(k2 === "desc") it.descricao = t.value;
+      else if(k2 === "un") it.unidade = t.value;
+      else if(k2 === "qtd") it.qtd = num(t.value);
+      else if(k2 === "vu") it.valorUnit = num(t.value);
+      else if(k2 === "mat" || k2 === "mo"){
+        it[k2] = num(t.value); it.valorUnit = r2((it.mat || 0) + (it.mo || 0)) || it.valorUnit;
+        var cv = tr.querySelector('[data-v="vu"]'); if(cv) cv.value = fpu(it.valorUnit);
+      }
+      if(k2 === "qtd" || k2 === "vu" || k2 === "mat" || k2 === "mo"){
+        it.valor = Math.round(it.qtd * it.valorUnit * 1e6) / 1e6;
         var c = tr.querySelector("[data-vt]"); if(c) c.textContent = brl(it.valor);
-        rodape();
+        subtotais();
       }
     });
     box.addEventListener("change", function(e){
-      var t = e.target, tr = t.closest && t.closest("[data-vi]"); if(!tr) return;
+      var t = e.target;
+      if(t.dataset && t.dataset.gn != null){ desenha(); return; }   // nome novo: refaz as chaves dos grupos
+      var tr = t.closest && t.closest("[data-vi]"); if(!tr) return;
       var it = cr.itens[+tr.dataset.vi]; if(!it) return;
       if(t.dataset.v === "qtd") t.value = fq(it.qtd);
       if(t.dataset.v === "vu") t.value = fpu(it.valorUnit);
+      if(t.dataset.v === "mat") t.value = fpu(it.mat || 0);
+      if(t.dataset.v === "mo") t.value = fpu(it.mo || 0);
     });
     box.addEventListener("click", function(e){
       var t = e.target;
@@ -19685,15 +20142,34 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         if(med && !confirm("Este item já tem " + brl(med) + " medido no Contas a Receber.\nRemover mesmo assim? (as medições lançadas continuam no histórico)")) return;
         cr.itens.splice(i, 1); desenha(); return;
       }
-      if(t.id === "of-venda-add"){ cr.itens.push(norm({ unidade: "un", qtd: 0, valorUnit: 0 })); desenha(); var ds = box.querySelectorAll('[data-v="desc"]'); if(ds.length) ds[ds.length - 1].focus(); return; }
+      if(t.dataset && t.dataset.gadd != null){   // + item no fim do grupo
+        var ult = cr.itens[+t.dataset.gadd], nv = +t.dataset.gnv;
+        var novo = norm({ unidade: "un", qtd: 0, valorUnit: 0, grupo: ult && ult.grupo ? ult.grupo.slice(0, nv + 1) : [] });
+        if(P.temMatMo(cr.itens)){ novo.mat = 0; novo.mo = 0; }
+        cr.itens.splice(+t.dataset.gadd + 1, 0, novo); desenha();
+        var tr = box.querySelector('[data-vi="' + (+t.dataset.gadd + 1) + '"] [data-v="desc"]'); if(tr) tr.focus();
+        return;
+      }
+      if(t.id === "of-venda-add"){
+        var ultimo = cr.itens[cr.itens.length - 1];
+        var nv2 = norm({ unidade: "un", qtd: 0, valorUnit: 0, grupo: ultimo && ultimo.grupo ? ultimo.grupo.slice() : [] });
+        if(P.temMatMo(cr.itens)){ nv2.mat = 0; nv2.mo = 0; }
+        cr.itens.push(nv2); desenha();
+        var ds = box.querySelectorAll('[data-v="desc"]'); if(ds.length) ds[ds.length - 1].focus(); return;
+      }
+      if(t.id === "of-venda-limpar"){
+        if(!confirm("Tirar todos os " + cr.itens.length + " itens da planilha de venda? (só vale depois de Salvar Obra)")) return;
+        usar([], "trocar"); return;
+      }
+      if(t.id === "of-venda-xlsx"){ var fx = el("of-venda-xlsx-file"); fx.value = ""; fx.click(); return; }
       if(t.id === "of-venda-colar"){
         var ta = el("of-venda-paste"); ta.classList.toggle("hidden");
         if(!ta.classList.contains("hidden")){
           ta.focus();
           ta.onblur = function(){
-            var add = colar(ta.value);
-            if(add.length){ add.forEach(function(x){ cr.itens.push(x); }); desenha(); showToast("✅ " + add.length + " itens colados", "green"); }
-            else if(ta.value.trim()) alert("Nenhuma linha com valor. Formato: Item | Descrição | Un | Qtd | Preço unit. (separados por TAB, como sai do Excel).");
+            if(!ta.value.trim()) return;
+            if(P.previaColado(ta.value, cr.itens.length > 0, usar)){ ta.value = ""; ta.classList.add("hidden"); }
+            else alert("Nenhuma linha com preço. Cole as linhas do Excel com o cabeçalho (DESCRIÇÃO, UN, QTDE, PREÇO/UNIT, VALOR) ou no formato Item | Descrição | Un | Qtd | Preço unit.");
           };
         }
         return;
@@ -19702,6 +20178,11 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       if(t.id === "of-venda-anx-del"){ if(confirm("Tirar o arquivo da planilha de venda?")){ cr.anexo = null; desenha(); } return; }
     });
     box.addEventListener("change", function(e){
+      if(e.target.id === "of-venda-xlsx-file"){
+        var fx = e.target.files && e.target.files[0]; if(!fx) return;
+        P.importarArquivo(fx, cr.itens.length > 0, usar);
+        return;
+      }
       if(e.target.id !== "of-venda-file") return;
       var file = e.target.files && e.target.files[0]; if(!file) return;
       var r = new FileReader();
@@ -19758,17 +20239,34 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       var saldo = valorContrato - totMed - totFat;
       function cardR(t, v, cor){ return '<div class="bg-white rounded-xl border p-4"><div class="text-xs uppercase font-semibold text-slate-500">' + t + '</div><div class="text-lg font-bold text-' + cor + '-700 mt-1">' + brl(v) + '</div></div>'; }
       var podeL = podeLancar();
-      var linhasItens = cr.itens.map(function(it){
-        var med = medido(obraId, it.id), sd = r2(it.valor - med), acabou = sd <= 0.005;
+      /* 17/11/2026: em árvore — grupo com subtotal (contratado, medido, saldo e o desta medição), ▸/▾ */
+      var P = window.bmPlanilha, mapaMed = medidoMapa(obraId), fechR = P.fechados("rec:" + obraId, cr.itens);
+      var linhasItens = P.arvore(cr.itens).map(function(r){
+        var anc = ' data-anc="' + r.anc.join(" ") + '"';
+        if(r.tipo === "g"){
+          var gv = 0, gm = 0;
+          r.itens.forEach(function(i){ var x = cr.itens[i]; gv += +x.valor || 0; gm += mapaMed[x.id] || 0; });
+          gv = r2(gv); gm = r2(gm);
+          var gsd = r2(gv - gm), gpct = gv ? gm / gv * 100 : 0;
+          return '<tr data-gk="' + r.key + '"' + anc + ' class="border-b text-sm" style="' + P.corGrupo(r.nivel) + '">' +
+            '<td class="px-2 py-1"><div style="' + P.recuo(r.nivel) + '"><button type="button" data-tg class="w-4 text-slate-500">▾</button> <span class="text-xs text-slate-500">' + esc(r.codigo) + '</span> ' + esc(r.nome) + '</div></td>' +
+            '<td></td><td></td>' +
+            '<td class="px-2 py-1 text-right">' + brl(gv) + '</td>' +
+            '<td class="px-2 py-1 text-right text-slate-500">' + (gm ? brl(gm) : "—") + ' <span class="text-[11px]">(' + gpct.toFixed(1).replace(".", ",") + '%)</span></td>' +
+            '<td class="px-2 py-1 text-right">' + brl(gsd) + '</td>' +
+            (podeL ? '<td class="px-2 py-1 text-right text-indigo-700" data-gmed="' + r.key + '"></td><td></td>' : "") +
+          '</tr>';
+        }
+        var it = r.it, med = mapaMed[it.id] || 0, sd = r2(it.valor - med), acabou = sd <= 0.005;
         var pct = it.valor ? (med / it.valor * 100) : 0;
-        return '<tr class="border-b text-sm ' + (acabou ? "bg-slate-50 text-slate-400" : "") + '">' +
-          '<td class="px-2 py-1">' + nomeItem(it) + '</td>' +
+        return '<tr' + anc + ' class="border-b text-sm ' + (acabou ? "bg-slate-50 text-slate-400" : "") + '">' +
+          '<td class="px-2 py-1"><div style="' + P.recuo(r.nivel) + '">' + nomeItem(it) + '</div></td>' +
           '<td class="px-2 py-1 text-center text-xs">' + esc(it.unidade) + '</td>' +
           '<td class="px-2 py-1 text-right text-xs">' + fq(it.qtd) + '</td>' +
           '<td class="px-2 py-1 text-right">' + brl(it.valor) + '</td>' +
           '<td class="px-2 py-1 text-right text-slate-500">' + (med ? brl(med) : "—") + ' <span class="text-[11px]">(' + pct.toFixed(1).replace(".", ",") + '%)</span></td>' +
           '<td class="px-2 py-1 text-right font-semibold ' + (sd < -0.005 ? "text-red-600" : acabou ? "" : "text-green-700") + '">' + brl(sd) + '</td>' +
-          (podeL ? '<td class="px-2 py-1">' + (acabou ? '<span class="text-xs">medido 100%</span>' : '<input data-recv="' + it.id + '" placeholder="R$ 0,00" class="w-28 border rounded px-2 py-1 text-right text-sm"/>') + '</td>' +
+          (podeL ? '<td class="px-2 py-1">' + (acabou ? '<span class="text-xs">medido 100%</span>' : '<input data-recv="' + it.id + '" data-anc="' + r.anc.join(" ") + '" placeholder="R$ 0,00" class="w-28 border rounded px-2 py-1 text-right text-sm"/>') + '</td>' +
                    '<td class="px-2 py-1 text-right text-xs text-slate-500" data-recq="' + it.id + '">—</td>' : "") +
           '</tr>';
       }).join("");
@@ -19792,10 +20290,10 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
           '<div class="col-span-2 text-right"><button data-rec-fin="' + x.fin.id + '" class="text-xs px-2 py-1 rounded border">👁 ver</button></div>' +
         '</div>'; }).join("");
       var tabela = temItens ?
-        '<div class="overflow-x-auto"><table class="w-full border rounded-lg overflow-hidden">' +
+        (P.temGrupos(cr.itens) ? P.barraFech("rec-fech") : "") + '<div class="overflow-x-auto"><table class="w-full border rounded-lg overflow-hidden">' +
           '<thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-2 py-1.5 text-left">Item</th><th class="px-2 py-1.5 w-12">Un</th><th class="px-2 py-1.5 text-right w-20">Qtd</th><th class="px-2 py-1.5 text-right w-32">Valor do item</th><th class="px-2 py-1.5 text-right w-40">Já medido</th><th class="px-2 py-1.5 text-right w-32">Saldo</th>' +
           (podeL ? '<th class="px-2 py-1.5 w-32">R$ nesta medição</th><th class="px-2 py-1.5 text-right w-24">Qtd</th>' : "") + '</tr></thead>' +
-          '<tbody>' + linhasItens + '</tbody>' +
+          '<tbody id="rec-corpo">' + linhasItens + '</tbody>' +
           (podeL ? '<tfoot class="bg-slate-50"><tr><td colspan="6" class="px-2 py-1.5 text-right font-semibold">Total desta medição:</td><td id="rec-med-tot" class="px-2 py-1.5 text-right font-bold text-indigo-700">R$ 0,00</td><td></td></tr></tfoot>' : "") +
         '</table></div>' : "";
       corpo = '' +
@@ -19874,20 +20372,32 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       r.onload = function(){ var u = "recmed_" + uid(); idbPut(u, r.result); window._recAnx = { uid: u, nome: file.name, tipo: file.type }; showToast("Anexo pronto", "green"); };
       r.readAsDataURL(file);
     };
-    function item(id){ return cr.itens.find(function(x){ return x.id === id; }); }
-    function recalc(){
-      var tot = 0;
+    var porId = {}; cr.itens.forEach(function(x){ porId[x.id] = x; });
+    function item(id){ return porId[id]; }
+    var mapaMed = medidoMapa(o.id);
+    function saldoDe(it){ return r2(it.valor - (mapaMed[it.id] || 0)); }
+    /* um item: aviso de saldo e quantidade calculada */
+    function confere(inp){
+      var it = item(inp.dataset.recv); if(!it) return;
+      var v = parseBRL(inp.value), passou = v > saldoDe(it) + 0.005;
+      inp.classList.toggle("ring-2", passou); inp.classList.toggle("ring-red-400", passou);
+      var q = document.querySelector('[data-recq="' + inp.dataset.recv + '"]');
+      if(q) q.innerHTML = passou ? '<span class="text-red-600 font-semibold">passa do saldo</span>' : (v && it.valorUnit ? fq(r2(v / it.valorUnit * 10000) / 10000) + " " + esc(it.unidade) : "—");
+    }
+    /* total da medição e o subtotal de cada grupo */
+    function recalc(e){
+      if(e && e.target) confere(e.target);
+      var tot = 0, porGrupo = {};
       document.querySelectorAll("[data-recv]").forEach(function(inp){
-        var it = item(inp.dataset.recv); if(!it) return;
-        var v = parseBRL(inp.value), sd = r2(it.valor - medido(o.id, it.id)), passou = v > sd + 0.005;
+        var v = parseBRL(inp.value); if(!v) return;
         tot += v;
-        inp.classList.toggle("ring-2", passou); inp.classList.toggle("ring-red-400", passou);
-        var q = document.querySelector('[data-recq="' + inp.dataset.recv + '"]');
-        if(q) q.innerHTML = passou ? '<span class="text-red-600 font-semibold">passa do saldo</span>' : (v && it.valorUnit ? fq(r2(v / it.valorUnit * 10000) / 10000) + " " + esc(it.unidade) : "—");
+        (inp.dataset.anc ? inp.dataset.anc.split(" ") : []).forEach(function(k){ porGrupo[k] = (porGrupo[k] || 0) + v; });
       });
+      document.querySelectorAll("[data-gmed]").forEach(function(c){ var v = porGrupo[c.dataset.gmed]; c.textContent = v ? brl(v) : ""; });
       var tt = el("rec-med-tot"); if(tt) tt.textContent = brl(tot);
     }
     document.querySelectorAll("[data-recv]").forEach(function(inp){ maskBRLOnInput(inp); inp.addEventListener("input", recalc); });
+    window.bmPlanilha.ligaFech(el("rec-corpo"), window.bmPlanilha.fechados("rec:" + o.id, cr.itens), el("rec-fech"));
     var ba = el("rec-add");
     if(ba) ba.onclick = function(){
       var desc = (el("rec-desc") && el("rec-desc").value || "").trim();
@@ -19897,9 +20407,9 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         document.querySelectorAll("[data-recv]").forEach(function(inp){
           var v = r2(parseBRL(inp.value)); if(!v) return;
           var it = item(inp.dataset.recv); if(!it) return;
-          var sd = r2(it.valor - medido(o.id, it.id));
+          var sd = saldoDe(it);
           if(v > sd + 0.005) passou.push("• " + (it.referencia ? it.referencia + " — " : "") + it.descricao + ": saldo " + brl(sd) + ", informado " + brl(v));
-          itensMed.push({ itemId: it.id, referencia: it.referencia, descricao: it.descricao, unidade: it.unidade,
+          itensMed.push({ itemId: it.id, referencia: it.referencia, descricao: it.descricao, unidade: it.unidade, grupo: it.grupo || undefined,
             qtd: it.valorUnit ? Math.round(v / it.valorUnit * 10000) / 10000 : 0,
             pct: it.valor ? Math.round(v / it.valor * 1000000) / 10000 : 0, valor: v });
           valor += v;
