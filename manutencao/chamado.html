@@ -73,7 +73,9 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
   var TIPOS=['Alvenaria / Estrutura','Cobertura / Telhado','Elétrica','Esquadrias (portas e janelas)','Hidráulica','Impermeabilização','Louças e metais','Marcenaria','Pintura','Pisos e revestimentos','Outros'];
   var app=document.getElementById('app');
   /* 17/11/2026 (0107): link com o nome da obra (graded-school-3f9a1c7e); os antigos (hexadecimais) continuam */
-  var token=(((location.hash||'')+'&'+(location.search||'')).match(/[#&?]t=([a-z0-9-]{8,80})/i)||[])[1]||'';
+  /* 17/11/2026 (0109): bemer.brandaoemarmo.com.br/chamado/abpf-lapa — o servidor entrega esta página (_redirects) */
+  var token=((location.pathname||'').match(/\/chamado\/([a-z0-9-]{2,80})\/?$/i)||[])[1]
+    ||(((location.hash||'')+'&'+(location.search||'')).match(/[#&?]t=([a-z0-9-]{2,80})/i)||[])[1]||'';
   token=token.toLowerCase();
   var t0=Date.now(), fotos=[], enviando=false;
 

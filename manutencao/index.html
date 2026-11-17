@@ -279,7 +279,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.17.1';
+var APP_VERSION = '2026.11.17.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -1442,7 +1442,17 @@ function formObra(o){
         + (o.ativa ? '' : '<div class="erro-txt">Obra desativada: o link não abre chamado.</div>')
         + '<div id="o-qr" title="QR code do link"></div>'
         + '<div class="dica">Entregue o link ou o QR ao cliente/síndico (manual do proprietário, placa no condomínio). O chamado chega como <b>Novo · triagem</b>.'
-        + (so ? '' : ' <button type="button" class="btn btn-sm btn-secondary" id="o-novo-link" style="margin-left:4px">Trocar o link</button>') + '</div></div>'
+        + (so ? '' : ' <button type="button" class="btn btn-sm btn-secondary" id="o-novo-link" style="margin-left:4px">Trocar o link</button>') + '</div>'
+        /* 17/11 (0109): o link é editável — nome limpo, sem código aleatório */
+        + (so ? '' : '<div id="o-troca" style="display:none;margin-top:8px;padding:10px 12px;border:1px solid #d6dbe4;border-radius:8px">'
+          + '<label class="rot" for="o-slug">Novo link</label>'
+          + '<div class="link-cliente"><span class="dica" style="white-space:nowrap;margin:0">' + esc(baseLink()) + '</span>'
+          + '<input id="o-slug" maxlength="60" autocomplete="off" spellcheck="false" value="' + esc(o.token) + '"></div>'
+          + '<label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="o-desat" style="width:auto;margin:0"> Desativar os links anteriores (QR já entregue para de funcionar)</label>'
+          + '<div style="margin-top:8px;display:flex;gap:6px"><button type="button" class="btn btn-sm btn-primary" id="o-salvar-link">Salvar link</button>'
+          + '<button type="button" class="btn btn-sm btn-secondary" id="o-cancelar-link">Cancelar</button></div>'
+          + '<div class="erro-txt" id="o-link-erro"></div></div>')
+        + '</div>'
       : (o ? '' : '<div class="dica" style="margin-top:8px">Depois de salvar, abra a obra de novo para pegar o link/QR do cliente.</div>'))
     + '<div class="erro-txt" id="o-erro"></div>';
   var bts = [{ rotulo:so ? 'Fechar' : 'Cancelar' }];
@@ -1483,19 +1493,52 @@ function formObra(o){
         function(){ $('o-link').select(); toast('Selecionei o link: copie com Ctrl+C.'); });
     });
     desenharQR(linkCliente(o));
-    if($('o-novo-link')) $('o-novo-link').addEventListener('click', async function(){
-      if(!confirm('Trocar o link de "' + o.nome + '"? O link e o QR antigos param de funcionar.')) return;
-      try {
-        var r = await M().from('obras').update({ token:uuid().replace(/-/g, '') }).eq('id', o.id);
-        if(r.error) throw r.error;
-        await carregar(); toast('Link trocado.'); formObra(obraDe(o.id));
-      } catch(e){ toast(msgErro(e), 'err'); }
+    /* 17/11 (0109): trocar o link = editar o nome do link (o banco valida e guarda o anterior) */
+    if($('o-novo-link')) $('o-novo-link').addEventListener('click', function(){
+      $('o-troca').style.display = 'block'; $('o-slug').focus(); $('o-slug').select();
     });
+    if($('o-slug')){
+      $('o-slug').addEventListener('input', function(){ var p = this.selectionStart, a = this.value, b = slugLink(a, true); if(a !== b){ this.value = b; try{ this.setSelectionRange(p, p); }catch(e){} } $('o-link-erro').textContent = ''; });
+      $('o-cancelar-link').addEventListener('click', function(){ $('o-troca').style.display = 'none'; $('o-slug').value = o.token; $('o-link-erro').textContent = ''; });
+      $('o-salvar-link').addEventListener('click', async function(){
+        var novo = slugLink($('o-slug').value, false), desat = $('o-desat').checked, btn = this;
+        if(novo.length < 2){ $('o-link-erro').textContent = 'Escreva o link: letras, números e hífen.'; return; }
+        if(novo === o.token && !desat){ $('o-troca').style.display = 'none'; return; }
+        if(desat && !confirm('Desativar os links anteriores de "' + o.nome + '"? O QR e o link já entregues param de funcionar.')) return;
+        btn.disabled = true;
+        try {
+          var r = await M().rpc('trocar_link', { p_obra:o.id, p_link:novo, p_desativar_antigos:desat });
+          if(r.error) throw r.error;
+          await carregar();
+          toast('Link trocado' + (desat ? '. Os anteriores pararam de funcionar.' : '. O anterior continua funcionando.'));
+          formObra(obraDe(o.id));
+        } catch(e){
+          var m = String((e && (e.message || e.details)) || '');
+          $('o-link-erro').textContent = /link_em_uso/.test(m) ? 'Outra obra já usa (ou já usou) este link. Escolha outro.'
+            : /link_formato/.test(m) ? 'Use só letras sem acento, números e hífen.' : msgErro(e);
+          btn.disabled = false;
+        }
+      });
+    }
   }
 }
-/* link público do formulário do cliente (chamado.html). O token vai depois do #:
-   não sai nos registros do servidor nem no "Referer". */
-function linkCliente(o){ return new URL('chamado.html', location.href).href.split('#')[0].split('?')[0] + '#t=' + o.token; }
+/* link público do formulário do cliente.
+   17/11 (0109): na produção é curto — bemer.brandaoemarmo.com.br/chamado/abpf-lapa
+   (o servidor entrega chamado.html: publicar.js › _redirects). Na homologação
+   (GitHub Pages não tem a regra) continua chamado.html#t=… — o formulário entende os dois. */
+function _linkCurto(){ return location.hostname === 'bemer.brandaoemarmo.com.br'; }
+function linkCliente(o){
+  return _linkCurto() ? location.origin + '/chamado/' + o.token
+    : new URL('chamado.html', location.href).href.split('#')[0].split('?')[0] + '#t=' + o.token;
+}
+function baseLink(){ return _linkCurto() ? location.host + '/chamado/' : 'chamado.html#t='; }
+/* mesmo formato do banco (manutencao._slug): sem acento, minúsculas, hífen */
+function slugLink(s, digitando){
+  var t = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  if(!digitando) t = t.replace(/^-+|-+$/g, '');
+  else t = t.replace(/^-+/, '');
+  return t.slice(0, 60);
+}
 function desenharQR(texto){
   var alvo = $('o-qr'); if(!alvo) return;
   var faz = function(){ if(!window.QRCode || !$('o-qr')) return; alvo.innerHTML = ''; new QRCode(alvo, { text:texto, width:180, height:180, correctLevel:QRCode.CorrectLevel.M }); };
