@@ -16108,7 +16108,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.11.17.1';
+var APP_VERSION = '2026.11.17.2';
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
    Financeiro ainda falam os velhos. Só a borda de dados usa isto. */
 var FIN_VELHO = { engenheiro:'engenharia', coordenador_orcamento:'coordenadorOrcamento', gerente_financeiro:'gerenteFinanceiro',
@@ -19720,6 +19720,8 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     }
     if(un && !qtd && tot > 0) qtd = 1;
     var vu = unit || (mat + mo) || (qtd && tot ? tot / qtd : 0);
+    /* colado vem com 2 casas: o total da linha manda (senão a soma erra centavos/reais) */
+    if(qtd > 0 && tot > 0 && Math.abs(qtd * vu - tot) > 0.005) vu = tot / qtd;
     if(qtd > 0 && vu > 0){
       var it = { tipo: "i", referencia: cod, descricao: desc, unidade: un || "vb", qtd: qtd, valorUnit: vu };
       if(m.mat != null || m.mo != null){ it.mat = mat; it.mo = mo; }
@@ -19787,15 +19789,37 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     lin = lin.filter(function(l, i){ return !(l.tipo === "g" && (i === lin.length - 1)); });
     return { lin: inferirNiveis(lin), cols: m, ignoradas: ign, totalPlanilha: totPl };
   }
-  function lerColado(texto){
-    var grade = String(texto || "").split(/\r?\n/).filter(function(l){ return l.trim(); }).map(function(line){
-      var sep = line.indexOf("\t") >= 0 ? "\t" : ";";
-      var c = line.split(sep).map(function(s){ return String(s || "").replace(/^"|"$/g, "").trim(); });
+  /* 17/11/2026: o Excel põe entre aspas a célula com quebra de linha, TAB ou
+     aspas (ex.: TUBO 2.1/2" com Enter no meio) e dobra as aspas de dentro.
+     Antes cada Enter virava linha nova e as colunas andavam. */
+  function separarColado(texto){
+    var s = String(texto || "").replace(/\r\n?/g, "\n"), sep = s.indexOf("\t") >= 0 ? "\t" : ";";
+    var linhas = [], lin = [], cel = "", i = 0, n = s.length;
+    while(i < n){
+      var ch = s[i];
+      if(ch === '"' && cel === ""){
+        /* célula entre aspas: vai até a aspa que fecha seguida de separador/fim */
+        var j = i + 1, buf = "";
+        while(j < n){
+          if(s[j] === '"'){ if(s[j + 1] === '"'){ buf += '"'; j += 2; continue; } break; }
+          buf += s[j]; j++;
+        }
+        if(j < n && (j + 1 >= n || s[j + 1] === sep || s[j + 1] === "\n")){ cel = buf; i = j + 1; continue; }
+        /* aspa solta (não era célula entre aspas): trata como texto */
+        cel += ch; i++; continue;
+      }
+      if(ch === sep){ lin.push(cel); cel = ""; i++; continue; }
+      if(ch === "\n"){ lin.push(cel); linhas.push(lin); lin = []; cel = ""; i++; continue; }
+      cel += ch; i++;
+    }
+    if(cel !== "" || lin.length){ lin.push(cel); linhas.push(lin); }
+    return linhas.map(function(c){
+      c = c.map(function(v){ return String(v).replace(/\s+/g, " ").trim(); });
       while(c.length && c[c.length - 1] === "") c.pop();
       return c;
-    });
-    return lerGrade(grade, true);
+    }).filter(function(c){ return c.length; });
   }
+  function lerColado(texto){ return lerGrade(separarColado(texto), true); }
 
   /* --------------------------------------- linhas (com nível) → itens */
   function paraItens(lin){
