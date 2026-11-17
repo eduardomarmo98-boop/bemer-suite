@@ -72,7 +72,9 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
   var FUNCAO=SB_URL+'/functions/v1/man-chamado-publico';
   var TIPOS=['Alvenaria / Estrutura','Cobertura / Telhado','Elétrica','Esquadrias (portas e janelas)','Hidráulica','Impermeabilização','Louças e metais','Marcenaria','Pintura','Pisos e revestimentos','Outros'];
   var app=document.getElementById('app');
-  var token=(((location.hash||'')+'&'+(location.search||'')).match(/[#&?]t=([0-9a-f]{20,64})/)||[])[1]||'';
+  /* 17/11/2026 (0107): link com o nome da obra (graded-school-3f9a1c7e); os antigos (hexadecimais) continuam */
+  var token=(((location.hash||'')+'&'+(location.search||'')).match(/[#&?]t=([a-z0-9-]{8,80})/i)||[])[1]||'';
+  token=token.toLowerCase();
   var t0=Date.now(), fotos=[], enviando=false;
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
