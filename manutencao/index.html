@@ -279,7 +279,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.17.2';
+var APP_VERSION = '2026.11.18.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -949,44 +949,74 @@ function desenharChamado(c, vis, fotos, evs, links){
 /* ---------- REGULAMENTO DE GARANTIA (11/11/2026, pedido do dono) ----------
    Só para a equipe interna e com acesso discreto: rodapé da aba Obras e
    "regulamento" na linha Garantia do chamado. O link/QR do cliente NÃO mostra
-   (o dono decide depois). FONTE: o doc "Regulamento de Garantia B&M"
-   (claude.ai/artifact/SxArSWUQmnjx6UPN4DMZ5t) — mudou lá, muda aqui. A parte
-   "Uso interno" do doc fica de fora. Por enquanto é só leitura: a tabela ainda
-   não calcula a garantia por sistema (hoje é um prazo por obra). */
+   (o dono decide depois). Por enquanto é só leitura: a tabela ainda não
+   calcula a garantia por sistema (hoje é um prazo por obra).
+   18/11/2026: refeito pela ABNT NBR 17170:2022 (prazos de garantia para todo
+   tipo de edificação; substituiu o Anexo D da NBR 15575 e a tabela do manual
+   Secovi/SindusCon). A tabela segue a Tabela 2 da norma, só com os sistemas
+   das nossas obras; marcenaria e mobiliário fixo (fora da norma) ficam em 1
+   ano. FONTE AGORA É ESTE CÓDIGO: o PDF (docs/Regulamento-de-Garantia-BM.pdf)
+   sai daqui; o doc antigo (claude.ai/artifact/SxArSWUQmnjx6UPN4DMZ5t) ficou
+   como histórico. */
 var REG_PRAZOS = [   // em ordem de prazo: do maior para o menor (pedido do dono, 11/11)
-  ['Estrutura: fundações, lajes, vigas, pilares, contenções, estrutura metálica, protendido', 'Solidez e segurança', '5 anos'],
+  ['Estrutura: fundações, contenções, pilares, vigas, lajes, mezaninos e estrutura da cobertura', 'Solidez e segurança', '5 anos'],
   ['Impermeabilização', 'Estanqueidade', '5 anos'],
-  ['Vedações: alvenaria, drywall, guarda-corpos, escadas', 'Integridade e segurança', '5 anos'],
-  ['Cobertura: telhas, calhas, rufos', 'Estanqueidade e fixação', '5 anos'],
-  ['Revestimento de argamassa, gesso liso, drywall', 'Má aderência', '5 anos'],
-  ['Esquadrias de alumínio: perfis, fixadores, painéis', 'Integridade e fixação', '5 anos'],
-  ['Hidráulica: prumadas e tubos de queda', 'Vazamento por movimentação da estrutura', '5 anos'],
-  ['Fachadas e pisos molháveis', 'Estanqueidade', '3 anos'],
-  ['Elétrica: quadros, disjuntores, tomadas, fios, cabos, eletrodutos', 'Instalação', '3 anos'],
-  ['Hidráulica: coletores, ramais, louças, metais, registros, ralos', 'Instalação e vedação', '3 anos'],
-  ['Revestimento de argamassa, gesso liso, drywall', 'Fissuras', '2 anos'],
-  ['Revestimento cerâmico, porcelanato, pedra', 'Peças soltas, gretadas, desgaste excessivo', '2 anos'],
-  ['Pisos especiais: vinílico, carpete, laminado, piso elevado', 'Aderência, desgaste excessivo, nivelamento', '2 anos'],
-  ['Pintura e verniz', 'Empolamento, descascamento, alteração de cor', '2 anos'],
-  ['Esquadrias de alumínio: borrachas, escovas, fechos, roldanas', 'Desempenho', '2 anos'],
-  ['Rejuntes e selantes', 'Aderência', '1 ano'],
-  ['Forros: gesso, mineral, modular, metálico', 'Fissuras, fixação, nivelamento', '1 ano'],
-  ['Esquadrias de alumínio: partes móveis e motores', 'Vedação e funcionamento', '1 ano'],
-  ['Esquadrias de madeira e ferro, portas, fechaduras, ferragens', 'Fixação, empenamento, oxidação, funcionamento', '1 ano'],
-  ['Vidros', 'Fixação', '1 ano'],
-  ['Divisórias, marcenaria, mobiliário fixo', 'Fixação e funcionamento', '1 ano'],
-  ['Luminárias e iluminação', 'Instalação', '1 ano'],
-  ['Cabeamento estruturado (dados e voz)', 'Instalação e certificação', '1 ano'],
-  ['Gás', 'Vedação das junções', '1 ano'],
-  ['Ar-condicionado e ventilação: rede frigorígena, dutos, drenos', 'Instalação', '1 ano'],
-  ['Bombas, exaustão, automação, CFTV, controle de acesso', 'Instalação', '1 ano'],
-  ['Incêndio, SPDA, iluminação de emergência, porta corta-fogo', 'Instalação', '1 ano'],
-  ['Equipamentos (ar-condicionado, bombas, aquecedores, elevadores)', 'Funcionamento do equipamento', 'prazo do fabricante']
+  ['Vedações externas e internas: alvenaria, drywall, painéis, pele de vidro, divisórias', 'Integridade e descolamento de componentes', '5 anos'],
+  ['Revestimento de fachada: argamassa, cerâmica, pedra', 'Descolamento', '5 anos'],
+  ['Esquadrias, portas e portões de alumínio, aço e PVC: perfis e folhas', 'Ruptura, deformação, corrosão', '5 anos'],
+  ['Vidros', 'Descolamento da esquadria', '5 anos'],
+  ['Guarda-corpos, peitoris e pontos de ancoragem', 'Ruptura ou perda de estabilidade', '5 anos'],
+  ['Brises e elementos decorativos de fachada', 'Descolamento', '5 anos'],
+  ['Muros externos', 'Ruptura ou tombamento', '5 anos'],
+  ['Prumadas de água, esgoto e águas pluviais; reservatórios', 'Ruptura e vazamento', '5 anos'],
+  ['Prumadas de gás e de incêndio', 'Falhas de material e de instalação', '5 anos'],
+  ['Prumadas elétricas', 'Falhas de instalação', '5 anos'],
+  ['Contrapiso', 'Descolamento e esfarelamento', '3 anos'],
+  ['Piso elevado: suportes', 'Ruptura e desgaste', '3 anos'],
+  ['Pisos de estacionamento e calçadas de pedestres', 'Desgaste e descolamento', '3 anos'],
+  ['Revestimento interno: argamassa, gesso, cerâmica, pedra', 'Desgaste e descolamento', '3 anos'],
+  ['Fachada', 'Estanqueidade e desgaste do revestimento', '3 anos'],
+  ['Selantes e juntas de fachada', 'Estanqueidade e aderência', '3 anos'],
+  ['Pintura: látex premium e textura na fachada; esmalte e textura internos', 'Descascamento, bolhas, perda da película', '3 anos'],
+  ['Esquadrias, portas e portões: fechos, roldanas, dobradiças, articulações', 'Deformação, oxidação, falha de funcionamento', '3 anos'],
+  ['Esquadrias, portas e portões: folhas e vedações', 'Folgas e perda de vedação', '3 anos'],
+  ['Esquadrias de alumínio, aço e PVC: pintura dos perfis', 'Descascamento e alteração de cor', '3 anos'],
+  ['Portas e esquadrias de madeira: marcos e folhas', 'Ruptura', '3 anos'],
+  ['Portas e vidros corta-fogo', 'Deformação, ruptura, perda de integridade', '3 anos'],
+  ['Corrimãos', 'Ruptura ou perda de estabilidade', '3 anos'],
+  ['Brises e muros externos', 'Oxidação, deformação, fissuras', '3 anos'],
+  ['Forros', 'Queda ou ruptura', '3 anos'],
+  ['Cobertura: telhas e fixações', 'Descolamento ou ruptura', '3 anos'],
+  ['Prumadas elétricas', 'Falhas do material', '3 anos'],
+  ['Elétrica: quadros, disjuntores, tomadas, fios, cabos, eletrodutos, eletrocalhas, iluminação de emergência, SPDA, subestação, geradores', 'Falhas de instalação', '3 anos'],
+  ['Hidráulica: ramais, louças, bancadas, torneiras, bombas, medidores', 'Falhas de instalação', '3 anos'],
+  ['Gás: ramais embutidos', 'Falhas de material e de instalação', '3 anos'],
+  ['Incêndio: ramais', 'Falhas de material e de instalação', '3 anos'],
+  ['Incêndio: hidrantes, detecção, alarme, proteção passiva', 'Falhas de instalação', '3 anos'],
+  ['Ar-condicionado, exaustão e ventilação: rede, dutos, drenos', 'Falhas de instalação', '3 anos'],
+  ['Dados, voz, CFTV, controle de acesso e interfone: cabeamento e infraestrutura', 'Falhas de instalação', '3 anos'],
+  ['Revestimento de piso: cerâmica, porcelanato, pedra, vinílico, carpete, laminado; rodapés', 'Descolamento e desgaste', '1 ano'],
+  ['Rejuntes; selantes e juntas de piso', 'Desgaste e descolamento', '1 ano'],
+  ['Pavimentos de acesso de veículos e pátios de carga e descarga', 'Desgaste e descolamento', '1 ano'],
+  ['Pintura: látex interna, látex standard e esmalte na fachada, verniz', 'Descascamento, bolhas, perda da película', '1 ano'],
+  ['Esquadrias, portas e portões', 'Desencaixe e desregulagem', '1 ano'],
+  ['Janelas: vedação com a parede', 'Estanqueidade', '1 ano'],
+  ['Portas e esquadrias de madeira', 'Empenamento, descolamento, acabamento', '1 ano'],
+  ['Vidros', 'Delaminação', '1 ano'],
+  ['Portas corta-fogo: molas, dobradiças, barras antipânico', 'Funcionamento, fixação e corrosão', '1 ano'],
+  ['Guarda-corpos, corrimãos, portões e grades', 'Oxidação superficial', '1 ano'],
+  ['Forros', 'Deformação, empenamento, fissuras', '1 ano'],
+  ['Cobertura: telhas, rufos e calhas', 'Estanqueidade e fixação', '1 ano'],
+  ['Elétrica, hidráulica, gás aparente, detecção e alarme de incêndio, SPDA, ar-condicionado, dados e CFTV', 'Falhas do material', '1 ano'],
+  ['Engates flexíveis, sifões, válvulas e ralos', 'Falhas de material e de instalação', '1 ano'],
+  ['Equipamentos: ar-condicionado, exaustão, bombas, geradores, CFTV, controle de acesso', 'Falhas do equipamento', '1 ano'],
+  ['Elevadores, escadas e esteiras rolantes, plataformas de acessibilidade', 'Falhas de material e de instalação', '1 ano'],
+  ['Luminárias (exceto lâmpadas), automação predial, portões automáticos', 'Falhas de material e de instalação', '1 ano'],
+  ['Acessibilidade: barras de apoio, piso tátil, sinalização', 'Falhas de material e de instalação', '1 ano'],
+  ['Marcenaria e mobiliário fixo', 'Fixação e funcionamento', '1 ano'],
+  ['Muros externos', 'Umidade', '1 ano'],
+  ['Outros equipamentos não listados', 'Funcionamento do equipamento', 'do fabricante (mín. 180 dias)']
 ];
-/* 11/11/2026, noite (dono: "seja mais sutil, revise geral"): saíram a base legal em
-   destaque, as normas, os "termos usados", a definição de emergência, o "visita
-   não é cobrada" e o "atender não significa reconhecer". Visita em até 5 dias
-   úteis. O texto é o mesmo do doc e do PDF. */
 function htmlRegulamento(){
   var tab = function(cab, linhas){ return '<table><tr>' + cab.map(function(c){ return '<th>' + c + '</th>'; }).join('') + '</tr>'
     + linhas.map(function(l){ return '<tr>' + l.map(function(x){ return '<td>' + esc(x) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>'; };
@@ -994,15 +1024,17 @@ function htmlRegulamento(){
   return '<div class="reg">'
     + '<div class="triagem-aviso" style="margin-top:0">Uso interno: o cliente ainda não vê este regulamento.</div>'
     + '<p>A Brandão &amp; Marmo garante os sistemas que executa pelos prazos abaixo, contados da data do termo de recebimento da obra. Havendo prazo ou condição específica no contrato, prevalece o contrato.</p>'
-    + '<h3>Prazos de garantia</h3><p>Aplicam-se os sistemas que fazem parte do escopo de cada obra, conforme o databook.</p>'
+    + '<h3>Prazos de garantia</h3><p>Prazos conforme a ABNT NBR 17170. Aplicam-se os sistemas que fazem parte do escopo de cada obra, conforme o databook.</p>'
     + tab(['Sistema', 'O que cobre', 'Prazo'], REG_PRAZOS)
     + '<h3>Início da garantia</h3><p>A garantia tem início na data do <b>termo de recebimento</b> da obra. Em entregas por etapas, cada etapa conta da data do seu termo. Equipamentos e materiais de fabricante contam também com a garantia do próprio fabricante, indicada no databook.</p>'
+    + '<h3>Vistoria de recebimento</h3><p>Falhas aparentes, como manchas, riscos, lascados, diferenças de tonalidade e falhas de rejunte em revestimentos, pinturas, portas e esquadrias, devem ser apontadas na vistoria de recebimento da obra.</p>'
     + '<h3>Abrangência</h3><p>A garantia cobre defeitos de execução e dos materiais fornecidos pela B&amp;M, em condições normais de uso e com a manutenção prevista no databook. Não estão cobertos:</p><ul>' + li([
         'desgaste natural decorrente do uso;',
         'falta da manutenção prevista no databook;',
         'uso diferente do previsto em projeto, como sobrecargas ou mudança de uso do ambiente;',
         'alterações ou reparos executados por terceiros no sistema afetado;',
         'danos por causas externas, como acidentes, intempéries ou vandalismo;',
+        'fissuras capilares, que não afetam a segurança, a estanqueidade ou a durabilidade;',
         'itens que não fazem parte do escopo da B&amp;M na obra.']) + '</ul>'
     + '<h3>Assistência técnica</h3><p>Os chamados são abertos pelo link (ou QR code) da obra ou pelo e-mail manutencao@brandaoemarmo.com.br, com a descrição do ocorrido, o local e, se possível, fotos.</p><ol>' + li([
         'O contratante abre o chamado e recebe a confirmação com o número.',
@@ -1010,7 +1042,7 @@ function htmlRegulamento(){
         'Após a visita, a B&amp;M executa o serviço e comunica o encerramento.']) + '</ol>'
     + tab(['Atendimento', 'Prazo'], [['Primeiro contato', 'até 2 dias úteis'], ['Visita técnica', 'até 5 dias úteis'], ['Situações urgentes', 'contato em até 24 horas']])
     + '<p>Quando a avaliação indicar que o item não está coberto pela garantia, a B&amp;M informa o motivo e, se for do interesse do contratante, apresenta orçamento para o serviço.</p>'
-    + '<p class="nota">Este regulamento complementa o contrato da obra e a garantia legal prevista no Código Civil (art. 618).</p>'
+    + '<p class="nota">Este regulamento segue a ABNT NBR 17170 e complementa o contrato da obra e a garantia legal prevista no Código Civil (art. 618).</p>'
     + '</div>';
 }
 function verRegulamento(idChamado){
