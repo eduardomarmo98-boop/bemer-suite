@@ -335,7 +335,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.18.2';
+var APP_VERSION = '2026.11.18.3';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -382,14 +382,21 @@ var CATS = [
   { c:'tec_rs_legislacao',  n:'Legislação, LGPD e ética na seleção',    g:'u' },
   { c:'tec_rs_admissao',    n:'Admissão e integração',                  g:'u' },
   { c:'tec_rs_indicadores', n:'Indicadores do processo seletivo',       g:'u' },
-  { c:'tec_rs_obra',        n:'Recrutamento para obra e canteiro',      g:'u' }
+  { c:'tec_rs_obra',        n:'Recrutamento para obra e canteiro',      g:'u' },
+  /* 18/11/2026 (0111): conhecimentos de coordenação de obras (vaga Coordenador de Obras) */
+  { c:'tec_co_prazo',     n:'Planejamento e controle de prazo',     g:'v' },
+  { c:'tec_co_custo',     n:'Custos, medição e resultado da obra',  g:'v' },
+  { c:'tec_co_contratos', n:'Contratos, aditivos e empreiteiras',   g:'v' },
+  { c:'tec_co_cliente',   n:'Cliente, fiscalização e comunicação',  g:'v' },
+  { c:'tec_co_sst',       n:'Segurança, qualidade e meio ambiente', g:'v' },
+  { c:'tec_co_entrega',   n:'Entrega, comissionamento e garantia',  g:'v' }
 ];
 /* título do bloco técnico no relatório: pelo grupo dos temas aplicados */
+var TITULO_TEC = { t:'Conhecimentos técnicos de engenharia', u:'Conhecimentos de recrutamento e seleção', v:'Conhecimentos de coordenação de obras' };
 function tituloTec(cats){
   var gs = {}; (cats || []).forEach(function(c){ var k = CATS.find(function(x){ return x.c === c; }); gs[k ? k.g : '?'] = 1; });
   var ks = Object.keys(gs);
-  return ks.length === 1 && ks[0] === 'u' ? 'Conhecimentos de recrutamento e seleção'
-       : ks.length === 1 && ks[0] === 't' ? 'Conhecimentos técnicos de engenharia' : 'Conhecimentos técnicos';
+  return ks.length === 1 && TITULO_TEC[ks[0]] ? TITULO_TEC[ks[0]] : 'Conhecimentos técnicos';
 }
 function nomeCat(c){ var x = CATS.find(function(k){ return k.c === c; }); return x ? x.n : c; }
 function ehTec(c){ return String(c || '').indexOf('tec_') === 0; }
@@ -1320,7 +1327,8 @@ function editarVaga(id){
     + '<div class="rolar"><table><tr><th>Raciocínio</th><th class="c">Quantas</th><th class="c">No banco</th></tr>' + grade('r')
     + '<tr><th>Situações de trabalho</th><th></th><th></th></tr>' + grade('s')
     + '<tr><th>Conhecimentos técnicos (engenharia)</th><th></th><th></th></tr>' + grade('t')
-    + '<tr><th>Conhecimentos de recrutamento e seleção</th><th></th><th></th></tr>' + grade('u') + '</table></div>'
+    + '<tr><th>Conhecimentos de recrutamento e seleção</th><th></th><th></th></tr>' + grade('u')
+    + '<tr><th>Conhecimentos de coordenação de obras</th><th></th><th></th></tr>' + grade('v') + '</table></div>'
     + '<p class="dica">Técnicas: conte cerca de 1,5 minuto por questão no tempo abaixo.</p>'
     + '<div class="lado" style="margin-top:12px"><div class="campo"><label class="rot" for="v-tempo">Tempo das questões — raciocínio e técnicas (minutos)</label><input type="number" id="v-tempo" min="5" max="90" value="' + (cfg.tempo_cog_min || 20) + '"></div>'
     + '<div class="campo"><label class="rot">&nbsp;</label><label class="marcar"><input type="checkbox" id="v-ativa"' + (v.ativa ? ' checked' : '') + '> Vaga ativa</label></div></div>'
