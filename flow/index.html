@@ -933,7 +933,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.16.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.18.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -954,7 +954,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.16.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.18.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -971,7 +971,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.16.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.18.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1097,7 +1097,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.16.1';
+var APP_VERSAO = '2026.11.18.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -8836,6 +8836,63 @@ carregarTudo = function(){
   return Promise.all([carregarTudoSemInsumos(), InsDados.info()]).then(function(r){ INSUMOS = r[1]; return r[0]; });
 };
 
+</script>
+<script>
+/* =====================================================================
+   Inatividade da suíte (18/11/2026)
+   O publicar.js põe este bloco no fim de TODA página com login (portal e
+   módulos). O Docs tem o dele, que lê e grava a mesma marca.
+
+   1) Marca de atividade — clique, tecla, toque ou rolagem grava a hora em
+      localStorage 'bemer_atividade' (no máximo 1x a cada 30 s). A sessão é
+      uma só para a suíte (mesmo endereço): quem encerra por inatividade
+      (Docs, Folha, Custos, Patrimônio) olha esta marca, e uma aba parada
+      não derruba outra que está em uso.
+
+   2) Sair por inatividade — só na página que pede, ANTES deste bloco:
+         var BM_SAIR_INATIVO = 2;   // horas
+      (Folha e Custos.) Passado o prazo sem uso em NENHUMA aba da suíte
+      neste navegador, encerra a sessão só aqui (scope 'local': o celular
+      continua logado) e volta ao login do portal com o recado.
+   ===================================================================== */
+(function () {
+  var CHAVE = 'bemer_atividade';
+  var aqui = Date.now(), gravou = 0;
+  function marcar() {
+    aqui = Date.now();
+    if (aqui - gravou < 30000) return;
+    gravou = aqui;
+    try { localStorage.setItem(CHAVE, String(aqui)); } catch (e) {}
+  }
+  ['click', 'keydown', 'mousemove', 'touchstart', 'scroll', 'wheel'].forEach(function (ev) {
+    document.addEventListener(ev, marcar, { passive: true, capture: true });
+  });
+
+  var horas = +window.BM_SAIR_INATIVO;
+  if (!(horas > 0)) return;
+  var LIMITE = horas * 3600000, saiu = false;
+
+  function ultima() {
+    var s = 0;
+    try { s = +localStorage.getItem(CHAVE) || 0; } catch (e) {}
+    return Math.max(aqui, s);
+  }
+  function irParaLogin() {
+    location.replace('../?aviso=' + encodeURIComponent('Sessão encerrada por inatividade. Entre de novo.'));
+  }
+  function conferir() {
+    if (saiu || Date.now() - ultima() < LIMITE) return;
+    saiu = true;
+    /* tira os dados da tela já, antes da resposta do servidor */
+    try { document.body.style.visibility = 'hidden'; } catch (e) {}
+    var c = window._bemerSb || window.sb;
+    try { c.auth.signOut({ scope: 'local' }).then(irParaLogin, irParaLogin); } catch (e) { irParaLogin(); }
+  }
+  setInterval(conferir, 60000);
+  /* voltou para a aba (ou o computador acordou): confere antes de mostrar */
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) conferir(); });
+  window.addEventListener('focus', conferir);
+})();
 </script>
 </body>
 </html>

@@ -214,7 +214,7 @@ label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margi
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.16.1';
+var APP_VERSION = '2026.11.18.1';
 var AMBIENTE    = 'homologação';
 /* Edge function que cria o acesso (auth + core.pessoas + e-mail de senha). */
 var FUNCAO_CRIAR_PESSOA = 'core-criar-usuario';   // NUNCA 'criar-usuario': é a edge do Docs no mesmo projeto
@@ -1458,6 +1458,63 @@ function segmento(id, aoMudar){
   setInterval(conferir, 120000);
   document.addEventListener('visibilitychange', conferir);
   setTimeout(conferir, 8000);
+})();
+</script>
+<script>
+/* =====================================================================
+   Inatividade da suíte (18/11/2026)
+   O publicar.js põe este bloco no fim de TODA página com login (portal e
+   módulos). O Docs tem o dele, que lê e grava a mesma marca.
+
+   1) Marca de atividade — clique, tecla, toque ou rolagem grava a hora em
+      localStorage 'bemer_atividade' (no máximo 1x a cada 30 s). A sessão é
+      uma só para a suíte (mesmo endereço): quem encerra por inatividade
+      (Docs, Folha, Custos, Patrimônio) olha esta marca, e uma aba parada
+      não derruba outra que está em uso.
+
+   2) Sair por inatividade — só na página que pede, ANTES deste bloco:
+         var BM_SAIR_INATIVO = 2;   // horas
+      (Folha e Custos.) Passado o prazo sem uso em NENHUMA aba da suíte
+      neste navegador, encerra a sessão só aqui (scope 'local': o celular
+      continua logado) e volta ao login do portal com o recado.
+   ===================================================================== */
+(function () {
+  var CHAVE = 'bemer_atividade';
+  var aqui = Date.now(), gravou = 0;
+  function marcar() {
+    aqui = Date.now();
+    if (aqui - gravou < 30000) return;
+    gravou = aqui;
+    try { localStorage.setItem(CHAVE, String(aqui)); } catch (e) {}
+  }
+  ['click', 'keydown', 'mousemove', 'touchstart', 'scroll', 'wheel'].forEach(function (ev) {
+    document.addEventListener(ev, marcar, { passive: true, capture: true });
+  });
+
+  var horas = +window.BM_SAIR_INATIVO;
+  if (!(horas > 0)) return;
+  var LIMITE = horas * 3600000, saiu = false;
+
+  function ultima() {
+    var s = 0;
+    try { s = +localStorage.getItem(CHAVE) || 0; } catch (e) {}
+    return Math.max(aqui, s);
+  }
+  function irParaLogin() {
+    location.replace('../?aviso=' + encodeURIComponent('Sessão encerrada por inatividade. Entre de novo.'));
+  }
+  function conferir() {
+    if (saiu || Date.now() - ultima() < LIMITE) return;
+    saiu = true;
+    /* tira os dados da tela já, antes da resposta do servidor */
+    try { document.body.style.visibility = 'hidden'; } catch (e) {}
+    var c = window._bemerSb || window.sb;
+    try { c.auth.signOut({ scope: 'local' }).then(irParaLogin, irParaLogin); } catch (e) { irParaLogin(); }
+  }
+  setInterval(conferir, 60000);
+  /* voltou para a aba (ou o computador acordou): confere antes de mostrar */
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) conferir(); });
+  window.addEventListener('focus', conferir);
 })();
 </script>
 </body>
