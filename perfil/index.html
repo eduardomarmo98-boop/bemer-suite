@@ -335,7 +335,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.18.1';
+var APP_VERSION = '2026.11.18.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -375,8 +375,22 @@ var CATS = [
   { c:'tec_planejamento', n:'Planejamento e controle de obra',       g:'t' },
   { c:'tec_orcamento',    n:'Orçamento, quantitativos e custos',     g:'t' },
   { c:'tec_normas',       n:'Normas, NRs e responsabilidade técnica', g:'t' },
-  { c:'tec_execucao',     n:'Execução, materiais e qualidade',       g:'t' }
+  { c:'tec_execucao',     n:'Execução, materiais e qualidade',       g:'t' },
+  /* 18/11/2026 (0110): conhecimentos de recrutamento e seleção (vaga Assistente de R&S) */
+  { c:'tec_rs_triagem',     n:'Recrutamento, perfil da vaga e triagem', g:'u' },
+  { c:'tec_rs_entrevista',  n:'Entrevista e técnicas de seleção',       g:'u' },
+  { c:'tec_rs_legislacao',  n:'Legislação, LGPD e ética na seleção',    g:'u' },
+  { c:'tec_rs_admissao',    n:'Admissão e integração',                  g:'u' },
+  { c:'tec_rs_indicadores', n:'Indicadores do processo seletivo',       g:'u' },
+  { c:'tec_rs_obra',        n:'Recrutamento para obra e canteiro',      g:'u' }
 ];
+/* título do bloco técnico no relatório: pelo grupo dos temas aplicados */
+function tituloTec(cats){
+  var gs = {}; (cats || []).forEach(function(c){ var k = CATS.find(function(x){ return x.c === c; }); gs[k ? k.g : '?'] = 1; });
+  var ks = Object.keys(gs);
+  return ks.length === 1 && ks[0] === 'u' ? 'Conhecimentos de recrutamento e seleção'
+       : ks.length === 1 && ks[0] === 't' ? 'Conhecimentos técnicos de engenharia' : 'Conhecimentos técnicos';
+}
 function nomeCat(c){ var x = CATS.find(function(k){ return k.c === c; }); return x ? x.n : c; }
 function ehTec(c){ return String(c || '').indexOf('tec_') === 0; }
 /* soma das categorias de um grupo (técnico ou raciocínio) de um resultado */
@@ -1191,7 +1205,7 @@ function abrirRelatorio(id){
       var acertou = tecItens.filter(function(i){ return i.s === 'c'; }), errou = tecItens.filter(function(i){ return i.s !== 'c'; });
       var posCat = function(c){ return CATS.findIndex(function(k){ return k.c === c; }); };
       var liAss = function(l){ return l.length ? l.slice().sort(function(x, y){ return posCat(x.cat) - posCat(y.cat) || x.n - y.n; }).map(function(i){ return '<li>' + esc(i.a || i.c) + ' <span class="dica">· ' + esc(nomeCat(i.cat).split(',')[0]) + ' · ' + ['', 'fácil', 'médio', 'difícil'][i.n] + (i.s === 'b' ? ' · em branco' : '') + '</span></li>'; }).join('') : '<li class="dica">Nenhum.</li>'; };
-      h += '<div class="rel-sec">' + n + '. Conhecimentos técnicos de engenharia</div>'
+      h += '<div class="rel-sec">' + n + '. ' + tituloTec(gt.cats) + '</div>'
         + '<p class="rel-p">' + totais(gt) + (gr.total ? '' : tempo) + '.</p>'
         + (destaque(gt.cats) ? '<p class="rel-p">' + esc(destaque(gt.cats)) + '</p>' : '')
         + tabelaCats(gt.cats, 'Tema')
@@ -1305,7 +1319,8 @@ function editarVaga(id){
     + '<h2 style="font-size:14px;color:var(--azul);margin:12px 0 4px">Questões por categoria</h2>'
     + '<div class="rolar"><table><tr><th>Raciocínio</th><th class="c">Quantas</th><th class="c">No banco</th></tr>' + grade('r')
     + '<tr><th>Situações de trabalho</th><th></th><th></th></tr>' + grade('s')
-    + '<tr><th>Conhecimentos técnicos (engenharia)</th><th></th><th></th></tr>' + grade('t') + '</table></div>'
+    + '<tr><th>Conhecimentos técnicos (engenharia)</th><th></th><th></th></tr>' + grade('t')
+    + '<tr><th>Conhecimentos de recrutamento e seleção</th><th></th><th></th></tr>' + grade('u') + '</table></div>'
     + '<p class="dica">Técnicas: conte cerca de 1,5 minuto por questão no tempo abaixo.</p>'
     + '<div class="lado" style="margin-top:12px"><div class="campo"><label class="rot" for="v-tempo">Tempo das questões — raciocínio e técnicas (minutos)</label><input type="number" id="v-tempo" min="5" max="90" value="' + (cfg.tempo_cog_min || 20) + '"></div>'
     + '<div class="campo"><label class="rot">&nbsp;</label><label class="marcar"><input type="checkbox" id="v-ativa"' + (v.ativa ? ' checked' : '') + '> Vaga ativa</label></div></div>'
