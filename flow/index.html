@@ -287,11 +287,24 @@
   .pob-pri{min-height:54px;border-radius:14px;background:var(--laranja);color:var(--azul);font-size:17px;font-weight:700}
   .pob-sec{min-height:46px;border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--azul-borda);color:var(--azul);font-size:15px;font-weight:600;background:#fff}
   .pob-fim{font-size:13px;color:var(--tinta2);text-align:center;margin:0}
-  .faixa-push{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0;padding:10px 12px;border-radius:14px;background:var(--azul-bg);color:var(--azul);font-size:14px}
-  .faixa-push span{flex:1 1 200px;min-width:0}
-  .faixa-push button{min-height:40px;padding:0 14px;border-radius:10px;font-weight:600;font-size:14px}
-  .faixa-push .sim{background:var(--azul);color:#fff}
-  .faixa-push .nao{color:var(--azul)}
+  /* 19/11/2026: quadro de destaque para ativar os avisos (era uma faixa azul-clara de uma linha) */
+  .faixa-push{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0 4px;padding:16px 18px;border-radius:16px;
+    background:var(--azul);color:#fff;font-size:14px;box-shadow:0 6px 18px rgba(0,41,107,.28);border-left:6px solid var(--laranja)}
+  .faixa-push .fp-ico{flex:0 0 auto;width:48px;height:48px;border-radius:50%;background:var(--laranja);display:flex;align-items:center;
+    justify-content:center;font-size:24px;line-height:1;animation:fpSino 3s ease-in-out infinite;transform-origin:50% 20%}
+  .faixa-push .fp-txt{flex:1 1 220px;min-width:0}
+  .faixa-push .fp-tit{font-size:17px;font-weight:700;line-height:1.3;margin:0 0 3px;color:#fff}
+  .faixa-push .fp-sub{font-size:14px;line-height:1.45;margin:0;color:rgba(255,255,255,.9)}
+  .faixa-push .fp-sub b{color:#fff}
+  .faixa-push .fp-bts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .faixa-push button{min-height:46px;padding:0 16px;border-radius:12px;font-weight:700;font-size:15px}
+  .faixa-push .sim{background:var(--laranja);color:var(--azul);padding:0 22px}
+  .faixa-push .sim:hover{background:var(--laranja-escuro)}
+  .faixa-push .sim:disabled{opacity:.7}
+  .faixa-push .nao{color:#fff;font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:0 10px}
+  @keyframes fpSino{0%,82%,100%{transform:rotate(0)}85%{transform:rotate(16deg)}88%{transform:rotate(-14deg)}91%{transform:rotate(9deg)}94%{transform:rotate(-5deg)}}
+  @media (prefers-reduced-motion:reduce){.faixa-push .fp-ico{animation:none}}
+  @media (max-width:560px){.faixa-push{padding:14px}.faixa-push .fp-bts{width:100%}.faixa-push .sim{flex:1 1 auto}}
   .faixa-rede{margin:10px 0 0;padding:4px 4px 4px 12px;border-radius:12px;background:var(--erro-bg);color:var(--erro);
               font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px}
   .faixa-rede button{margin-left:auto;color:var(--erro);font-weight:700;font-size:14px;text-decoration:underline;
@@ -933,7 +946,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.18.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.19.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -954,7 +967,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.18.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.19.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -971,7 +984,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.18.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.19.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1097,7 +1110,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.18.1';
+var APP_VERSAO = '2026.11.19.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -7413,16 +7426,30 @@ var Push = {
       else if(!temCel && !noCel && Push.campanha()) Push.convite(st);
       var nao = Pref.ler('push_nao_'+EU.id);
       if(nao && (temCel || nao === Push.hojeTxt())) { f.classList.add('oculto'); return; }
-      if(st !== 'inativo' && st !== 'instalar'){ f.classList.add('oculto'); return; }
+      if(st !== 'inativo' && st !== 'instalar' && st !== 'negado'){ f.classList.add('oculto'); return; }
+      /* 19/11/2026 (pedido do dono: "quadro para ativar notificações com mais
+         destaque"): a faixa azul-clara de uma linha passava despercebida em
+         cima da lista. Agora é um QUADRO azul-marinho com o sino laranja, um
+         título e o botão grande "Ativar avisos". Aparelho que BLOQUEOU os
+         avisos também ganha o quadro, ensinando a liberar (antes sumia). */
+      var q = function(tit, sub, bts){
+        return '<div class="fp-ico" aria-hidden="true">🔔</div><div class="fp-txt"><p class="fp-tit">'+tit+'</p><p class="fp-sub">'+sub+'</p></div><div class="fp-bts">'+bts+'</div>';
+      };
       f.innerHTML = st === 'instalar'
-        ? '<span>Para receber os avisos do Flow no iPhone, instale o BeMer na Tela de Início (Compartilhar › Adicionar à Tela de Início) e abra por lá.</span><button type="button" class="nao" id="fp-nao">Ok</button>'
-        : '<span>Receba os avisos do Flow neste aparelho, como um aplicativo.</span><button type="button" class="sim" id="fp-sim">Ativar</button><button type="button" class="nao" id="fp-nao">Agora não</button>';
+        ? q('Receba os avisos do Flow no iPhone', 'Instale o BeMer na Tela de Início: no Safari, toque em <b>Compartilhar</b> › <b>Adicionar à Tela de Início</b>. Depois abra pelo ícone e toque em <b>Ativar</b>.',
+            '<button type="button" class="nao" id="fp-nao">Ok</button>')
+        : st === 'negado'
+        ? q('Os avisos estão bloqueados neste aparelho', 'Só você consegue liberar: '+(Push.ios() ? 'abra <b>Ajustes</b> › <b>Notificações</b> › <b>BeMer</b> e ligue <b>Permitir Notificações</b>.' : 'clique no <b>cadeado</b> ao lado do endereço › <b>Notificações</b> › <b>Permitir</b> e recarregue a página.'),
+            '<button type="button" class="nao" id="fp-nao">Agora não</button>')
+        : q('Ative os avisos do Flow neste aparelho', 'Você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem isso, só no e-mail do dia seguinte.',
+            '<button type="button" class="sim" id="fp-sim">Ativar avisos</button><button type="button" class="nao" id="fp-nao">Agora não</button>');
       f.classList.remove('oculto');
       $('fp-nao').addEventListener('click', function(){ Pref.gravar('push_nao_'+EU.id, temCel ? '1' : Push.hojeTxt()); f.classList.add('oculto'); });
       if($('fp-sim')) $('fp-sim').addEventListener('click', function(){
-        var b = this; b.disabled = true;
+        var b = this; b.disabled = true; b.textContent = 'Ativando…';
         Push.ativar().then(function(){ f.classList.add('oculto'); aviso('Avisos ligados neste aparelho. Mandei um teste.', 'ok'); },
-          function(e){ b.disabled = false; aviso(e.message||String(e), 'erro'); });
+          function(e){ b.disabled = false; b.textContent = 'Ativar avisos'; aviso(e.message||String(e), 'erro');
+            try { if(Notification.permission === 'denied') Push.faixa(); } catch(x){} });
       });
     });
   },
