@@ -946,7 +946,7 @@
     </div>
     
     <div class="rodape">
-      <span class="v">v2026.11.19.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.23.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -967,7 +967,7 @@
     <div id="msg-nova-senha" class="dica" style="margin-top:14px;text-align:center"></div>
     
     <div class="rodape">
-      <span class="v">v2026.11.19.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.23.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -984,7 +984,7 @@
     </form>
     
     <div class="rodape">
-      <span class="v">v2026.11.19.1</span> · © Brandão &amp; Marmo
+      <span class="v">v2026.11.23.1</span> · © Brandão &amp; Marmo
     </div>
   </div>
 </div>
@@ -1110,7 +1110,7 @@ if(SUPABASE_URL.indexOf('COLE_AQUI') === 0 || SUPABASE_KEY.indexOf('COLE_AQUI') 
 
 /* Versão. Uma constante só, referenciada em todo lugar — no BeMer ela
    vive em cinco pontos e vive dessincronizada. Formato AAAA.MM.DD.N. */
-var APP_VERSAO = '2026.11.19.1';
+var APP_VERSAO = '2026.11.23.1';
 
 var APP_NOME = 'BeMer FLOW';
 var APP_SUB  = 'Pendências entre escritório e obra';
@@ -1221,9 +1221,15 @@ var MARCA_FALTA = '↩ Ainda não está resolvida';
 /* "Como foi resolvido?" de quem abriu (Confirmar / Dar por resolvida): a
    marca diz ao banco que é ação de status, não mensagem (0054). */
 var MARCA_RESOLVE = '✔ Resolvida';
+/* 23/11/2026 (dono: "permitir reabrir uma demanda que eu falei que estava
+   resolvida"): quem RECEBEU e clicou "Concluí" pode voltar atrás antes de quem
+   abriu confirmar. A nota com esta marca é a última dele, então a conclusão
+   deixa de valer (pediuConfirmacao, aqui e no banco). O banco (0114) não aplica
+   o limite de 5 min a ela. */
+var MARCA_RETOMA = '↩ Retomei';
 function notaDeAcao(t){
   t = String(t||'');
-  return t.indexOf(MARCA_CONCLUI)===0 || t.indexOf(MARCA_FALTA)===0 || t.indexOf(MARCA_RESOLVE)===0;
+  return t.indexOf(MARCA_CONCLUI)===0 || t.indexOf(MARCA_FALTA)===0 || t.indexOf(MARCA_RESOLVE)===0 || t.indexOf(MARCA_RETOMA)===0;
 }
 
 /* 1 mensagem a cada 5 min, por pessoa, por pendência (decisão do dono:
@@ -3625,6 +3631,9 @@ var Dados = {
   naoResolvida: function(p, texto){
     return Dados.notaComAnexos(p, MARCA_FALTA+(texto && texto.trim() ? ' — '+texto.trim() : '.'), []);
   },
+  retomar: function(p, texto){
+    return Dados.notaComAnexos(p, MARCA_RETOMA+(texto && texto.trim() ? ' — '+texto.trim() : ': ainda não terminei.'), []);
+  },
   /* excluir de vez: a pendência, os sub-itens e tudo o que é deles */
   excluir: function(p){
     if(!podeExcluir(p)) return Promise.reject(new Error(exclusaoLiberada()
@@ -3891,7 +3900,7 @@ var Detalhe = {
     if(!pp.aberta) return pp.souCriador ? { sec:{ acao:'reabrir', rot:'Reabrir' } } : {};
     if(pp.souResp){
       if(!p.prazo) return { pri:{ acao:'prazo', rot:'Assumir prazo' }, sec: !p.prazo_original ? { acao:'redir', rot:'Redirecionar' } : null };
-      if(pp.pediu && !pp.souCriador) return {};
+      if(pp.pediu && !pp.souCriador) return { sec:{ acao:'retomar', rot:'Desfazer "Concluí"' } };   // 23/11
       return { pri:{ acao:'concluir', rot:'Concluí', ico:ICO.ok }, sec:{ acao:'adiar', rot:'Adiar' } };
     }
     if(pp.souCriador){
@@ -4030,7 +4039,8 @@ var Detalhe = {
       return '<div class="evento'+(e.ok?' ok':'')+'">'+e.h+' · '+ddmm(n.criado_em)+'</div>';
     }
     var minha = mesmoId(n.autor_id, EU.id), txt = String(n.texto||'');
-    var conc = txt.indexOf(MARCA_CONCLUI) === 0;
+    var conc = txt.indexOf(MARCA_CONCLUI) === 0, ret = txt.indexOf(MARCA_RETOMA) === 0;
+    if(ret) txt = txt.slice(MARCA_RETOMA.length).replace(/^\s*(—|\.|:)\s*/, '').trim();
     if(conc) txt = txt.slice(MARCA_CONCLUI.length).replace(/^\s*(—|\.)\s*/, '').replace(/^Pode confirmar\?$/, '').trim();
     /* "como foi resolvido" (0054): a marca é só para o banco; na conversa fica o texto */
     if(txt.indexOf(MARCA_RESOLVE) === 0) txt = txt.slice(MARCA_RESOLVE.length).replace(/^\s*(—|\.)\s*/, '').trim();
@@ -4038,6 +4048,7 @@ var Detalhe = {
     return '<div class="nota'+(minha?' minha':'')+(conc?' concluiu':'')+'">'+
       '<div class="a"><span>'+(minha ? 'Você' : esc(nomeCurto(pessoa(n.autor_id).nome)))+'</span><small>'+quandoCurto(n.criado_em)+'</small></div>'+
       (conc ? '<span class="rot-conc">✓ Concluiu</span>' : '')+
+      (ret ? '<span class="rot-conc">↩ Desfez o "Concluí"</span>' : '')+
       (txt ? '<div class="txt">'+esc(txt)+'</div>' : '')+
       (ax.length ? '<div class="anexos">'+ax.map(Detalhe.chipAnexo).join('')+'</div>' : '')+
       (n._pendente ? '<div class="estado">enviando…</div>' : '')+
@@ -4776,6 +4787,23 @@ var Acoes = {
       var b = this; b.disabled = true;
       Dados.naoResolvida(p, f.querySelector('#d-falta-txt').value)
         .then(function(){ f.remove(); Detalhe.feito(p, 'Voltou para '+respN+'.'); })
+        .catch(function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
+    });
+    return f;
+  },
+
+  /* 23/11/2026: quem recebeu desfaz o "Concluí" antes da confirmação */
+  retomar: function(p){
+    var criadorN = primeiro(pessoa(p.criado_por).nome);
+    var f = folha('Desfazer "Concluí"',
+      '<label for="d-retoma-txt" class="primeiro">O que ainda falta? <span class="opcional">(opcional)</span></label>'+
+      '<textarea id="d-retoma-txt" placeholder="Ex.: falta instalar a última luminária."></textarea>'+
+      '<div class="dica">A pendência volta a ficar com você, no mesmo prazo. '+esc(criadorN)+' vê na conversa.</div>',
+      '<button class="bt-pri" id="d-retoma-ok">Desfazer</button>');
+    f.querySelector('#d-retoma-ok').addEventListener('click', function(){
+      var b = this; b.disabled = true;
+      Dados.retomar(p, f.querySelector('#d-retoma-txt').value)
+        .then(function(){ f.remove(); Detalhe.feito(p, 'Pronto: a pendência voltou para você.'); })
         .catch(function(e){ b.disabled = false; aviso(e.message||String(e),'erro'); });
     });
     return f;
@@ -7272,6 +7300,10 @@ Regras = {
    ===================================================================== */
 var PUSH_CAMPANHA_ATE = '2026-11-15';
 var PUSH_CARENCIA = 3;   // 23/10: dias em que dá para pular a tela obrigatória do celular   // 23/10: convite diário para ligar o aviso no celular (temporário)
+/* 23/11/2026 (dono): deixar claro que o aviso é só do que envolve a pessoa —
+   mesma regra do banco (flow.registrar_evento): quem abriu, quem recebeu e os
+   envolvidos/quem acompanha; nunca o que a própria pessoa fez. */
+var PUSH_SO_SEU = 'Você só é avisado das pendências em que está envolvido: as que abriu, as que pediram para você e as que acompanha.';
 var PUSH_CHAVE ='BO7OibIBD3WA6K2RMOLN1yW8PeWXHZtKczz8cEEb9TW2uWez4ZWW9vR_5Iau5k3RLftD4brHa5ej3HoP7xDYBbw';
 var Push = {
   ios: function(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); },
@@ -7342,6 +7374,7 @@ var Push = {
       ? '<li>No Safari, toque em <b>Compartilhar</b> (o quadrado com a seta) › <b>Adicionar à Tela de Início</b>.</li><li>Abra o <b>BeMer</b> pelo ícone novo e entre no Flow.</li><li>Toque em <b>Ativar</b> e permita os avisos.</li>'
       : '<li>No Chrome, toque no menu <b>⋮</b> › <b>Instalar app</b> (ou Adicionar à tela inicial).</li><li>Abra o <b>BeMer</b> pelo ícone e entre no Flow.</li><li>Toque em <b>Ativar</b> e permita os avisos.</li>';
     var corpo = '<p style="font-size:15px;line-height:1.5;margin:0">Com o aviso ligado no celular, você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem ele, só no dia seguinte, pelo e-mail das 7h30.</p>' +
+      '<p class="dica" style="margin:8px 0 0">'+PUSH_SO_SEU+'</p>' +
       (noCel
         ? (st === 'inativo' ? '<p class="dica" style="margin:10px 0 0">É um toque só.</p>' : '<ol style="margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.6">'+passos+'</ol>')
         : '<p style="font-size:14px;line-height:1.5;margin:10px 0 0">No <b>celular</b>, abra <b>bemer.brandaoemarmo.com.br/flow</b> e:</p>' +
@@ -7365,19 +7398,26 @@ var Push = {
      os avisos (só a pessoa libera nos ajustes) — mostra como e deixa seguir.
      No iPhone fora do app instalado, ensina a instalar (lá aparece o Ativar).
      ===================================================================== */
-  obrigar: function(st){
+  /* 23/11/2026 (dono: "notificação pelo computador deveria ser obrigatória"):
+     a mesma tela vale para o COMPUTADOR (pc = true), com carência própria de
+     3 dias. Cada computador ativa o seu. Bloqueado: ensina a liberar e deixa
+     seguir (só a pessoa libera). Navegador sem suporte: nada muda. */
+  obrigar: function(st, pc){
     if($('push-obriga') || !EU) return;
-    var ini = Pref.ler('push_car_'+EU.id);
-    if(!ini){ ini = Push.hojeTxt(); Pref.gravar('push_car_'+EU.id, ini); }
+    var sfx = pc ? 'pc_' : '', apar = pc ? 'computador' : 'celular';
+    var ini = Pref.ler('push_car_'+sfx+EU.id);
+    if(!ini){ ini = Push.hojeTxt(); Pref.gravar('push_car_'+sfx+EU.id, ini); }
     var p = ini.split('-'), d0 = new Date(+p[0], (+p[1]||1)-1, +p[2]||1);
     var resta = PUSH_CARENCIA - Math.floor((hoje() - d0) / 86400000);
-    if(st !== 'negado' && resta > 0 && Pref.ler('push_pulou_'+EU.id) === Push.hojeTxt()) return;   // já pulou hoje
+    if(st !== 'negado' && resta > 0 && Pref.ler('push_pulou_'+sfx+EU.id) === Push.hojeTxt()) return;   // já pulou hoje
+    if(st === 'negado' && Pref.ler('push_neg_'+sfx+EU.id) === Push.hojeTxt()) return;                 // já viu hoje
     var corpo, bts = '';
     if(st === 'negado'){
-      corpo = '<p>Este celular <b>bloqueou</b> os avisos do BeMer, e só você consegue liberar:</p><ol>'+
-        (Push.ios() ? '<li>Abra <b>Ajustes</b> › <b>Notificações</b> › <b>BeMer</b>.</li><li>Ligue <b>Permitir Notificações</b>.</li>'
-                    : '<li>No Chrome, toque no <b>cadeado</b> ao lado do endereço (ou ⋮ › Configurações › Notificações).</li><li>Libere as <b>notificações</b> do BeMer.</li>')+
-        '<li>Volte ao Flow: o aviso liga sozinho.</li></ol>';
+      corpo = '<p>Este '+apar+' <b>bloqueou</b> os avisos do BeMer, e só você consegue liberar:</p><ol>'+
+        (pc ? '<li>Clique no <b>cadeado</b> (ou no ícone de ajustes) ao lado do endereço.</li><li>Em <b>Notificações</b>, escolha <b>Permitir</b>.</li><li>Recarregue a página do Flow: o aviso liga sozinho.</li></ol>'
+            : (Push.ios() ? '<li>Abra <b>Ajustes</b> › <b>Notificações</b> › <b>BeMer</b>.</li><li>Ligue <b>Permitir Notificações</b>.</li>'
+                          : '<li>No Chrome, toque no <b>cadeado</b> ao lado do endereço (ou ⋮ › Configurações › Notificações).</li><li>Libere as <b>notificações</b> do BeMer.</li>')+
+              '<li>Volte ao Flow: o aviso liga sozinho.</li></ol>');
       bts = '<button type="button" class="pob-sec" id="pob-seguir">Continuar</button>';
     } else if(st === 'instalar'){
       corpo = '<p>No iPhone, o aviso só funciona com o BeMer <b>instalado na Tela de Início</b>:</p><ol>'+
@@ -7385,31 +7425,33 @@ var Push = {
         '<li>Escolha <b>Adicionar à Tela de Início</b> › <b>Adicionar</b>.</li>'+
         '<li>Abra o <b>BeMer</b> pelo ícone novo e entre no Flow: lá aparece o botão <b>Ativar</b>.</li></ol>';
     } else {
-      corpo = '<p>É um toque só: em seguida o celular pergunta se pode mandar avisos — toque em <b>Permitir</b>.</p>';
+      corpo = pc ? '<p>É um clique só: em seguida o navegador pergunta se pode mostrar notificações — clique em <b>Permitir</b>.</p>'
+                 : '<p>É um toque só: em seguida o celular pergunta se pode mandar avisos — toque em <b>Permitir</b>.</p>';
       bts = '<button type="button" class="pob-pri" id="pob-ativar">Ativar agora</button>';
     }
     if(st !== 'negado') bts += resta > 0
       ? '<button type="button" class="pob-sec" id="pob-depois">Agora não ('+(resta === 1 ? 'último dia' : 'faltam '+resta+' dias')+')</button>'
-      : '<p class="pob-fim">A partir de agora, o Flow no celular só funciona com o aviso ligado.</p>';
+      : '<p class="pob-fim">A partir de agora, o Flow no '+apar+' só funciona com o aviso ligado.</p>';
     var o = document.createElement('div');
     o.id = 'push-obriga'; o.className = 'push-obriga'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true');
     o.innerHTML = '<div class="pob-caixa"><div class="pob-ico" aria-hidden="true">🔔</div>'+
-      '<h2>Ative os avisos do Flow neste celular</h2>'+
+      '<h2>Ative os avisos do Flow neste '+apar+'</h2>'+
       '<p class="pob-por">Assim você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem o aviso, só no dia seguinte.</p>'+
+      '<p class="pob-por" style="font-size:14px">'+PUSH_SO_SEU+'</p>'+
       corpo+'<div class="pob-bts">'+bts+'</div></div>';
     document.body.appendChild(o);
     function sair(){ o.remove(); }
-    if($('pob-seguir')) $('pob-seguir').addEventListener('click', sair);
-    if($('pob-depois')) $('pob-depois').addEventListener('click', function(){ Pref.gravar('push_pulou_'+EU.id, Push.hojeTxt()); sair(); });
+    if($('pob-seguir')) $('pob-seguir').addEventListener('click', function(){ Pref.gravar('push_neg_'+sfx+EU.id, Push.hojeTxt()); sair(); });
+    if($('pob-depois')) $('pob-depois').addEventListener('click', function(){ Pref.gravar('push_pulou_'+sfx+EU.id, Push.hojeTxt()); sair(); });
     if($('pob-ativar')) $('pob-ativar').addEventListener('click', function(){
       var b = this; b.disabled = true; b.textContent = 'Ativando…';
       Push.ativar().then(function(){
         sair(); var fx = $('faixa-push'); if(fx) fx.classList.add('oculto');
-        aviso('Avisos ligados neste celular. Mandei um teste.', 'ok');
+        aviso('Avisos ligados neste '+apar+'. Mandei um teste.', 'ok');
       }, function(e){
         b.disabled = false; b.textContent = 'Ativar agora';
         aviso(e.message||String(e), 'erro');
-        try { if(Notification.permission === 'denied'){ sair(); Push.obrigar('negado'); } } catch(x){}
+        try { if(Notification.permission === 'denied'){ sair(); Push.obrigar('negado', pc); } } catch(x){}
       });
     });
   },
@@ -7423,6 +7465,7 @@ var Push = {
          inscrito, a tela de ativar é obrigatória (3 dias de carência). No
          computador continua o convite diário da campanha. */
       if(!temCel && noCel && (st === 'inativo' || st === 'instalar' || st === 'negado')) Push.obrigar(st);
+      else if(!noCel && (st === 'inativo' || st === 'negado')) Push.obrigar(st, true);   // 23/11: computador também
       else if(!temCel && !noCel && Push.campanha()) Push.convite(st);
       var nao = Pref.ler('push_nao_'+EU.id);
       if(nao && (temCel || nao === Push.hojeTxt())) { f.classList.add('oculto'); return; }
@@ -7441,7 +7484,7 @@ var Push = {
         : st === 'negado'
         ? q('Os avisos estão bloqueados neste aparelho', 'Só você consegue liberar: '+(Push.ios() ? 'abra <b>Ajustes</b> › <b>Notificações</b> › <b>BeMer</b> e ligue <b>Permitir Notificações</b>.' : 'clique no <b>cadeado</b> ao lado do endereço › <b>Notificações</b> › <b>Permitir</b> e recarregue a página.'),
             '<button type="button" class="nao" id="fp-nao">Agora não</button>')
-        : q('Ative os avisos do Flow neste aparelho', 'Você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem isso, só no e-mail do dia seguinte.',
+        : q('Ative os avisos do Flow neste aparelho', 'Você fica sabendo <b>na hora</b> quando alguém te pede algo ou responde. Sem isso, só no e-mail do dia seguinte. '+PUSH_SO_SEU,
             '<button type="button" class="sim" id="fp-sim">Ativar avisos</button><button type="button" class="nao" id="fp-nao">Agora não</button>');
       f.classList.remove('oculto');
       $('fp-nao').addEventListener('click', function(){ Pref.gravar('push_nao_'+EU.id, temCel ? '1' : Push.hojeTxt()); f.classList.add('oculto'); });
@@ -7464,7 +7507,7 @@ var Push = {
       var bts = st === 'ativo' ? '<button class="bt-sec" id="pp-teste">Enviar um teste</button><button class="bt-sec" id="pp-off">Desligar</button>'
               : st === 'inativo' ? '<button class="bt-pri" id="pp-on">Ativar neste aparelho</button>' : '';
       var f = folha('Avisos no aparelho', '<p style="font-size:15px;line-height:1.5;margin:0">'+txt+'</p>'+
-        '<p class="dica" style="margin:10px 0 0">Vale para cada aparelho separado: celular e computador ativam cada um.</p>', bts);
+        '<p class="dica" style="margin:10px 0 0">'+PUSH_SO_SEU+' Vale para cada aparelho separado: celular e computador ativam cada um.</p>', bts);
       function feito(msg){ f.remove(); aviso(msg, 'ok'); var fx = $('faixa-push'); if(fx) fx.classList.add('oculto'); }
       function erro(b){ return function(e){ if(b) b.disabled = false; aviso(e.message||String(e), 'erro'); }; }
       if(f.querySelector('#pp-on')) f.querySelector('#pp-on').addEventListener('click', function(){ var b=this; b.disabled=true; Push.ativar().then(function(){ feito('Avisos ligados neste aparelho. Mandei um teste.'); }, erro(b)); });
@@ -7702,7 +7745,15 @@ Anexos.abrir = function(a){
    ===================================================================== */
 Dados = {
   novaPendencia: function(dados, envolvidos, anexos){
-    return criarPendencia(dados, envolvidos, anexos).then(function(){ return recarregarTudo(); });
+    /* 23/11/2026 ("delay causando bugs de interface"): as ações mais comuns —
+       criar, anexar e comentar — ainda baixavam o Flow INTEIRO (9 tabelas,
+       1 a 2,5 s) e a tela ficava esse tempo sem a mudança: quem clicava de
+       novo duplicava. Agora busca só a pendência (e a principal, se for
+       sub-item); se falhar, a carga completa de antes. */
+    return criarPendencia(dados, envolvidos, anexos).then(function(id){
+      var ids = [id].concat(dados && dados.pai_id != null ? [dados.pai_id] : []).filter(Boolean);
+      return ids.length ? recarregarPendencias(ids).catch(function(){ return recarregarTudo(); }) : recarregarTudo();
+    });
   },
   envolverIncluir: function(p, id){
     if(!p.envolvidos) p.envolvidos = [];
@@ -7718,7 +7769,7 @@ Dados = {
       .eq('pendencia_id', p.id).eq('pessoa_id', id), 'a exclusão do envolvido');
   },
   anexarAbertura: function(p, lista){
-    return Anexos.enviar(lista, p.id, null).then(function(){ return recarregarTudo(); });
+    return Anexos.enviar(lista, p.id, null).then(function(){ return recarregarDepois(p); });
   },
   resolver: function(p, como){
     /* com a marca, o banco sabe que é ação de status e não aplica o limite de 5 min (0054) */
@@ -7730,6 +7781,9 @@ Dados = {
   },
   naoResolvida: function(p, texto){
     return Dados.notaComAnexos(p, MARCA_FALTA+(texto && texto.trim() ? ' — '+texto.trim() : '.'), []);
+  },
+  retomar: function(p, texto){   // 23/11 (0114): quem recebeu desfaz o "Concluí"
+    return Dados.notaComAnexos(p, MARCA_RETOMA+(texto && texto.trim() ? ' — '+texto.trim() : ': ainda não terminei.'), []);
   },
   /* 23/10/2026 (0080): Registro de atividades e quem recebe aviso no celular */
   registro: function(dias){
@@ -7818,7 +7872,7 @@ Dados = {
       .select().single()).then(function(r){
         if(r.error) throw r.error;
         return lista.length ? Anexos.enviar(lista, pid, r.data.id) : null;
-      }).then(function(){ tirar(); return recarregarTudo(); }, function(e){
+      }).then(function(){ tirar(); return recarregarPendencias([pid]).catch(function(){ return recarregarTudo(); }); }, function(e){
         if(item && semRede(e)){
           item._pendente = false; item._falhou = true;
           Rede.falhou(); Detalhe.recarregarSeAberta(pid);
@@ -8638,6 +8692,7 @@ var Sino = {
     if(n.tipo === 'comentario' || !n.tipo){
       if(t.indexOf(MARCA_CONCLUI) === 0) return { v:'concluiu', c:'conc', i:ICO.okc };
       if(t.indexOf(MARCA_FALTA) === 0)   return { v:'reabriu', c:'pediu', i:ICO.seta };
+      if(t.indexOf(MARCA_RETOMA) === 0)  return { v:'desfez o "Concluí" de', c:'pediu', i:ICO.seta };
       if(t.indexOf(MARCA_RESOLVE) === 0) return { v:'confirmou', c:'conc', i:ICO.okc };
       return { v:'escreveu', c:'', i:ICO.msg };
     }
@@ -8663,7 +8718,7 @@ var Sino = {
   /* o começo da mensagem (comentário, Concluí, reabriu): dá para saber o que foi dito sem abrir */
   previa: function(n){
     if(n.tipo && n.tipo !== 'comentario' && n.tipo !== 'dependencia') return '';
-    var t = String(n.texto||'').replace(MARCA_CONCLUI, '').replace(MARCA_FALTA, '').replace(MARCA_RESOLVE, '').replace(/^[\s·:.\-–—]+/, '').replace(/\s+/g, ' ').trim();
+    var t = String(n.texto||'').replace(MARCA_CONCLUI, '').replace(MARCA_FALTA, '').replace(MARCA_RESOLVE, '').replace(MARCA_RETOMA, '').replace(/^[\s·:.\-–—]+/, '').replace(/\s+/g, ' ').trim();
     return t ? (t.length > 60 ? t.slice(0, 58).trim()+'…' : t) : '';
   },
   linha: function(n){

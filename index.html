@@ -519,7 +519,7 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 /* Formato AAAA.MM.DD.N, igual ao Flow. O publicar.js copia este número
    para publicar/version.json — é ele que faz aparecer o aviso de "nova
    versão" em quem está com o portal aberto. SUBA O NÚMERO A CADA PUBLICAÇÃO. */
-var VERSAO   = '2026.11.18.1';
+var VERSAO   = '2026.11.23.1';
 var AMBIENTE = 'homologação';   // '' em produção
 
 /* A EMPRESA CLIENTE. O BeMer é o produto; a construtora é quem usa.
@@ -876,7 +876,19 @@ function guardarSenha(email, senha){
   try { if(window.PasswordCredential && navigator.credentials && navigator.credentials.store)
     navigator.credentials.store(new PasswordCredential({ id: email, password: senha })).catch(function(){}); } catch(e){}
 }
-try { if(localStorage.getItem('bemer_lembrar') === '1' && $('lembrar-senha')) $('lembrar-senha').checked = true; } catch(e){}
+/* 23/11/2026 (dono: "mesmo marcando para salvar o login, não está gravando"):
+   a caixa só pedia ao navegador para guardar a senha — o que o Safari e o
+   Firefox não fazem por código, e o Chrome não faz depois de um "Nunca". Agora
+   o PORTAL guarda o e-mail neste aparelho (a senha continua só no
+   gerenciador de senhas do aparelho, nunca no BeMer) e já abre com ele
+   preenchido e o cursor na senha. Desmarcar apaga o e-mail guardado. */
+try {
+  if(localStorage.getItem('bemer_lembrar') === '1' && $('lembrar-senha')){
+    $('lembrar-senha').checked = true;
+    var _emailSalvo = localStorage.getItem('bemer_email') || '';
+    if(_emailSalvo && $('email') && !$('email').value){ $('email').value = _emailSalvo; setTimeout(function(){ try { $('senha').focus(); } catch(x){} }, 60); }
+  }
+} catch(e){}
 $('form-login').addEventListener('submit', function(e){
   e.preventDefault();
   var email = $('email').value.trim(), senha = $('senha').value;
@@ -889,7 +901,11 @@ $('form-login').addEventListener('submit', function(e){
          sentido (no banco, a sessão com senha também não é barrada) */
       if(r.data && r.data.user){ senhaLocal(r.data.user.id, false); marcarSenhaAgora(r.data.user.id); }
       if($('lembrar-senha') && $('lembrar-senha').checked) guardarSenha(email, senha);
-      try { localStorage.setItem('bemer_lembrar', $('lembrar-senha') && $('lembrar-senha').checked ? '1' : ''); } catch(e){}
+      try {
+        var _lembra = !!($('lembrar-senha') && $('lembrar-senha').checked);
+        localStorage.setItem('bemer_lembrar', _lembra ? '1' : '');
+        if(_lembra) localStorage.setItem('bemer_email', email); else localStorage.removeItem('bemer_email');
+      } catch(e){}
       $('senha').value = '';
       abrir();
     })

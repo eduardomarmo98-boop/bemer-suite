@@ -259,6 +259,7 @@ td.n,th.n{text-align:right}
   <button type="button" data-aba="chamados">Chamados</button>
   <button type="button" data-aba="obras">Obras</button>
   <button type="button" data-aba="relatorio">Relatório</button>
+  <button type="button" data-aba="regulamento">Regulamento</button>
 </div></nav>
 <main id="main"><div class="carregando">Carregando…</div></main>
 <button type="button" class="btn btn-laranja fab oculto" id="fab">+ Novo chamado</button>
@@ -279,7 +280,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.18.2';
+var APP_VERSION = '2026.11.23.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -288,7 +289,7 @@ var M = function(){ return sb.schema('manutencao'); };
 function $(id){ return document.getElementById(id); }
 
 var EU = null;                                     // {id, nome}
-var PODE = { ver:false, abrir:false, atender:false, obras:false };
+var PODE = { ver:false, abrir:false, atender:false, registrar:false, obras:false };
 var D = { obras:[], chamados:[], pessoas:[], equipe:[], config:null, colabs:[], carregadoEm:0 };
 var ABA = 'chamados';
 var FILTRO = { status:'abertos', obra:'', busca:'' };
@@ -417,6 +418,7 @@ try { if(history.state && history.state.bm) history.replaceState(null, '', locat
 var _camada = null, _aoFechar = null, _ocupado = false;
 function abrirModal(titulo, html, botoes, aoFechar){
   pararMic();
+  if(!/^Chamado #/.test(titulo)) RT.vista = null;   // 23/11: outro formulário por cima do chamado
   $('modalTitle').textContent = titulo;
   $('modalBody').innerHTML = html;
   _aoFechar = aoFechar || null;
@@ -442,6 +444,8 @@ function abrirModal(titulo, html, botoes, aoFechar){
 function _fecharTela(){
   pararMic();
   $('modal').classList.remove('show');
+  RT.vista = null;
+  if(RT.pendente){ RT.pendente = false; setTimeout(function(){ if(!$('modal').classList.contains('show') && ABA === 'chamados') desenhar(); }, 50); }
   var f = _aoFechar; _aoFechar = null; if(f) try { f(); } catch(e){}
 }
 function fecharModal(){
@@ -665,7 +669,12 @@ function irAba(a){
   desenhar();
 }
 document.querySelectorAll('nav.abas button').forEach(function(b){ b.addEventListener('click', function(){ irAba(b.getAttribute('data-aba')); }); });
-function desenhar(){ if(ABA === 'obras') telaObras(); else if(ABA === 'relatorio') telaRelatorio(); else telaChamados(); }
+function desenhar(){ if(ABA === 'obras') telaObras(); else if(ABA === 'relatorio') telaRelatorio(); else if(ABA === 'regulamento') telaRegulamento(); else telaChamados(); }
+/* 23/11/2026 (pedido do dono): o regulamento à vista, numa aba própria — só para
+   quem entra no sistema (o link/QR do cliente, chamado.html, continua sem ele). */
+function telaRegulamento(){
+  $('main').innerHTML = '<div class="cab"><h1>Regulamento de garantia</h1></div><div class="card" style="padding:14px 16px">' + htmlRegulamento() + '</div>';
+}
 
 /* ---------- CHAMADOS ---------- */
 function seloStatus(c){ return '<span class="selo st-' + c.status + '">' + STATUS[c.status] + '</span>'; }
@@ -687,6 +696,11 @@ function selosChamado(c, curto){
 function filtrados(){
   var b = sem(FILTRO.busca);
   return D.chamados.filter(function(c){
+    if(b){   // buscando: vale em todos os chamados (só a obra continua filtrando)
+      if(FILTRO.obra && c.obra_id !== FILTRO.obra) return false;
+      var ob = obraDe(c.obra_id);
+      return sem(['#' + c.numero, c.descricao, c.solicitante, c.unidade, nomeCat(c), ob && ob.nome, ob && ob.cliente].join(' ')).indexOf(b) >= 0;
+    }
     if(FILTRO.status === 'abertos' && !aberto(c)) return false;
     if(FILTRO.status === 'novo' && c.status !== 'novo') return false;
     if(FILTRO.status === 'comigo' && !comigo(c)) return false;
@@ -694,6 +708,7 @@ function filtrados(){
     if(FILTRO.status === 'resolvido' && c.status !== 'resolvido') return false;
     if(FILTRO.status === 'cancelado' && c.status !== 'cancelado') return false;
     if(FILTRO.status === 'recusado' && c.status !== 'recusado') return false;
+    if(FILTRO.status === 'encerrados' && aberto(c)) return false;
     if(FILTRO.obra && c.obra_id !== FILTRO.obra) return false;
     if(b){
       var o = obraDe(c.obra_id);
@@ -709,8 +724,13 @@ function telaChamados(){
     atrasados: D.chamados.filter(atrasado).length,
     novo: D.chamados.filter(function(c){ return c.status === 'novo'; }).length
   };
+  /* 23/11/2026 (dono: "excesso de etiquetas"): eram 8 (Triagem, Abertos, Comigo, Atrasados,
+     Resolvidos, Recusados, Cancelados, Todos). Ficam 4 + Triagem quando houver: os
+     encerrados (resolvido, recusado, cancelado) num só, cada cartão com o seu selo.
+     A busca procura em todos, qualquer que seja a etiqueta. */
   var chips = [['abertos', 'Abertos', n.abertos], ['comigo', 'Comigo', n.comigo], ['atrasados', 'Atrasados', n.atrasados],
-               ['resolvido', 'Resolvidos'], ['recusado', 'Recusados'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
+               ['encerrados', 'Encerrados']];
+  if(['resolvido', 'recusado', 'cancelado', 'todos'].indexOf(FILTRO.status) >= 0) FILTRO.status = 'encerrados';
   if(n.novo || FILTRO.status === 'novo') chips.unshift(['novo', 'Triagem', n.novo]);
   var obrasUsadas = D.obras.filter(function(o){ return o.ativa || D.chamados.some(function(c){ return c.obra_id === o.id; }); });
   $('main').innerHTML =
@@ -829,22 +849,79 @@ async function salvarChamado(c){
 }
 
 /* ---------- DETALHE DO CHAMADO ---------- */
+async function dadosChamado(id){
+  var rs = await Promise.all([
+    recarregarChamado(id),
+    M().from('visitas').select('*').eq('chamado_id', id).order('registrado_em'),
+    M().from('fotos').select('*').eq('chamado_id', id).order('enviado_em'),
+    M().from('eventos').select('*').eq('chamado_id', id).order('id')
+  ]);
+  for(var i = 1; i < rs.length; i++) if(rs[i].error) throw rs[i].error;
+  return { c:rs[0], vis:rs[1].data || [], fotos:rs[2].data || [], evs:rs[3].data || [] };
+}
+function assinaturaChamado(x){ return [x.c && x.c.atualizado_em, x.c && x.c.status, x.vis.length, x.fotos.length, x.evs.length, equipeDe(x.c || {}).join()].join('|'); }
 async function abrirChamado(id){
   var c = D.chamados.find(function(x){ return x.id === id; }); if(!c) return;
   abrirModal('Chamado #' + c.numero, '<div class="carregando">Carregando…</div>', []);
+  RT.vista = id;
   try {
-    var rs = await Promise.all([
-      recarregarChamado(id),
-      M().from('visitas').select('*').eq('chamado_id', id).order('registrado_em'),
-      M().from('fotos').select('*').eq('chamado_id', id).order('enviado_em'),
-      M().from('eventos').select('*').eq('chamado_id', id).order('id')
-    ]);
-    for(var i = 1; i < rs.length; i++) if(rs[i].error) throw rs[i].error;
-    c = rs[0] || c;
-    var vis = rs[1].data || [], fotos = rs[2].data || [], evs = rs[3].data || [];
-    var links = await linksFotos(fotos);
-    desenharChamado(c, vis, fotos, evs, links);
+    var x = await dadosChamado(id);
+    c = x.c || c;
+    var links = await linksFotos(x.fotos);
+    RT.assinatura = assinaturaChamado(x);
+    desenharChamado(c, x.vis, x.fotos, x.evs, links);
+    RT.vista = id;
   } catch(e){ $('modalBody').innerHTML = '<p class="erro-txt">' + esc(msgErro(e)) + '</p>'; }
+}
+
+/* =====================================================================
+   TEMPO REAL (23/11/2026, pedido do dono: "precisamos de atualização em
+   tempo real") — 0112 põe chamados, visitas, eventos e equipe na
+   publicação do Supabase. Cada mudança, de qualquer pessoa:
+     · lista na tela → recarrega e redesenha (sem tirar o foco da busca);
+     · o MESMO chamado aberto → redesenha no lugar, mantendo a rolagem —
+       só se algo mudou de fato (a assinatura evita piscar com o eco do
+       que eu mesmo acabei de salvar);
+     · formulário aberto → não mexe; atualiza a lista quando fechar.
+   ===================================================================== */
+var RT = { canal:null, timer:null, ids:{}, pendente:false, vista:null, assinatura:'' };
+function ligarTempoReal(){
+  if(RT.canal || !sb.channel) return;
+  try {
+    RT.canal = sb.channel('man-' + Date.now());
+    ['chamados', 'visitas', 'eventos', 'equipe'].forEach(function(t){
+      RT.canal.on('postgres_changes', { event:'*', schema:'manutencao', table:t }, function(pl){
+        var n = (pl && pl.new) || {}, o = (pl && pl.old) || {};
+        var id = t === 'chamados' ? (n.id || o.id) : (n.chamado_id || o.chamado_id);
+        if(id) RT.ids[id] = 1;
+        clearTimeout(RT.timer);
+        RT.timer = setTimeout(aplicarTempoReal, 700);   // rajada de eventos = um redesenho só
+      });
+    });
+    RT.canal.subscribe();
+  } catch(e){ console.warn('[tempo real]', e); RT.canal = null; }
+}
+async function aplicarTempoReal(){
+  var ids = RT.ids; RT.ids = {};
+  try { await carregar(); } catch(e){ return; }
+  if(!$('modal').classList.contains('show')){
+    if(ABA !== 'chamados') return;
+    if(document.activeElement && document.activeElement.id === 'f-busca') desenharLista(); else desenhar();
+    return;
+  }
+  if(RT.vista && ids[RT.vista] && !_ocupado){
+    var id = RT.vista;
+    try {
+      var x = await dadosChamado(id);
+      if(RT.vista !== id || assinaturaChamado(x) === RT.assinatura) return;
+      var links = await linksFotos(x.fotos), y = $('modalEl').scrollTop;
+      RT.assinatura = assinaturaChamado(x);
+      desenharChamado(x.c, x.vis, x.fotos, x.evs, links);
+      RT.vista = id; $('modalEl').scrollTop = y;
+    } catch(e){}
+    return;
+  }
+  RT.pendente = true;
 }
 function ehFotoCam(c){ return /\.(jpe?g|png|webp)$/i.test(c); }
 function htmlFotos(lista, links, rot){
@@ -859,10 +936,12 @@ function desenharChamado(c, vis, fotos, evs, links){
   var o = obraDe(c.obra_id), eu = EU.id, eq = equipeDe(c);
   /* 0092: quem está na EQUIPE do chamado registra visita; "novo" precisa da triagem antes.
      10/11 (0101): vira "atualização" — antes da triagem, quem atende registra INFORMAÇÃO */
-  var podeVisita = aberto(c) && (c.status === 'novo' ? PODE.atender : (PODE.atender || c.responsavel_id === eu || eq.indexOf(eu) >= 0));
+  /* 23/11 (0112): "Registrar atualização" registra em qualquer chamado aberto (no "novo", só informação) */
+  var dono = PODE.atender || c.responsavel_id === eu || eq.indexOf(eu) >= 0;
+  var podeVisita = aberto(c) && (c.status === 'novo' ? (PODE.atender || PODE.registrar) : (dono || PODE.registrar));
   var podeEditar = aberto(c) && (PODE.atender || (c.aberto_por === eu && c.status === 'aberto' && PODE.abrir));
   var podeReabrir = !aberto(c) && PODE.atender;
-  var podeFoto = PODE.atender || (aberto(c) && (PODE.abrir || c.responsavel_id === eu || eq.indexOf(eu) >= 0));
+  var podeFoto = PODE.atender || (aberto(c) && (PODE.abrir || PODE.registrar || c.responsavel_id === eu || eq.indexOf(eu) >= 0));
   var podeTriar = aberto(c) && PODE.atender;
   var gar = naGarantia(c), fg = fimGarantia(o);
   /* linha do tempo: os eventos + cada visita no lugar do seu evento */
@@ -1051,66 +1130,11 @@ function verRegulamento(idChamado){
     : { rotulo:'Fechar' }]);
 }
 
-/* ---------- E-MAIL AO CLIENTE (10/11/2026, pedido do dono) ----------
-   Na triagem (aceito), na recusa, no resolvido e — se marcar — em cada
-   atualização. Sempre com o texto à vista e editável antes de sair: é a
-   aprovação de quem atende. Sai pela manutencao@ (edge man-enviar-relatorio,
-   `sem_anexo`) e fica no histórico (evento "email"). */
-function emailDoCliente(c){ var o = obraDe(c.obra_id) || {}; return String(c.cliente_email || o.email || '').trim(); }
-function textoCliente(c, motivo, x){
-  var o = obraDe(c.obra_id) || {}, nome = String(c.solicitante || o.contato || '').trim();
-  var ref = 'chamado de manutenção nº ' + c.numero + (o.nome ? ' (' + o.nome + ')' : '');
-  var ola = 'Prezado(a)' + (nome ? ' ' + nome : '') + ',\n\n';
-  var fim = '\n\nAtenciosamente,\nDepartamento de Manutenção\nBrandão & Marmo Engenharia e Construções';
-  x = x || {};
-  if(motivo === 'aceito') return ola + 'Seu ' + ref + ' foi analisado e aceito.\n\nResponsável pelo atendimento: ' + (x.resp || '—') + '.'
-    + (x.prazo ? '\nPrevisão de atendimento: ' + fmtData(x.prazo) + '.' : '') + '\n\nVamos entrar em contato para agendar a visita.' + fim;
-  if(motivo === 'recusado') return ola + 'Analisamos o seu ' + ref + ' e ele não será atendido pela garantia.\n\nMotivo: ' + (x.motivo || '…')
-    + (x.orcamento ? '\n\nSe quiser, podemos enviar um orçamento para o serviço: é só responder a este e-mail.' : '') + '\n\nQualquer dúvida, estamos à disposição.' + fim;
-  if(motivo === 'resolvido') return ola + 'O seu ' + ref + ' foi concluído em ' + fmtData(x.data || hoje()) + '.' + (x.relato ? '\n\n' + x.relato : '')
-    + '\n\nSe o problema voltar, é só responder a este e-mail.' + fim;
-  return ola + 'Atualização do seu ' + ref + ':\n\n' + (x.relato || '…') + fim;
-}
-var ASSUNTO_CLI = { aceito:'aceito', recusado:'resposta da análise', resolvido:'concluído', atualizacao:'atualização' };
-function blocoEmail(p, c, ligado){
-  var para = emailDoCliente(c);
-  return '<div class="caixa-email"><label class="marcar"><input type="checkbox" id="' + p + '-on"' + (ligado && para ? ' checked' : '') + '> ✉ Enviar e-mail ao cliente</label>'
-    + '<div id="' + p + '-box"' + (ligado && para ? '' : ' class="oculto"') + '>'
-    + '<div class="campo"><label class="rot" for="' + p + '-para">Para</label><input id="' + p + '-para" type="email" multiple maxlength="300" value="' + esc(para) + '" placeholder="e-mail do cliente (vários: separe por vírgula)"></div>'
-    + '<div class="campo"><label class="rot" for="' + p + '-msg">Mensagem — confira e ajuste antes de salvar</label><textarea id="' + p + '-msg" maxlength="5000" style="min-height:160px"></textarea></div>'
-    + (para ? '' : '<div class="dica" style="margin-bottom:8px">Sem e-mail do cliente no chamado nem na obra: digite acima para enviar.</div>') + '</div></div>';
-}
-/* liga o bloco: o texto se refaz sozinho (gerar) até a pessoa mexer nele */
-function ligarEmail(p, gerar, ids){
-  var on = $(p + '-on'), box = $(p + '-box'), msg = $(p + '-msg');
-  if(!on) return;
-  var refaz = function(){ if(msg.dataset.mexeu !== '1') msg.value = gerar(); };
-  refaz();
-  on.addEventListener('change', function(){ on.dataset.mexeu = '1'; box.classList.toggle('oculto', !on.checked); refaz(); });
-  msg.addEventListener('input', function(){ msg.dataset.mexeu = '1'; });
-  (ids || []).forEach(function(id){ var el = $(id); if(el){ el.addEventListener('input', refaz); el.addEventListener('change', refaz); } });
-  return { refaz:refaz, ligar:function(sim){ if(on.dataset.mexeu === '1') return; on.checked = !!sim && !!$(p + '-para').value.trim(); box.classList.toggle('oculto', !on.checked); refaz(); } };
-}
-/* antes de gravar: null = não envia; {erro} = não deixa salvar */
-function lerEmail(p){
-  var on = $(p + '-on'); if(!on || !on.checked) return null;
-  var para = $(p + '-para').value.trim(), msg = $(p + '-msg').value.trim();
-  if(!para.split(/[,;]/).every(function(x){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.trim()); })) return { erro:'Confira o e-mail do cliente.' };
-  if(msg.length < 10) return { erro:'Escreva a mensagem ao cliente.' };
-  return { para:para, msg:msg };
-}
-/* depois de gravar: envia e diz o que aconteceu (falha não desfaz a ação) */
-async function avisarCliente(c, motivo, d){
-  if(!d) return;
-  try {
-    var r = await sb.functions.invoke('man-enviar-relatorio', { body:{ chamado_id:c.id, para:d.para, mensagem:d.msg, sem_anexo:true, motivo:motivo,
-      assunto:'Chamado de manutenção nº ' + c.numero + ' — ' + (ASSUNTO_CLI[motivo] || 'atualização') } });
-    var x = r.data || {};
-    if(r.error && !r.data && r.error.context && typeof r.error.context.json === 'function'){ try { x = await r.error.context.json(); } catch(e2){} }
-    if(!x.ok) throw new Error(x.erro || (r.error && r.error.message) || 'falhou');
-    toast('E-mail enviado ao cliente (' + x.para.join(', ') + ').');
-  } catch(e){ toast('Salvo, mas o e-mail ao cliente NÃO saiu: ' + msgErro(e), 'err'); }
-}
+/* ---------- E-MAIL AO CLIENTE ----------
+   23/11/2026 (dono): "a única forma de enviar algo ao cliente deve ser clicando em
+   Relatório". Saíram os e-mails automáticos/opcionais da triagem (aceito), da
+   recusa e do registro de atualização (visita ou informação), e o código deles.
+   O cliente só recebe o que alguém manda pelo 📄 Relatório (enviarRelatorio). */
 
 /* ---------- TRIAGEM / EQUIPE (04/11/2026, 0092) ----------
    Quem atende confirma o chamado do cliente: responsável + equipe (quem vai
@@ -1134,8 +1158,8 @@ function formTriagem(c){
     /* 05/11 (0093): fornecedores que ajudam nesta demanda — só o nome */
     + '<div class="campo"><label class="rot" for="t-forn">Fornecedores que vão ajudar</label>'
     + '<textarea id="t-forn" maxlength="2400" style="min-height:70px" placeholder="Um por linha. Ex.: Hidráulica Silva">' + esc((c.fornecedores || []).join('\n')) + '</textarea></div>'
-    /* 10/11: na confirmação, o cliente fica sabendo (texto editável; já vem marcado) */
-    + (c.status === 'novo' ? blocoEmail('te', c, true) : '')
+    /* 23/11/2026 (dono): "a única forma de enviar algo ao cliente é o Relatório" — saiu o e-mail da triagem */
+    + (c.status === 'novo' ? '<div class="dica" style="margin-bottom:8px">Para avisar o cliente, envie o 📄 Relatório do chamado.</div>' : '')
     + '<div class="erro-txt" id="t-erro"></div>';
   abrirModal(c.status === 'novo' ? 'Triagem do chamado #' + c.numero : 'Equipe e fornecedores · #' + c.numero, html, [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
@@ -1146,20 +1170,15 @@ function formTriagem(c){
         var forn = $('t-forn').value.split(/\n|;/).map(function(x){ return x.trim().slice(0, 120); }).filter(Boolean);
         if(forn.length > 20){ $('t-erro').textContent = 'No máximo 20 fornecedores.'; return false; }
         var eraNovo = c.status === 'novo';
-        var em = eraNovo ? lerEmail('te') : null;
-        if(em && em.erro){ $('t-erro').textContent = em.erro; return false; }
         var r = await M().rpc('triar', { p_id:c.id, p_resp:resp, p_equipe:equipe, p_prazo:$('t-prazo').value || null, p_fornecedores:forn });
         if(r.error) throw r.error;
         toast(eraNovo ? 'Chamado confirmado.' : 'Equipe salva.');
         avisarEquipe(c.id, eraNovo ? 'triagem' : 'equipe');
-        await avisarCliente(c, 'aceito', em);
         await Promise.all([recarregarChamado(c.id), recarregarEquipe(c.id)]);
         desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
   ]);
-  if(c.status === 'novo') ligarEmail('te', function(){
-    return textoCliente(c, 'aceito', { resp:nomePessoa($('t-resp').value), prazo:$('t-prazo').value }); }, ['t-resp', 't-prazo']);
 }
 
 /* ---------- 📄 RELATÓRIO PARA O CLIENTE (04/11/2026, pedido do dono) ----------
@@ -1311,6 +1330,8 @@ async function enviarRelatorio(w, c, assunto){
    informação. E-mail ao cliente: desmarcado; marca sozinho ao "Resolveu". */
 function formVisita(c){
   var k = 'visita_' + c.id, r = lerRasc(k) || {}, novo = c.status === 'novo';
+  /* 23/11 (0112): encerrar é de quem atende, do responsável ou da equipe */
+  var podeResolver = PODE.atender || c.responsavel_id === EU.id || equipeDe(c).indexOf(EU.id) >= 0;
   var tipo = novo ? 'informacao' : (r['v-tipo'] || 'visita');
   limparFotos();
   var opc = function(val, rot, dica){ return '<label class="marcar" style="min-height:36px"><input type="radio" name="v-tipo" value="' + val + '"' + (tipo === val ? ' checked' : '')
@@ -1324,8 +1345,8 @@ function formVisita(c){
     /* 05/11/2026 (pedido do dono): um campo de registro e um de fotos/arquivos */
     + '<div class="campo"><label class="rot" for="v-relato">O que aconteceu *</label><div class="com-mic"><textarea id="v-relato" maxlength="4000" style="min-height:130px" placeholder="Ex.: ralo da laje sem caimento, manta descolada; refeita a impermeabilização do ralo. Ou: fornecedor confirmou a peça para dia 20.">' + esc(r['v-relato'] || '') + '</textarea>' + botaoMic('v-relato') + botaoCorrige('v-relato') + '</div></div>'
     + '<div class="campo"><label class="rot">Fotos e arquivos</label>' + gradeFotos('') + '</div>'
-    + (novo ? '' : '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>')
-    + blocoEmail('ve', c, false)
+    + (novo || !podeResolver ? '' : '<label class="marcar"><input type="checkbox" id="v-resolveu"' + (r['v-resolveu'] ? ' checked' : '') + '> Resolveu: encerrar o chamado</label>')
+    /* 23/11 (dono): registro de atualização não manda nada ao cliente — só o 📄 Relatório */
     + '<div class="erro-txt" id="v-erro"></div>';
   var tipoAgora = function(){ var x = document.querySelector('input[name="v-tipo"]:checked'); return x ? x.value : 'informacao'; };
   var resolveu = function(){ return !!($('v-resolveu') && $('v-resolveu').checked); };
@@ -1334,8 +1355,6 @@ function formVisita(c){
     { rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
         var v = lerCampos(['v-data', 'v-relato']), t = tipoAgora(), res = resolveu();
         if(v['v-relato'].trim().length < 3){ $('v-erro').textContent = 'Escreva o que aconteceu.'; return false; }
-        var em = lerEmail('ve');
-        if(em && em.erro){ $('v-erro').textContent = em.erro; return false; }
         var x = await M().rpc('registrar_visita', { p_chamado:c.id, p_data:v['v-data'] || hoje(), p_relato:v['v-relato'].trim(),
                                                     p_feito:'', p_resolveu:res, p_tipo:t });
         if(x.error) throw x.error;
@@ -1343,15 +1362,11 @@ function formVisita(c){
         var n = FOTOS.length ? await subirFotos(c.id, x.data) : 0;
         toast(res ? 'Salvo e chamado resolvido.' : (t === 'visita' ? 'Visita salva' : 'Atualização salva') + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
         avisarEquipe(c.id, res ? 'resolvido' : 'visita');
-        await avisarCliente(c, res ? 'resolvido' : 'atualizacao', em);
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
   ], function(){ limparFotos(); });
   vigiarRasc(k, ['v-data', 'v-relato', 'v-resolveu']);
-  var ec = ligarEmail('ve', function(){
-    return textoCliente(c, resolveu() ? 'resolvido' : 'atualizacao', { relato:$('v-relato').value.trim(), data:$('v-data').value }); }, ['v-relato', 'v-data']);
-  if($('v-resolveu')) $('v-resolveu').addEventListener('change', function(){ if(ec) ec.ligar(this.checked); });
 }
 
 /* ---------- + FOTOS (no chamado, fora de visita) ---------- */
@@ -1374,31 +1389,27 @@ function formFotos(c){
 function formMotivo(c, acao){
   var canc = acao === 'cancelar', rec = acao === 'recusar';
   var titulo = rec ? 'Recusar' : canc ? 'Cancelar' : 'Reabrir';
-  var rot = rec ? 'Motivo da recusa — vai para o cliente *' : canc ? 'Por que cancelar? (interno) *' : 'Por que reabrir? *';
+  var rot = rec ? 'Motivo da recusa *' : canc ? 'Por que cancelar? (interno) *' : 'Por que reabrir? *';
   var ph = rec ? 'Ex.: fora do prazo de garantia (entrega em 03/2019); dano por uso inadequado; falta de manutenção preventiva; alteração feita por terceiros'
          : canc ? 'Ex.: aberto em duplicidade; aberto por engano; cliente desistiu' : 'Ex.: cliente diz que voltou a pingar';
   abrirModal(titulo + ' chamado #' + c.numero,
     (canc ? '<div class="dica" style="margin-bottom:8px">Para responder ao cliente que não será atendido, use <b>Recusar</b>.</div>' : '')
     + '<div class="campo"><label class="rot" for="m-motivo">' + rot + '</label>'
     + '<textarea id="m-motivo" maxlength="1000" style="min-height:80px" placeholder="' + esc(ph) + '"></textarea></div>'
-    + (rec ? '<label class="marcar"><input type="checkbox" id="m-orc"> Oferecer orçamento para o serviço</label>' + blocoEmail('me', c, true) : '')
+    + (rec ? '<div class="dica" style="margin-bottom:8px">Para avisar o cliente, envie o 📄 Relatório do chamado depois (23/11: só ele fala com o cliente).</div>' : '')
     + '<div class="erro-txt" id="m-erro"></div>', [
     { rotulo:'Voltar', fn:function(){ abrirChamado(c.id); return 'manter'; } },
     { rotulo:rec ? 'Recusar chamado' : canc ? 'Cancelar chamado' : 'Reabrir', cls:rec || canc ? 'btn-danger' : 'btn-primary', fn:async function(){
         var m = $('m-motivo').value.trim();
         if(m.length < 3){ $('m-erro').textContent = 'Escreva o motivo.'; return false; }
-        var em = rec ? lerEmail('me') : null;
-        if(em && em.erro){ $('m-erro').textContent = em.erro; return false; }
         var r = await M().rpc(rec ? 'recusar_chamado' : canc ? 'cancelar_chamado' : 'reabrir_chamado', { p_id:c.id, p_motivo:m });
         if(r.error) throw r.error;
         toast(rec ? 'Chamado recusado.' : canc ? 'Chamado cancelado.' : 'Chamado reaberto.');
         avisarEquipe(c.id, rec ? 'recusado' : canc ? 'cancelado' : 'reaberto');
-        if(rec) await avisarCliente(c, 'recusado', em);
         await recarregarChamado(c.id); desenhar(); abrirChamado(c.id);
         return 'manter';
       } }
   ]);
-  if(rec) ligarEmail('me', function(){ return textoCliente(c, 'recusado', { motivo:$('m-motivo').value.trim(), orcamento:$('m-orc').checked }); }, ['m-motivo', 'm-orc']);
 }
 
 /* ---------- OBRAS ---------- */
@@ -1689,7 +1700,7 @@ async function iniciar(){
       }
       throw a.error;
     }
-    PODE = { ver:!!a.data.ver, abrir:!!a.data.abrir, atender:!!a.data.atender, obras:!!a.data.obras };
+    PODE = { ver:!!a.data.ver, abrir:!!a.data.abrir, atender:!!a.data.atender, registrar:!!a.data.registrar, obras:!!a.data.obras };
     /* 06/11 (0096): a Diretoria (ou admin do sistema) apaga obra e chamado */
     try { var pa = await M().rpc('_pode_apagar'); PODE.apagar = !pa.error && pa.data === true; } catch(e){ PODE.apagar = false; }
     if(!PODE.ver){
@@ -1697,9 +1708,10 @@ async function iniciar(){
       return;
     }
     await carregar();
+    ligarTempoReal();
     $('abas').classList.remove('oculto');
     var alvo = (location.hash || '').replace('#', '');
-    irAba(['chamados', 'obras', 'relatorio'].indexOf(alvo) >= 0 ? alvo : 'chamados');
+    irAba(['chamados', 'obras', 'relatorio', 'regulamento'].indexOf(alvo) >= 0 ? alvo : 'chamados');
   } catch(e){
     $('main').innerHTML = '<div class="cartao-aviso"><h1>Não foi possível carregar</h1><p>' + esc(msgErro(e)) + '</p><p style="margin-top:14px"><a href="../">Voltar ao portal</a></p></div>';
   }
