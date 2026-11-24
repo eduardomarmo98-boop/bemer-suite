@@ -16,7 +16,16 @@
 <style>
 :root{--azul:#00296B;--laranja:#FE9400;--fundo:#F3F6FB;--texto:#1E293B;--suave:#64748B;--borda:#DCE3EE;--ok:#15803D;--okf:#DCFCE7;--erro:#B91C1C;--errof:#FEE2E2;--aviso:#B45309;}
 *{box-sizing:border-box}
+/* 23/11/2026: o ".ia-lendo{display:flex}" vencia o [hidden] do navegador e a roda "Lendo e
+   conferindo a nota…" girava para sempre, mesmo com a nota já recebida. */
+[hidden]{display:none!important}
 html,body{margin:0}
+.confirma{background:var(--okf);border:1px solid #86EFAC;border-radius:14px;padding:16px;margin-bottom:14px}
+.confirma h1{color:var(--ok)}
+.confirma.div{background:#FFF7ED;border-color:#FDBA74}
+.confirma.div h1{color:#9A3412}
+.regra{background:#EEF2F9;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
+.regra.fora{background:var(--errof);color:var(--erro);font-weight:600}
 body{font-family:Poppins,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
 header{background:var(--azul);color:#fff;padding:14px 16px 16px}
 header .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
@@ -97,19 +106,33 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
   function dataHora(iso){ var d=new Date(iso); return isNaN(d)?'':d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); }
   function linha(rot,val){ return val?'<div><dt>'+esc(rot)+'</dt><dd>'+val+'</dd></div>':''; }
 
-  function chamar(corpo){
+  /* 23/11/2026: com prazo. Sem ele, uma IA lenta deixava o fornecedor esperando sem fim. */
+  function chamar(corpo,ms){
     var h={'Content-Type':'application/json',apikey:SB_KEY};
     if(/^eyJ/.test(SB_KEY)) h.Authorization='Bearer '+SB_KEY;
-    return fetch(FUNCAO,{method:'POST',headers:h,body:JSON.stringify(corpo)})
-      .then(function(r){ return r.json().catch(function(){ return {ok:false,erro:'resposta inválida ('+r.status+')'}; }); });
+    var ctl=(typeof AbortController!=='undefined')?new AbortController():null, tm=null;
+    if(ctl) tm=setTimeout(function(){ ctl.abort(); },ms||30000);
+    return fetch(FUNCAO,{method:'POST',headers:h,body:JSON.stringify(corpo),signal:ctl?ctl.signal:undefined})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,erro:'resposta inválida ('+r.status+')'}; }); })
+      .catch(function(e){ if(e&&e.name==='AbortError') return {ok:false,demorou:true}; throw e; })
+      .then(function(d){ clearTimeout(tm); return d; },function(e){ clearTimeout(tm); throw e; });
   }
-  function mensagem(ico,tit,txt){ app.innerHTML='<div class="card msg"><div class="ico">'+ico+'</div><h1>'+esc(tit)+'</h1><p class="sub">'+txt+'</p></div>'; }
+  function mensagem(ico,tit,txt){ app.innerHTML='<div class="card msg"><div class="ico">'+ico+'</div><h1>'+esc(tit)+'</h1><p class="sub">'+txt+'</p></div>'; return true; }
 
+  /* 23/11/2026: devolve true quando desenhou a mensagem (antes devolvia undefined e o
+     formulário vazio era desenhado por cima do "Este link venceu"). */
   function telaEstado(d){
     if(d.estado==='invalido') return mensagem('🔒','Link inválido','Confira se o endereço foi copiado inteiro do e-mail de autorização. Se o problema continuar, fale com o Financeiro da Brandão &amp; Marmo.');
-    if(d.estado==='expirado') return mensagem('⌛','Este link venceu','O link vale 15 dias. Peça um novo ao Financeiro da Brandão &amp; Marmo.');
+    if(d.estado==='expirado') return mensagem('⌛','Este link venceu','O link vale 15 dias. Peça um novo ao Financeiro da Brandão &amp; Marmo'+(d.emailNF?' (<a href="mailto:'+esc(d.emailNF)+'">'+esc(d.emailNF)+'</a>)':'')+'.');
     if(d.estado==='encerrado') return mensagem('✅','Link encerrado','A nota fiscal desta autorização já foi recebida pelo Financeiro'+(d.resumo&&d.resumo.contrato?' ('+esc(d.resumo.contrato)+')':'')+', ou a autorização mudou. Nada mais a enviar por aqui.');
     return false;
+  }
+  /* 23/11/2026 (pedido do dono): regra de data de envio da NF por obra (ex.: o cliente só
+     aceita NF até o dia 28). Mesmo cálculo da edge — ela é quem barra. */
+  function textoJanela(j){
+    if(!j||!(j.ateDia||j.ultimaSexta)) return '';
+    var p=[]; if(j.ateDia) p.push('até o dia '+j.ateDia); if(j.ultimaSexta) p.push('até a última sexta-feira');
+    return 'Esta obra só recebe nota fiscal emitida e enviada '+p.join(' ou ')+' do mês (vale o que vier primeiro).';
   }
 
   function telaResumo(d){
@@ -131,6 +154,8 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
         linha('Local da obra',esc(o.endereco))+'</dl>'+
       '<h2 style="margin-top:14px">Faturar para</h2>'+(toms||'<p class="sub">—</p>')+
       (obrig?'<div class="obrig"><h2 style="color:#9A5B00;margin-bottom:6px">Dados obrigatórios na nota fiscal</h2><dl>'+obrig+'</dl></div>':'')+
+      (r.orientacaoFornecedor?'<div class="regra"><b>Orientações desta obra:</b><br>'+esc(r.orientacaoFornecedor).replace(/\n/g,'<br>')+'</div>':'')+
+      (textoJanela(r.janelaNF)?'<div class="regra'+(d.foraJanela?' fora':'')+'">'+(d.foraJanela?'⛔ ':'📅 ')+esc(textoJanela(r.janelaNF))+(d.foraJanela?' Hoje está fora do prazo: o envio não é aceito. Emita e envie a partir do dia 1º do próximo mês ou fale com o Financeiro.':'')+'</div>':'')+
       '</div>'+
       '<div class="card" id="envio"><h2>Enviar a nota fiscal e o boleto</h2>'+
         /* 29/10/2026 (pedido do dono): o boleto é obrigatório junto com a NF */
@@ -158,6 +183,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.remove('ativo'); }); });
     drop.addEventListener('drop',function(e){ juntar(e.dataTransfer.files); });
     document.getElementById('enviar').onclick=enviar;
+    if(d.foraJanela) document.getElementById('envio').hidden=true;   // fora do prazo do mês: a edge também recusa
     telaHistorico(d.envios||[]);
   }
 
@@ -216,8 +242,12 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     document.getElementById('erro').textContent='';
     Promise.all(arquivos.map(function(f){ return base64(f).then(function(x){ return {nome:f.name,tipo:f.type||'',base64:x,papel:'nf'}; }); })
         .concat([base64(boleto).then(function(x){ return {nome:boleto.name,tipo:boleto.type||'',base64:x,papel:'boleto'}; })]))
-      .then(function(lista){ return demo?demoEnvio():chamar({acao:'enviar',token:token,arquivos:lista}); })
+      .then(function(lista){ return demo?demoEnvio():chamar({acao:'enviar',token:token,arquivos:lista},150000); })
       .then(function(d){
+        if(d&&d.demorou){
+          document.getElementById('erro').innerHTML='A conferência está demorando mais que o normal. <b>Seu envio pode ter chegado:</b> recarregue a página e veja em “Envios anteriores” antes de mandar de novo.';
+          return;
+        }
         if(!d||!d.ok){
           if(d&&(d.estado==='expirado'||d.estado==='encerrado'||d.estado==='invalido')) return telaEstado(d);
           document.getElementById('erro').textContent=(d&&d.erro)||'Não consegui enviar. Tente de novo.';
@@ -231,21 +261,40 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
       .then(function(){ clearInterval(tic); var av2=document.getElementById('ia-lendo'); if(av2) av2.hidden=true; enviando=false; var b2=document.getElementById('enviar'); if(b2){ b2.textContent='Enviar NF e boleto'; b2.disabled=!arquivos.length||!boleto; } });
   }
 
+  /* 23/11/2026 (pedido do dono): depois do envio, CONFIRMAR ao fornecedor que chegou.
+     Antes ficava só a roda girando. Agora: quadro verde "Recebemos" no topo, com data e
+     hora; coerente → o formulário some (tem "Enviar outra vez" se precisar); com
+     divergência → o formulário fica para ele corrigir. O boleto também é conferido. */
   function telaResultado(d){
-    var e=d.envio||{}, n=d.dados||{};
+    var e=d.envio||{}, n=d.dados||{}, b=d.boleto||null;
     var cls=e.resultado==='coerente'?'ok':e.resultado==='divergente'?'div':'il';
-    var tit=e.resultado==='coerente'?'Nota recebida e conferida':e.resultado==='divergente'?'Nota recebida, mas com divergência':'Não consegui ler a nota';
+    var tit=e.resultado==='coerente'?'Nota e boleto conferidos':e.resultado==='divergente'?'Encontramos divergência':'Não consegui ler a nota';
     var ret=Object.keys(n.retencoes||{}).map(function(k){ return k.toUpperCase()+' '+brl(n.retencoes[k]); }).join(' · ');
-    var h='<div class="card res" id="res"><span class="selo '+cls+'">'+(cls==='ok'?'✓ Coerente':cls==='div'?'✕ Divergente':'? Não lida')+'</span>'+
+    var quando=dataHora(e.criado_em||new Date().toISOString());
+    var conf='<div class="confirma'+(cls==='ok'?'':' div')+'" id="confirma"><h1>✅ Recebemos sua nota fiscal e o boleto</h1>'+
+      '<p class="sub">Envio registrado em '+esc(quando)+'. '+(cls==='ok'
+        ?'O Financeiro da Brandão &amp; Marmo já foi avisado. Você receberá um e-mail quando a nota for aceita ou se precisar de correção.'
+        :'O Financeiro foi avisado, mas a conferência apontou o que está abaixo. Se for o caso, corrija e envie de novo pelo quadro “Enviar a nota fiscal e o boleto”.')+'</p></div>';
+    var h=conf+'<div class="card res" id="res"><span class="selo '+cls+'">'+(cls==='ok'?'✓ Coerente':cls==='div'?'✕ Divergente':'? Não lida')+'</span>'+
       '<h1 style="margin-top:8px">'+tit+'</h1>'+
       (n.numero||n.valor_total?'<dl class="duas" style="margin-top:8px">'+linha('Nota',esc((n.tipo||'NF')+' nº '+(n.numero||'—'))+(n.data?' · '+esc(data(n.data)):''))+linha('Valor',brl(n.valor_total))+
         linha('Emitente',esc(n.nome_emitente||'')+' '+esc(cnpj(n.cnpj_emitente)))+linha('Tomador',esc(n.nome_tomador||'')+' '+esc(cnpj(n.cnpj_tomador)))+
-        (ret?linha('Retenções',esc(ret)):'')+'</dl>':'')+
+        (ret?linha('Retenções',esc(ret)):'')+
+        (b&&(b.valor||b.vencimento)?linha('Boleto',(b.valor?brl(b.valor):'')+(b.vencimento?' · vence '+esc(data(b.vencimento)):'')+(b.beneficiario_nome?'<br><span class="sub">'+esc(b.beneficiario_nome)+' '+esc(cnpj(b.beneficiario_cnpj))+'</span>':'')):'')+
+        '</dl>':'')+
       ((e.divergencias||[]).length?'<div class="div"><h2 style="margin:12px 0 0;color:var(--erro)">O que não bate com a autorização</h2><ul>'+e.divergencias.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>':'')+
       ((e.avisos||[]).length?'<div class="av"><ul>'+e.avisos.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>':'')+
-      '<p class="sub" style="margin-top:10px">'+(cls==='ok'?'O Financeiro da Brandão &amp; Marmo já foi avisado. Se quiser, envie também o XML (ou o PDF) pelo mesmo quadro acima.':'Corrija a nota (ou envie o XML) e mande de novo pelo quadro acima. O Financeiro foi avisado deste envio.')+'</p></div>';
+      '</div>';
     document.getElementById('resultado').innerHTML=h;
-    try{ document.getElementById('res').scrollIntoView({behavior:'smooth',block:'start'}); }catch(_e){}
+    var envio=document.getElementById('envio');
+    if(envio&&cls==='ok'){
+      envio.hidden=true;
+      var de=document.createElement('p'); de.className='sub'; de.style.textAlign='center'; de.id='de-novo';
+      de.innerHTML='<a href="#" id="link-de-novo">Precisa trocar a nota ou o boleto? Enviar outra vez</a>';
+      document.getElementById('resultado').appendChild(de);
+      document.getElementById('link-de-novo').onclick=function(ev){ ev.preventDefault(); envio.hidden=false; de.remove(); try{ envio.scrollIntoView({behavior:'smooth'}); }catch(_e){} };
+    }
+    try{ document.getElementById('confirma').scrollIntoView({behavior:'smooth',block:'start'}); }catch(_e){}
   }
   function telaHistorico(envios){
     var el=document.getElementById('historico'); if(!el) return;
@@ -253,11 +302,12 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     el.innerHTML='<div class="card hist"><h2>Envios anteriores</h2>'+envios.map(function(e){
       var cls=e.resultado==='coerente'?'ok':e.resultado==='divergente'?'div':'il';
       return '<div><span class="selo '+cls+'">'+(cls==='ok'?'Coerente':cls==='div'?'Divergente':'Não lida')+'</span><span>'+esc(dataHora(e.criado_em))+'</span>'+
-        (e.numero?'<span>NF '+esc(e.numero)+'</span>':'')+(e.valor_total?'<span>'+brl(e.valor_total)+'</span>':'')+(e.aceito?'<b style="color:var(--ok)">aceita</b>':'')+'</div>';
+        (e.numero?'<span>NF '+esc(e.numero)+'</span>':'')+(e.valor_total?'<span>'+brl(e.valor_total)+'</span>':'')+(e.aceito?'<b style="color:var(--ok)">aceita</b>':'')+
+        (e.recusado?'<b style="color:var(--erro)">negada pelo Financeiro</b>'+(e.motivo?'<span style="flex-basis:100%;color:var(--erro)">Motivo: '+esc(e.motivo)+'</span>':''):'')+'</div>';
     }).join('')+'</div>';
   }
   function chamarVer(soHistorico){
-    (demo?Promise.resolve(demoVer()):chamar({acao:'ver',token:token})).then(function(d){
+    (demo?Promise.resolve(demoVer()):chamar({acao:'ver',token:token},30000)).then(function(d){
       if(!d||!d.ok&&d.estado!=='invalido'&&!d.estado) return mensagem('⚠️','Não consegui abrir','Verifique a conexão e recarregue a página.');
       if(telaEstado(d)) return;
       if(soHistorico) return telaHistorico(d.envios||[]);
@@ -271,7 +321,8 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
     fornecedor:{nome:'Empreiteira Exemplo Ltda',cnpj:'11222333000181'},textoObrigatorio:'CONTRATO ENTRE BRANDÃO & MARMO E CLIENTE EXEMPLO S.A.',emailNF:'nf@exemplo.com.br',
     tomadores:[{empresa:'Brandão & Marmo Engenharia e Construções Ltda',cnpj:'00111222000133',endereco:'Rua Exemplo, 10 – São Paulo – SP',ie:'Isento',im:'1.234.567-8'}]}}; }
   function demoEnvio(){ return new Promise(function(r){ setTimeout(function(){ r({ok:true,envio:{resultado:'divergente',divergencias:['Valor da nota (R$ 48.970,50) acima do autorizado (R$ 48.750,50).','A descrição da nota não cita o contrato (CT-2026-0042), a medição/pedido, o CNO nem a obra — são dados obrigatórios da autorização.'],avisos:['Nota lida por IA a partir do PDF/imagem: confira os números. Com o XML a conferência é exata.']},
-    dados:{tipo:'NFS-e',numero:'1587',data:'2026-09-30',nome_emitente:'Empreiteira Exemplo Ltda',cnpj_emitente:'11222333000181',nome_tomador:'Brandão & Marmo',cnpj_tomador:'00111222000133',valor_total:48970.5,retencoes:{inss:5386.76,iss:2448.53}}}); },700); }); }
+    dados:{tipo:'NFS-e',numero:'1587',data:'2026-09-30',nome_emitente:'Empreiteira Exemplo Ltda',cnpj_emitente:'11222333000181',nome_tomador:'Brandão & Marmo',cnpj_tomador:'00111222000133',valor_total:48970.5,retencoes:{inss:5386.76,iss:2448.53}},
+    boleto:{valor:41135.21,vencimento:'2026-10-30',beneficiario_nome:'Empreiteira Exemplo Ltda',beneficiario_cnpj:'11222333000181'}}); },700); }); }
 
   if(!token&&!demo) return mensagem('🔒','Link incompleto','Abra esta página pelo botão “Enviar a NF” do e-mail de autorização da Brandão &amp; Marmo.');
   chamarVer(false);
