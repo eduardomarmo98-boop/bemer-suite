@@ -5642,7 +5642,7 @@ function bindRelFin(){
       <h3 class="font-bold text-sm uppercase tracking-wide mb-2">📊 Gestão v5 — Seu painel (${fmtPerfil(p)})</h3>
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
         <button class="bg-white/10 hover:bg-white/20 rounded-lg p-2 text-left" onclick="go('contratos')"><div class="text-xs opacity-80">Contratos rascunho</div><div class="text-xl font-bold">${ctRascunho}</div></button>
-        ${isCoord()||isDir2()?`<button class="bg-white/10 hover:bg-white/20 rounded-lg p-2 text-left" onclick="go('medicoes')"><div class="text-xs opacity-80">Medições p/ aprovar</div><div class="text-xl font-bold">${medsAprov}</div></button>`:""}
+        ${podeAprovMedicao()?`<button class="bg-white/10 hover:bg-white/20 rounded-lg p-2 text-left" onclick="go('medicoes')"><div class="text-xs opacity-80">Medições p/ aprovar</div><div class="text-xl font-bold">${medsAprov}</div></button>`:""}
         ${isSupB()||isDir2()?`<button class="bg-white/10 hover:bg-white/20 rounded-lg p-2 text-left" onclick="go('pedidos')"><div class="text-xs opacity-80">PCs p/ cotar</div><div class="text-xl font-bold">${pcCotar}</div></button>`:""}
         ${isCoord()||isDir2()?`<button class="bg-white/10 hover:bg-white/20 rounded-lg p-2 text-left" onclick="go('pedidos')"><div class="text-xs opacity-80">PCs Coord ${pcAprovCoord}/Dir ${pcAprovDir}</div><div class="text-xl font-bold">${pcAprovCoord+pcAprovDir}</div></button>`:""}
         ${finAut?`<button class="bg-white/10 hover:bg-white/20 rounded-lg p-2 text-left" onclick="go('financeiro')"><div class="text-xs opacity-80">Autorizar NF</div><div class="text-xl font-bold">${finAut}</div></button>`:""}
@@ -16124,7 +16124,7 @@ ${tomadores.map(t=>`<tr><td>${esc(t.empresa)}</td><td>${esc(t.cnpj||"")}</td><td
     return html;
   };
 })();
-var APP_VERSION = '2026.11.24.2';
+var APP_VERSION = '2026.11.24.3';
 /* 18/11/2026: 2 h sem uso em toda a suíte → encerra a sessão (portal/inatividade.js, que o publicar.js põe no fim da página) */
 var BM_SAIR_INATIVO = 2;
 /* Tradutor de perfis: o core (0033) usa os códigos novos; as telas do
@@ -16848,6 +16848,7 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
         if(!_2f.error&&_2f.data===true){ location.replace('../'); return; } }catch(_e){}
       { const _nm=await sb.rpc('no_modulo');
         if(_nm.error||_nm.data!==true){ location.replace('../'); return; } }
+      if(window.finCarregarAcoes) await window.finCarregarAcoes(sb);
       S.usuarioAtual=session.user.id; await pullAll(); window._authReadyFor=session.user.id; setStatus('ok');
       /* Atualizar (botao circular) recarrega a pagina. Repoe a rota ANTES de desenhar,
          senao a tela inicial aparece por um instante e so depois pula para a certa. */
@@ -16864,8 +16865,8 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
       setInterval(function(){ try{ if(S.usuarioAtual&&document.visibilityState==='visible') localStorage.setItem('bemer_last_seen_'+S.usuarioAtual,String(Date.now())); }catch(e){} },60000);
       sb.auth.onAuthStateChange(async(ev,sess)=>{
         try{
-          if(ev==='PASSWORD_RECOVERY'&&sess){ if(_authBusy||window._authReadyFor===sess.user.id)return; _authBusy=true; try{ S.usuarioAtual=sess.user.id; window._authReadyFor=sess.user.id; setStatus('sync'); var _ok2=await _telaNovaSenha(); if(_ok2){ await _mfaGate(); await pullAll(); setStatus('ok'); render(); ligarRealtime(); } }finally{ _authBusy=false; } return; }
-          if(ev==='SIGNED_IN'&&sess){ if(_authBusy||window._authReadyFor===sess.user.id)return; _authBusy=true; try{ S.usuarioAtual=sess.user.id; setStatus('sync'); await _mfaGate(); await pullAll(); window._authReadyFor=sess.user.id; setStatus('ok'); render(); ligarRealtime(); try{localStorage.setItem('bemer_last_seen_'+sess.user.id,String(Date.now()));}catch(e){} }finally{ _authBusy=false; } }
+          if(ev==='PASSWORD_RECOVERY'&&sess){ if(_authBusy||window._authReadyFor===sess.user.id)return; _authBusy=true; try{ S.usuarioAtual=sess.user.id; window._authReadyFor=sess.user.id; setStatus('sync'); var _ok2=await _telaNovaSenha(); if(_ok2){ await _mfaGate(); if(window.finCarregarAcoes) await window.finCarregarAcoes(sb); await pullAll(); setStatus('ok'); render(); ligarRealtime(); } }finally{ _authBusy=false; } return; }
+          if(ev==='SIGNED_IN'&&sess){ if(_authBusy||window._authReadyFor===sess.user.id)return; _authBusy=true; try{ S.usuarioAtual=sess.user.id; setStatus('sync'); await _mfaGate(); if(window.finCarregarAcoes) await window.finCarregarAcoes(sb); await pullAll(); window._authReadyFor=sess.user.id; setStatus('ok'); render(); ligarRealtime(); try{localStorage.setItem('bemer_last_seen_'+sess.user.id,String(Date.now()));}catch(e){} }finally{ _authBusy=false; } }
           if(ev==='SIGNED_OUT'){ window._authReadyFor=null; S.usuarioAtual=null; location.replace('../'); return; }
         }catch(e){ console.warn('v25 auth:',e); setStatus('erro',e.message); }
       });
@@ -19555,7 +19556,8 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
   function podeEditar(m){
     if(!m || EDITAVEL.indexOf(m.status) < 0) return false;
     var u = S.usuarioAtual;
-    return m.criadoPor === u || (typeof isDir2 === "function" && isDir2()) || (typeof isCoord === "function" && isCoord());
+    /* 24/11/2026: quem tem "Aprovar medições" (Cadastros › Perfis) corrige medição de outros */
+    return m.criadoPor === u || (typeof isDir2 === "function" && isDir2()) || (typeof podeAprovMedicao === "function" && podeAprovMedicao());
   }
   function botaoEditar(){
     if(R.name !== "medicaoDet" || el("btn-med-editar")) return;
@@ -21633,6 +21635,34 @@ function finPerfilNovo(p){ return FIN_NOVO[p] || p || ''; }
     if(!tipo||/não tem acesso/.test(html)) return html;
     return html+ultimasMov(tipo,obraDoRelatorio(html));
   };
+})();
+
+/* ===========================================================================
+   24/11/2026 (dono): "coloco que o perfil pode lançar e aprovar medições mas não
+   tá funcionando, o usuário continua sem poder fazer a medição".
+   Causa: as ações "Lançar medições" e "Aprovar medições" são marcadas em
+   Cadastros › Perfis (core.perfil_acoes) e o BANCO já obedece (financeiro.pode),
+   mas a TELA decidia por uma lista fixa de perfis (Engenharia, Coordenador,
+   Diretoria) — Financeiro Cliente, Financeiro B&M e Gerente Financeiro estavam
+   marcados e não viam "Nova medição". Agora a tela pergunta ao banco no login
+   (financeiro.pode) e obedece o que está marcado. Sem resposta do banco, cai na
+   regra antiga (nada fica mais aberto do que era).
+   =========================================================================== */
+window.FIN_ACOES = null;
+window.finCarregarAcoes = async function(cli){
+  var lista = ["medicoes_criar", "medicoes_aprovar"];
+  try{
+    var rs = await Promise.all(lista.map(function(a){ return cli.rpc("pode", { p_acao:a }); }));
+    var o = {};
+    rs.forEach(function(r, i){ if(r && !r.error && typeof r.data === "boolean") o[lista[i]] = r.data; });
+    window.FIN_ACOES = o;
+  }catch(e){ console.warn("[Custos] ações do perfil:", e); }
+};
+(function(){
+  var velhoCriar = window.podeCriarMedicao, velhoAprov = window.podeAprovMedicao;
+  function marcada(acao){ var a = window.FIN_ACOES; return (a && typeof a[acao] === "boolean") ? a[acao] : null; }
+  window.podeCriarMedicao = function(){ var m = marcada("medicoes_criar"); return m === null ? !!(velhoCriar && velhoCriar()) : (m || isDir2()); };
+  window.podeAprovMedicao = function(){ var m = marcada("medicoes_aprovar"); return m === null ? !!(velhoAprov && velhoAprov()) : (m || isDir2()); };
 })();
 
 </script>
