@@ -212,7 +212,7 @@ td.small-actions .btn{margin:2px 0}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.18.1';
+var APP_VERSION = '2026.11.24.1';
 var AMBIENTE    = 'homologação';
 /* 18/11/2026: 2 h sem uso em toda a suíte → encerra a sessão (portal/inatividade.js, que o publicar.js põe no fim da página) */
 var BM_SAIR_INATIVO = 2;
@@ -613,7 +613,7 @@ const FOLHA_DOC_TIPOS = {rg:'RG',cpf:'CPF',comprovante_residencia:'Comprovante d
   desl_fgts:'Desligamento · Demonstrativo do trabalhador (FGTS rescisório)',
   desl_extrato:'Desligamento · Extrato analítico do trabalhador',
   exp_aval_1:'Experiência · Avaliação do 1º período', exp_aval_2:'Experiência · Avaliação do 2º período',
-  outros:'Outros'};
+  ctps:'CTPS', ficha_registro:'Ficha de registro', cnh:'CNH', titulo_eleitor:'Título de eleitor', reservista:'Certificado de reservista', outros:'Outros'};
 
 /* Os seis acima, na ordem em que o DP confere. Fonte única: a lista de
    cobrança, o selo da tela e o alerta saem daqui. */
@@ -632,7 +632,7 @@ let _folhaTemExclusao = false;   // 0073 rodada (colunas excluido_*)
 async function folhaLoad(force){
   if(_folha.loaded && !force) return true;
   try{
-    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg, vig, cps, cev, rub, rat] = await Promise.all([
+    const [cc, fu, dep, doc, alt, sin, tur, docp, cfg, dsp, eac, fsa, fpr, faj, frg, vig, cps, cev, rub, rat, fpa] = await Promise.all([
       sb.from('folha_centros_custo').select('*').order('nome'),
       _selTudo(()=>sb.from('folha_funcionarios').select('*').order('nome')),
       _selTudo(()=>sb.from('folha_dependentes').select('*').order('id')),
@@ -663,7 +663,9 @@ async function folhaLoad(force){
       _selTudo(()=>sb.from('folha_competencia_eventos').select('*').order('id')),
       /* E5 (0078): custos */
       sb.from('folha_rubricas').select('*'),
-      sb.from('folha_rateios').select('*')
+      sb.from('folha_rateios').select('*'),
+      /* 0117 (24/11/2026): pagamento de férias separado do descanso */
+      _selTudo(()=>sb.from('folha_ferias_pagamentos').select('*').order('id'))
     ]);
     if(cc.error) throw cc.error; if(fu.error) throw fu.error;
     DB.folhaCC = cc.data||[];
@@ -685,6 +687,8 @@ async function folhaLoad(force){
     _folhaTemFerias = !!(fsa && !fsa.error && fpr && !fpr.error && frg && !frg.error);
     DB.ferSaldos = _folhaTemFerias ? (fsa.data||[]) : []; DB.ferProgs = _folhaTemFerias ? (fpr.data||[]) : [];
     DB.ferAjustes = (_folhaTemFerias && faj && !faj.error) ? (faj.data||[]) : []; DB.folhaRegras = _folhaTemFerias ? (frg.data||[]) : [];
+    _folhaTemPagFerias = !!(_folhaTemFerias && fpa && !fpa.error);
+    DB.ferPags = _folhaTemPagFerias ? (fpa.data||[]) : [];
     _folhaTemVigencias = !!(vig && !vig.error && cps && !cps.error);
     DB.vigencias = _folhaTemVigencias ? (vig.data||[]) : []; DB.comps = _folhaTemVigencias ? (cps.data||[]) : [];
     DB.compEventos = (_folhaTemVigencias && cev && !cev.error) ? (cev.data||[]) : [];
@@ -728,7 +732,6 @@ async function renderFolhaDash(){
   const dem=DB.folhaFuncs.filter(f=>(f.data_demissao||'').slice(0,7)===ym).length;
   const aniv=ativos.filter(f=>f.nascimento && (new Date(f.nascimento+'T00:00:00').getMonth()+1)===mth);
   const today=new Date(); today.setHours(0,0,0,0); const in30=new Date(today.getTime()+30*86400000);
-  const expVenc=ativos.filter(f=>['exp1_fim','exp2_fim'].some(k=>{ if(!f[k])return false; const d=new Date(f[k]+'T00:00:00'); return d>=today&&d<=in30; }));
   const docVenc=DB.folhaDocs.filter(d=>{ if(!d.validade)return false; const f=DB.folhaFuncs.find(x=>x.id===d.funcionario_id); if(!f||f.ativo===false)return false; return new Date(d.validade+'T00:00:00')<=in30; });
   const semDoc=ativos.filter(f=>DB.folhaDocs.filter(d=>d.funcionario_id===f.id).length===0);
   const custoFolha=ativos.reduce((s,f)=>s+(Number(f.salario_base)||0),0);
@@ -751,7 +754,7 @@ async function renderFolhaDash(){
       ${card('➕','Admitidos no mês',adm,'#16a34a')}
       ${card('➖','Demitidos no mês',dem,'#b91c1c')}
       ${card('🎂','Aniversariantes',aniv.length,'var(--bm-orange-txt,#B45309)')}
-      ${_folhaTemExpAcomp ? card('⏳','Experiência a decidir',folhaExpAtencao().length,'#b45309') : card('⏳','Experiência vencendo',expVenc.length,'#b45309')}
+      ${card('⏳','Experiência vencendo (10 dias)',folhaExpVencendo().length,'#b45309')}
       ${_folhaTemFerias ? (()=>{ const a=ferAlertas(); return card('🏖️','Férias: concessivo vencido/60d', a.vencido.length+a.vencendo.length, a.vencido.length?'#b91c1c':'#b45309'); })() : ''}
       ${card('📄','Docs a vencer/vencidos',docVenc.length,'#b45309')}
       ${card('🚫','Sem documentos',semDoc.length,'#b91c1c')}
@@ -759,8 +762,7 @@ async function renderFolhaDash(){
     </div>
     ${expRegraHtml}
     <div style="display:flex;gap:12px;flex-wrap:wrap">
-      ${_folhaTemExpAcomp ? lista('⏳ Experiência a decidir', folhaExpAtencao(), i=>`<div>• <a href="#" onclick="go('folha_exp');return false">${escapeHtml(i.f.nome)}</a> — ${i.periodo}º, ${folhaData(i.fim)} · <span style="color:${i.sit.cod==='vencido'?'#b91c1c':'#b45309'}">${escapeHtml(i.sit.rot)}</span></div>`) : ''}
-      ${_folhaTemExpAcomp ? '' : lista('⏳ Experiência vencendo (30d)', expVenc, f=>`<div>• ${escapeHtml(f.nome)} — ${['exp1_fim','exp2_fim'].filter(k=>f[k]).map(k=>folhaData(f[k])).join(' / ')}</div>`)}
+      ${(()=>{ const v=folhaExpVencendo(); return `<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);flex:1 1 100%;min-width:240px"><div style="font-weight:700;color:var(--bm-blue);margin-bottom:6px">⏳ Experiência vencendo — próximos 10 dias (${v.length})</div>${v.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Vence</th><th>Período</th><th>Nome</th><th>Obra</th><th>Função</th><th>Admissão</th></tr></thead><tbody>${v.map(i=>`<tr><td><b>${folhaData(i.fim)}</b></td><td>${i.periodo}º</td><td>${escapeHtml(i.f.nome)}</td><td>${escapeHtml(folhaCCNome(i.f.centro_custo_id)||'-')}</td><td>${escapeHtml(i.f.funcao||i.f.cargo||'-')}</td><td>${folhaData(i.f.data_admissao)}</td></tr>`).join('')}</tbody></table></div>`:'<div style="color:var(--muted);font-size:13px">Ninguém com experiência vencendo nos próximos 10 dias.</div>'}<div style="font-size:11.5px;color:var(--muted);margin-top:6px">Conta pela admissão (1º período: +44 dias; 2º: +89). Passou do 2º e continua ativo = efetivado. Relatório completo em Relatórios → Experiência.</div></div>`; })()}
       ${lista('🎂 Aniversariantes do mês', aniv, f=>`<div>• ${escapeHtml(f.nome)} — ${f.nascimento?new Date(f.nascimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):''}</div>`)}
       ${lista('🚫 Sem documentos', semDoc, f=>`<div>• ${escapeHtml(f.nome)}</div>`)}
     </div>
@@ -777,7 +779,7 @@ async function renderFolhaFunc(){
   main.innerHTML=`
     <div class="page-header">
       <div><div class="page-title">👥 Funcionários (Folha Interna)</div><div class="page-sub">Cadastro de DP dos funcionários da B&M</div></div>
-      ${folhaEdita()?`<div style="display:flex;gap:8px">${PODE.importar?'<button class="btn btn-secondary" onclick="folhaImport()">⬆️ Importar planilha</button>':''}<button class="btn btn-primary" onclick="folhaFuncForm()">+ Novo funcionário</button></div>`:''}
+      ${folhaEdita()?`<div style="display:flex;gap:8px">${PODE.importar?'<button class="btn btn-secondary" onclick="folhaImport()">⬆️ Importar planilha</button>':''}<button class="btn btn-secondary" onclick="folhaDocIaForm()" title="A IA lê contrato, ficha, RG, CPF, CTPS e comprovante; você confere antes de gravar">📄 Cadastrar a partir de documentos</button><button class="btn btn-primary" onclick="folhaFuncForm()">+ Novo funcionário</button></div>`:''}
       ${(_folhaTemExclusao && DB.folhaExcluidos.length)?`<button class="btn btn-secondary btn-sm" onclick="folhaLixeira()" title="Fichas excluídas (duplicadas ou por engano) — podem ser restauradas">🗑️ Excluídos (${DB.folhaExcluidos.length})</button>`:''}
     </div>
     <div class="card" style="margin-bottom:12px">
@@ -1558,6 +1560,35 @@ function folhaExpItens(){
   return out.sort((a,b)=>a.fim.localeCompare(b.fim));
 }
 function folhaExpAtencao(){ return folhaExpItens().filter(i=>i.sit.cod==='vencido' || i.sit.cod==='avisar'); }
+/* 24/11/2026 (dono): a aba Experiência (decisão, responsável, avaliação, anexo) saiu — não era
+   usada e o Painel mostrava 140 "vencidos sem decisão", até de admitidos em 1999. Agora é só a
+   CONTA pela admissão, com a regra que já existe (45+45: fim do 1º = admissão + 44; do 2º =
+   admissão + 89). Passou do 2º com o funcionário ativo = efetivado, sem ação nenhuma.
+   Desligado antes do fim sai do controle. Lembrete no Painel: vence nos próximos 10 dias. */
+function folhaExpDatas(f){
+  if(!f || !f.data_admissao || f.exp_regra==='sem' || (f.tipo_contrato||'clt')!=='clt') return null;
+  const fim1=f.exp1_fim||plusDays(44, f.data_admissao);
+  const fim2=f.exp1_fim ? (f.exp2_fim||null) : (f.exp2_fim||plusDays(89, f.data_admissao));
+  return {fim1, fim2, fimTotal:fim2||fim1};
+}
+function folhaExpSituacao(f, ref){
+  const d=folhaExpDatas(f); if(!d) return null;
+  const hj=ref||hoje();
+  if(f.data_demissao && f.data_demissao<=d.fimTotal) return {cod:'desligado', rot:'desligado na experiência'};
+  if(hj<=d.fim1) return {cod:'p1', rot:'no 1º período'};
+  if(d.fim2 && hj<=d.fim2) return {cod:'p2', rot:'no 2º período'};
+  return {cod:'efetivado', rot:'efetivado'};
+}
+function folhaExpVencendo(dias){
+  const n=dias||10, hj=hoje(), lim=plusDays(n, hj);
+  const out=[];
+  DB.folhaFuncs.filter(f=>f.ativo!==false).forEach(f=>{
+    const d=folhaExpDatas(f); if(!d) return;
+    if(hj<=d.fim1){ if(d.fim1<=lim) out.push({f, periodo:1, fim:d.fim1}); }
+    else if(d.fim2 && hj<=d.fim2 && d.fim2<=lim) out.push({f, periodo:2, fim:d.fim2});
+  });
+  return out.sort((a,b)=>a.fim.localeCompare(b.fim));
+}
 
 let _expPessoas = null;
 async function _expCarregarPessoas(){
@@ -1666,33 +1697,60 @@ async function folhaExpAcompForm(fid, p){
    PJ não entra aqui (controle próprio, depois).
    ============================================================================ */
 let _folhaTemFerias = false;
+/* 24/11/2026 (0117): PAGAMENTO separado do DESCANSO. O descanso (programação) segue
+   programada → aprovada → realizada; o pagamento é lançado à parte, por aquisitivo
+   (pode ser parcial, mais de um, antes de existir data de descanso). Contas no banco
+   (folha_ferias_saldos): falta_pagar e falta_descansar. */
+let _folhaTemPagFerias = false;
 let _fer = {aba:'saldos', obra:'', busca:'', status:'abertas', mes:'', gerado:false};
-const FER_STATUS = {programada:'Programada', aprovada:'Aprovada', enviada_contabilidade:'Enviada à contabilidade', paga:'Paga', realizada:'Realizada', cancelada:'Cancelada'};
-const FER_STATUS_COR = {programada:'#64748b', aprovada:'#2563eb', enviada_contabilidade:'#7c3aed', paga:'#16a34a', realizada:'#0f766e', cancelada:'#b91c1c'};
-const FER_PROXIMO = {programada:['aprovada','Aprovar'], aprovada:['enviada_contabilidade','Enviar à contabilidade'], enviada_contabilidade:['paga','Registrar pagamento'], paga:['realizada','Marcar realizada']};
+const FER_STATUS = {programada:'Programada', aprovada:'Aprovada', enviada_contabilidade:'Aprovada (antiga: enviada)', paga:'Aprovada (antiga: paga)', realizada:'Realizada', cancelada:'Cancelada'};
+const FER_STATUS_COR = {programada:'#64748b', aprovada:'#2563eb', enviada_contabilidade:'#2563eb', paga:'#2563eb', realizada:'#0f766e', cancelada:'#b91c1c'};
+const FER_PROXIMO = {programada:['aprovada','Aprovar'], aprovada:['realizada','Marcar realizada'], enviada_contabilidade:['realizada','Marcar realizada'], paga:['realizada','Marcar realizada']};
 function ferFunc(id){ return DB.folhaFuncs.find(f=>f.id===id); }
 function ferPeriodosDe(fid){ return DB.ferSaldos.filter(s=>s.funcionario_id===fid).sort((a,b)=>a.aquisitivo_inicio.localeCompare(b.aquisitivo_inicio)); }
 function ferProgsDe(fid){ return DB.ferProgs.filter(g=>g.funcionario_id===fid).sort((a,b)=>a.inicio.localeCompare(b.inicio)); }
 function ferNum(n){ const x=Number(n)||0; return (Math.round(x*10)/10).toLocaleString('pt-BR'); }
-/* situação de um período (para alerta) */
+/* contas do período (o banco calcula; sem a 0117, cai na conta antiga) */
+function ferFaltaPagar(s){ return s.falta_pagar!=null ? Number(s.falta_pagar)||0 : (Number(s.saldo)||0); }
+function ferFaltaDescansar(s){ return s.falta_descansar!=null ? Number(s.falta_descansar)||0 : (Number(s.saldo)||0); }
+function ferPagsDe(periodoId, comCancelados){ return (DB.ferPags||[]).filter(p=>p.periodo_id===periodoId && (comCancelados||!p.cancelado_em)).sort((a,b)=>String(a.pago_em).localeCompare(String(b.pago_em))); }
+function ferDescansosDe(periodoId){ return DB.ferProgs.filter(g=>g.periodo_id===periodoId && g.status!=='cancelada').sort((a,b)=>a.inicio.localeCompare(b.inicio)); }
+function ferPagtoDias(){ const r=(DB.folhaRegras||[]).find(x=>x.codigo==='FER_PAGTO'); return r&&r.ativa!==false ? (Number((r.parametros||{}).dias)||2) : 2; }
+/* o descanso está coberto por pagamento feito até N dias antes do início? (FER_PAGTO, mesma conta do banco) */
+function ferCoberto(g){
+  const lim=plusDays(-ferPagtoDias(), g.inicio);
+  const pago=ferPagsDe(g.periodo_id).filter(p=>p.pago_em<=lim).reduce((a,p)=>a+(Number(p.dias_pagos)||0),0);
+  const prec=ferDescansosDe(g.periodo_id).filter(x=>x.inicio<=g.inicio).reduce((a,x)=>a+(Number(x.dias)||0),0);
+  return {ok:pago>=prec, pago, prec, lim};
+}
+/* situação do PAGAMENTO do período */
+function ferSitPag(s){
+  const fp=ferFaltaPagar(s), pago=(Number(s.pago_dias)||0)+(Number(s.pago_abono)||0);
+  if(fp<=0) return {cod:'pago', rot:'Pago total', cls:'ok'};
+  if(pago>0) return {cod:'parcial', rot:'Pago parcial — falta '+ferNum(fp)+' dia(s)', cls:'warn'};
+  return {cod:'nao', rot:'Não pago', cls:'info'};
+}
+/* situação do período (para alerta): o concessivo conta pelo que FALTA DESCANSAR */
 function ferSitPeriodo(s){
-  const hj=hoje(), saldo=Number(s.saldo)||0;
+  const hj=hoje(), saldo=ferFaltaDescansar(s);
   if(s.aquisitivo_fim>=hj) return {cod:'aquisicao', rot:'Em aquisição (até '+folhaData(s.aquisitivo_fim)+')', cls:'info'};
-  if(saldo<=0) return {cod:'quitado', rot:'Sem saldo', cls:'ok'};
+  if(saldo<=0) return {cod:'quitado', rot:'Descanso completo', cls:'ok'};
   const d=_diasAte(s.concessivo_fim);
-  if(d<0) return {cod:'vencido', rot:'Concessivo vencido há '+(-d)+' dia(s) — '+ferNum(saldo)+' dia(s) em aberto', cls:'crit'};
-  if(d<=60) return {cod:'vencendo', rot:'Concessivo vence em '+d+' dia(s) — '+ferNum(saldo)+' dia(s) em aberto', cls:'warn'};
-  return {cod:'aberto', rot:ferNum(saldo)+' dia(s) a gozar até '+folhaData(s.concessivo_fim), cls:'info'};
+  if(d<0) return {cod:'vencido', rot:'Concessivo vencido há '+(-d)+' dia(s) — descanso pendente '+ferNum(saldo)+' dia(s)', cls:'crit'};
+  if(d<=60) return {cod:'vencendo', rot:'Concessivo vence em '+d+' dia(s) — descanso pendente '+ferNum(saldo)+' dia(s)', cls:'warn'};
+  return {cod:'aberto', rot:'Descanso pendente '+ferNum(saldo)+' dia(s) (até '+folhaData(s.concessivo_fim)+')', cls:'info'};
 }
 function ferAlertas(){
-  const out={vencido:[], vencendo:[], semConferir:[], semPagar:[], semAprovar:[]};
+  const out={vencido:[], vencendo:[], semConferir:[], semPagar:[], semAprovar:[], pagoParcial:[]};
   const ativos=new Set(DB.folhaFuncs.filter(f=>f.ativo!==false).map(f=>f.id));
   DB.ferSaldos.forEach(s=>{ if(!ativos.has(s.funcionario_id)) return; const st=ferSitPeriodo(s);
     if(st.cod==='vencido') out.vencido.push(s); else if(st.cod==='vencendo') out.vencendo.push(s);
-    if(!s.conferido_em && st.cod!=='aquisicao') out.semConferir.push(s); });
+    if(!s.conferido_em && st.cod!=='aquisicao') out.semConferir.push(s);
+    if(_folhaTemPagFerias && st.cod!=='aquisicao' && ferSitPag(s).cod==='parcial') out.pagoParcial.push(s); });
   DB.ferProgs.forEach(g=>{ const d=_diasAte(g.inicio);
     if(['programada'].includes(g.status) && d<=35) out.semAprovar.push(g);
-    if(['aprovada','enviada_contabilidade'].includes(g.status) && d<=5) out.semPagar.push(g); });
+    /* sem pagamento a tempo: descanso por começar (≤ 5 dias) que os pagamentos ainda não cobrem */
+    if(['programada','aprovada','enviada_contabilidade'].includes(g.status) && d<=5 && (_folhaTemPagFerias ? !ferCoberto(g).ok : g.status!=='paga')) out.semPagar.push(g); });
   return out;
 }
 
@@ -1710,18 +1768,20 @@ async function renderFolhaFerias(){
   const abaBtn=(k,l)=>`<button class="btn btn-sm ${_fer.aba===k?'btn-primary':'btn-secondary'}" onclick="_fer.aba='${k}';renderFolhaFerias()">${l}</button>`;
   const desde=(DB.folhaCfg.find(x=>x.chave==='ferias_controle_desde')||{}).valor;
   $('main').innerHTML=`
-    <div class="page-header"><div><div class="page-title">🏖️ Férias (CLT)</div><div class="page-sub">Controle desde ${folhaData(desde)} · saldo sempre calculado · regras com fonte (só bloqueiam depois de validadas pelo DP) · PJ fica fora</div></div>
+    <div class="page-header"><div><div class="page-title">🏖️ Férias (CLT)</div><div class="page-sub">Controle desde ${folhaData(desde)} · pagamento e descanso lançados à parte · regras com fonte (só bloqueiam depois de validadas pelo DP) · PJ fica fora</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${folhaEdita()?'<button class="btn btn-secondary btn-sm" onclick="ferCargaForm()">⬆️ Carga de saldos</button>':''}</div></div>
+    ${_folhaTemPagFerias?'':'<div class="alert" style="font-size:12px;margin-bottom:10px">⚠️ Falta rodar a <b>0117_folha_ferias_pagamento.sql</b>: até lá o pagamento não pode ser lançado à parte.</div>'}
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-      ${card('Concessivo vencido (com saldo)', al.vencido.length, al.vencido.length?'#b91c1c':'#16a34a')}
+      ${card('Concessivo vencido (descanso pendente)', al.vencido.length, al.vencido.length?'#b91c1c':'#16a34a')}
       ${card('Concessivo vence em 60 dias', al.vencendo.length, al.vencendo.length?'#b45309':'#16a34a')}
-      ${card('Programadas a aprovar (≤35 dias)', al.semAprovar.length, al.semAprovar.length?'#b45309':'#16a34a', "_fer.aba='programacoes';_fer.status='programada';renderFolhaFerias()")}
-      ${card('Sem pagamento (≤5 dias do início)', al.semPagar.length, al.semPagar.length?'#b91c1c':'#16a34a', "_fer.aba='programacoes';_fer.status='abertas';renderFolhaFerias()")}
+      ${card('Pago parcial (falta pagar)', al.pagoParcial.length, al.pagoParcial.length?'#b45309':'#16a34a')}
+      ${card('Descansos a aprovar (≤35 dias)', al.semAprovar.length, al.semAprovar.length?'#b45309':'#16a34a', "_fer.aba='programacoes';_fer.status='programada';renderFolhaFerias()")}
+      ${card('Descanso sem pagamento a tempo (≤5 dias)', al.semPagar.length, al.semPagar.length?'#b91c1c':'#16a34a', "_fer.aba='programacoes';_fer.status='abertas';renderFolhaFerias()")}
       ${card('Períodos sem saldo conferido', al.semConferir.length, al.semConferir.length?'#b45309':'#16a34a')}
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${abaBtn('saldos','Saldos')}${abaBtn('programacoes','Programações')}${abaBtn('calendario','Calendário por obra')}${abaBtn('regras','Regras')}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${abaBtn('saldos','Saldos')}${abaBtn('pagamentos','Pagamentos')}${abaBtn('programacoes','Descansos')}${abaBtn('calendario','Calendário por obra')}${abaBtn('regras','Regras')}</div>
     <div id="fer_corpo"></div>`;
-  ({saldos:ferSaldosHtml, programacoes:ferProgsHtml, calendario:ferCalHtml, regras:ferRegrasHtml}[_fer.aba]||ferSaldosHtml)();
+  ({saldos:ferSaldosHtml, pagamentos:ferPagsHtml, programacoes:ferProgsHtml, calendario:ferCalHtml, regras:ferRegrasHtml}[_fer.aba]||ferSaldosHtml)();
 }
 function _ferFiltroObra(){
   return `<div class="form-group" style="margin:0"><label>Obra (centro de custo)</label><select onchange="_fer.obra=this.value;renderFolhaFerias()"><option value="">Todas</option>${DB.folhaCC.map(c=>`<option value="${c.id}" ${String(_fer.obra)===String(c.id)?'selected':''}>${escapeHtml(c.nome)}</option>`).join('')}</select></div>`;
@@ -1738,22 +1798,87 @@ function ferSaldosHtml(){
   fs_.forEach(f=>{
     const ps=ferPeriodosDe(f.id);
     if(!ps.length){ linhas.push(`<tr><td><b>${escapeHtml(f.nome)}</b></td><td colspan="7" style="color:var(--muted);font-size:12px">${f.data_admissao?'Nenhum período dentro do controle':'Sem admissão — complete a ficha'}</td><td></td></tr>`); return; }
-    ps.forEach((s,i)=>{ const st=ferSitPeriodo(s); linhas.push(`<tr>
+    ps.forEach((s,i)=>{ const st=ferSitPeriodo(s), sp=ferSitPag(s), fp=ferFaltaPagar(s), fd=ferFaltaDescansar(s);
+      const ds=ferDescansosDe(s.periodo_id);
+      const desc=k=>{ const g=ds[k]; if(!g) return '<span style="color:var(--muted)">—</span>';
+        const cob=_folhaTemPagFerias?ferCoberto(g):{ok:true};
+        return `<span style="white-space:nowrap;color:${FER_STATUS_COR[g.status]};font-weight:600" title="${escapeHtml(FER_STATUS[g.status]+(cob.ok?'':' · ainda sem pagamento a tempo (até '+folhaData(cob.lim)+')'))}">${folhaData(g.inicio).slice(0,5)}–${folhaData(g.fim).slice(0,5)}</span><div style="font-size:10px;color:var(--muted)">${g.dias} dia(s)${cob.ok?'':' · <span style="color:#b91c1c">sem pgto</span>'}</div>`; };
+      linhas.push(`<tr>
       <td>${i===0?`<b>${escapeHtml(f.nome)}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(folhaCCNome(f.centro_custo_id)||'')} · adm. ${folhaData(f.data_admissao)}</div>`:''}</td>
       <td style="white-space:nowrap">${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)}</td>
       <td>${folhaData(s.concessivo_fim)}</td>
       <td style="text-align:right">${ferNum(s.dias_direito)}</td><td style="text-align:right">${Number(s.ajustes)?ferNum(s.ajustes):''}</td>
-      <td style="text-align:right">${ferNum(Number(s.gozo_programado)+Number(s.abono))}</td>
-      <td style="text-align:right;font-weight:800">${ferNum(s.saldo)}</td>
-      <td><span class="status ${st.cls}" style="font-size:11px">${escapeHtml(st.rot)}</span>${s.conferido_em?'':(st.cod!=='aquisicao'?' <span title="saldo ainda não conferido pelo DP" style="font-size:11px;color:#b45309">não conferido</span>':'')}</td>
-      <td style="white-space:nowrap">${folhaEdita()?`${(st.cod!=='aquisicao' && Number(s.saldo)>0)?`<button class="btn btn-primary btn-sm" onclick="ferProgForm(${s.periodo_id})">Programar</button> `:''}<button class="btn btn-secondary btn-sm" title="Carga de saldo conferido / ajuste" onclick="ferAjusteForm(${s.periodo_id})">±</button> `:''}<button class="btn btn-secondary btn-sm" title="Histórico do período" onclick="ferHist(${s.periodo_id})">🕘</button></td>
+      <td style="text-align:right">${(Number(s.pago_dias)||0)+(Number(s.pago_abono)||0)?ferNum(s.pago_dias)+(Number(s.pago_abono)?' <span style="font-size:10px;color:var(--muted)">+'+ferNum(s.pago_abono)+' ab.</span>':''):''}</td>
+      <td style="text-align:right;font-weight:800;color:${fp>0?'#b45309':'#16a34a'}">${ferNum(fp)}</td>
+      <td>${desc(0)}</td><td>${desc(1)}</td><td>${desc(2)}</td>
+      <td style="text-align:right;font-weight:800">${ferNum(fd)}</td>
+      <td>${st.cod==='aquisicao'?'':`<div><span class="status ${sp.cls}" style="font-size:11px">${escapeHtml(sp.rot)}</span></div>`}<div style="margin-top:2px"><span class="status ${st.cls}" style="font-size:11px">${escapeHtml(st.rot)}</span></div>${s.conferido_em?'':(st.cod!=='aquisicao'?'<span title="saldo ainda não conferido pelo DP" style="font-size:11px;color:#b45309">não conferido</span>':'')}</td>
+      <td style="white-space:nowrap">${folhaEdita()?`${(_folhaTemPagFerias && st.cod!=='aquisicao' && fp>0)?`<button class="btn btn-primary btn-sm" title="Lançar pagamento (parcial ou total)" onclick="ferPagForm(${s.periodo_id})">💰 Pagamento</button> `:''}${(st.cod!=='aquisicao' && fd>0 && ds.length<3)?`<button class="btn btn-secondary btn-sm" title="Marcar um descanso (até 3 por aquisitivo)" onclick="ferProgForm(${s.periodo_id})">🏖️ Descanso</button> `:''}<button class="btn btn-secondary btn-sm" title="Carga de saldo conferido / ajuste" onclick="ferAjusteForm(${s.periodo_id})">±</button> `:''}<button class="btn btn-secondary btn-sm" title="Histórico do período" onclick="ferHist(${s.periodo_id})">🕘</button></td>
     </tr>`); });
   });
   $('fer_corpo').innerHTML=`
     <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
       <div class="form-group" style="margin:0;flex:1;min-width:180px"><label>Buscar</label><input value="${escapeHtml(_fer.busca||'')}" onchange="_fer.busca=this.value;renderFolhaFerias()" placeholder="nome"></div></div>
-    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Aquisitivo</th><th>Concessivo até</th><th style="text-align:right">Direito</th><th style="text-align:right">Ajustes</th><th style="text-align:right">Programado</th><th style="text-align:right">Saldo</th><th>Situação</th><th></th></tr></thead>
-    <tbody>${linhas.join('')||'<tr><td colspan="9" class="empty">Nenhum funcionário CLT ativo.</td></tr>'}</tbody></table></div>`;
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Aquisitivo</th><th>Concessivo até</th><th style="text-align:right">Direito</th><th style="text-align:right">Ajustes</th><th style="text-align:right">Pago</th><th style="text-align:right" title="direito + ajustes − dias pagos − abono">Falta pagar</th><th>Descanso 1</th><th>Descanso 2</th><th>Descanso 3</th><th style="text-align:right" title="direito + ajustes − abono − dias de descanso">Falta descansar</th><th>Situação</th><th></th></tr></thead>
+    <tbody>${linhas.join('')||'<tr><td colspan="13" class="empty">Nenhum funcionário CLT ativo.</td></tr>'}</tbody></table></div>`;
+}
+/* ---- pagamentos (0117) ---- */
+function ferPagsHtml(){
+  const fsIds=new Set(_ferFuncsFiltrados().map(f=>f.id));
+  const L=(DB.ferPags||[]).filter(p=>fsIds.has(p.funcionario_id) || (!_fer.obra && !_fer.busca)).slice().sort((a,b)=>String(b.pago_em).localeCompare(String(a.pago_em)));
+  $('fer_corpo').innerHTML=`
+    <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
+      <div class="form-group" style="margin:0;flex:1;min-width:180px"><label>Buscar</label><input value="${escapeHtml(_fer.busca||'')}" onchange="_fer.busca=this.value;renderFolhaFerias()" placeholder="nome"></div></div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Aquisitivo</th><th>Pago em</th><th style="text-align:right">Dias pagos</th><th style="text-align:right">Abono</th><th style="text-align:right">Valor</th><th>Descansos vinculados</th><th>Avisos / obs.</th><th></th></tr></thead><tbody>
+    ${L.map(p=>{ const f=ferFunc(p.funcionario_id)||{}, s=DB.ferSaldos.find(x=>x.periodo_id===p.periodo_id)||{};
+      const vinc=DB.ferProgs.filter(g=>g.pagamento_id===p.id && g.status!=='cancelada');
+      return `<tr style="${p.cancelado_em?'opacity:.55':''}">
+      <td><b>${escapeHtml(f.nome||'#'+p.funcionario_id)}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(folhaCCNome(f.centro_custo_id)||'')}</div></td>
+      <td style="white-space:nowrap;font-size:12px">${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)}</td>
+      <td>${folhaData(p.pago_em)}${p.cancelado_em?'<div style="font-size:11px;color:#b91c1c">cancelado: '+escapeHtml(p.cancelado_motivo||'')+'</div>':''}</td>
+      <td style="text-align:right">${p.dias_pagos||''}</td><td style="text-align:right">${p.abono_dias||''}</td>
+      <td style="text-align:right">${p.valor!=null?folhaMoney(p.valor):''}</td>
+      <td style="font-size:12px">${vinc.map(g=>folhaData(g.inicio)+' ('+g.dias+'d)').join('<br>')||'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-size:11px;max-width:260px"><span style="color:#92400e">${escapeHtml(p.avisos||'')}</span>${p.obs?'<div>'+escapeHtml(p.obs)+'</div>':''}<div style="color:var(--muted)">${escapeHtml(p.criado_por_nome||'')}</div></td>
+      <td>${folhaEdita()&&!p.cancelado_em?`<button class="btn btn-danger btn-sm" onclick="ferPagCancelar(${p.id})">Cancelar</button>`:''}</td></tr>`; }).join('')||'<tr><td colspan="9" class="empty">Nenhum pagamento lançado.</td></tr>'}
+    </tbody></table></div>`;
+}
+function ferPagForm(periodoId){
+  if(!folhaEdita()) return;
+  const s=DB.ferSaldos.find(x=>x.periodo_id===periodoId); if(!s) return;
+  const f=ferFunc(s.funcionario_id)||{}, fp=ferFaltaPagar(s);
+  const ds=ferDescansosDe(periodoId);
+  showModal('Pagamento de férias — '+(f.nome||''), `
+    <div class="alert info" style="font-size:12px">Aquisitivo ${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)} · concessivo até <b>${folhaData(s.concessivo_fim)}</b> · falta pagar <b>${ferNum(fp)} dia(s)</b>. Pode pagar tudo ou só uma parte — o resto fica para outro pagamento. O descanso pode ser marcado depois, em até 3 períodos.</div>
+    ${ds.length?`<div style="font-size:12px;margin-bottom:8px">Descansos já marcados: ${ds.map(g=>folhaData(g.inicio)+' ('+g.dias+'d)').join(' · ')}</div>`:''}
+    <div class="grid-3">
+      <div class="form-group"><label>Data do pagamento *</label><input id="fpa_data" type="date" value="${hoje()}"></div>
+      <div class="form-group"><label>Dias pagos *</label><input id="fpa_dias" type="number" min="0" max="30" value="${Math.max(0, Math.floor(fp))}"></div>
+      <div class="form-group"><label>Abono (dias vendidos)</label><input id="fpa_abono" type="number" min="0" max="10" value="0"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>Valor (R$)</label><input id="fpa_valor" inputmode="decimal" placeholder="0,00"></div>
+      <div class="form-group"><label>Observação</label><input id="fpa_obs" maxlength="300" placeholder="ex.: pago porque o concessivo estava vencendo"></div>
+    </div>
+  `, async function(){
+    const data=$('fpa_data').value, dias=parseInt($('fpa_dias').value||'0',10)||0, ab=parseInt($('fpa_abono').value||'0',10)||0;
+    if(!data){ toast('Informe a data do pagamento.','err'); return false; }
+    if(dias+ab<=0){ toast('Informe os dias pagos e/ou o abono.','err'); return false; }
+    if(dias+ab>fp){ toast('Passa do que falta pagar ('+ferNum(fp)+' dia(s)).','err'); return false; }
+    const vt=String($('fpa_valor').value||'').trim(), valor=vt?Number(vt.replace(/\./g,'').replace(',','.')):null;
+    if(vt && !(valor>=0)){ toast('Valor inválido.','err'); return false; }
+    const {error}=await sb.from('folha_ferias_pagamentos').insert({periodo_id:periodoId, pago_em:data, dias_pagos:dias, abono_dias:ab, valor, obs:$('fpa_obs').value.trim()});
+    if(error){ toast('Erro: '+error.message,'err'); return false; }
+    await folhaLoad(true); toast('Pagamento lançado.'); renderFolhaFerias(); return true;
+  }, [], false, '', 'Lançar pagamento');
+}
+async function ferPagCancelar(id){
+  const p=(DB.ferPags||[]).find(x=>x.id===id); if(!p) return;
+  const m=prompt('Motivo do cancelamento do pagamento (o que falta pagar volta):');
+  if(m===null) return; if(!m.trim()){ toast('Informe o motivo.','err'); return; }
+  const {error}=await sb.from('folha_ferias_pagamentos').update({cancelado_em:new Date().toISOString(), cancelado_motivo:m.trim()}).eq('id',id);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  await folhaLoad(true); toast('Pagamento cancelado.'); renderFolhaFerias();
 }
 function ferProgsHtml(){
   const fsIds=new Set(_ferFuncsFiltrados().map(f=>f.id));
@@ -1765,10 +1890,14 @@ function ferProgsHtml(){
     <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
       <div class="form-group" style="margin:0"><label>Situação</label><select onchange="_fer.status=this.value;renderFolhaFerias()">
         ${[['abertas','Em andamento'],['','Todas']].concat(Object.entries(FER_STATUS)).map(o=>`<option value="${o[0]}" ${_fer.status===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div></div>
-    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Início</th><th>Fim</th><th style="text-align:right">Dias</th><th style="text-align:right">Abono</th><th>Situação</th><th>Avisos</th><th></th></tr></thead><tbody>
-    ${L.map(g=>{ const f=ferFunc(g.funcionario_id)||{}; const px=FER_PROXIMO[g.status]; return `<tr>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>Funcionário</th><th>Início</th><th>Fim</th><th style="text-align:right">Dias</th><th>Pagamento</th><th>Situação</th><th>Avisos</th><th></th></tr></thead><tbody>
+    ${L.map(g=>{ const f=ferFunc(g.funcionario_id)||{}; const px=FER_PROXIMO[g.status];
+      const pv=g.pagamento_id?(DB.ferPags||[]).find(p=>p.id===g.pagamento_id):null, cob=(_folhaTemPagFerias&&g.status!=='cancelada')?ferCoberto(g):null;
+      const pagHtml=pv?('pago '+folhaData(pv.pago_em)+(pv.cancelado_em?' <span style="color:#b91c1c">(cancelado)</span>':''))
+        :(cob?(cob.ok?'<span style="color:#16a34a">coberto</span>':'<span style="color:#b91c1c">sem pagamento até '+folhaData(cob.lim)+'</span>'):(g.pago_em?'pago '+folhaData(g.pago_em):'—'));
+      return `<tr>
       <td><b>${escapeHtml(f.nome||'#'+g.funcionario_id)}</b><div style="font-size:11px;color:var(--muted)">${escapeHtml(folhaCCNome(f.centro_custo_id)||'')}</div></td>
-      <td>${folhaData(g.inicio)}</td><td>${folhaData(g.fim)}</td><td style="text-align:right">${g.dias}</td><td style="text-align:right">${g.abono_dias||''}</td>
+      <td>${folhaData(g.inicio)}</td><td>${folhaData(g.fim)}</td><td style="text-align:right">${g.dias}${g.abono_dias?' <span style="font-size:10px;color:var(--muted)">+'+g.abono_dias+' ab.</span>':''}</td><td style="font-size:12px">${pagHtml}</td>
       <td><span style="color:${FER_STATUS_COR[g.status]};font-weight:700;font-size:12px">${FER_STATUS[g.status]}</span>${g.status==='cancelada'?`<div style="font-size:11px;color:var(--muted)">${escapeHtml(g.cancelado_motivo||'')}</div>`:''}${g.pago_em?`<div style="font-size:11px;color:var(--muted)">pago ${folhaData(g.pago_em)}</div>`:''}</td>
       <td style="font-size:11px;color:#92400e;max-width:260px">${escapeHtml(g.avisos||'')}</td>
       <td style="white-space:nowrap">${folhaEdita()&&px?`<button class="btn btn-primary btn-sm" onclick="ferPasso(${g.id},'${px[0]}')">${px[1]}</button> `:''}${folhaEdita()&&!['realizada','cancelada'].includes(g.status)?`<button class="btn btn-danger btn-sm" onclick="ferCancelar(${g.id})">Cancelar</button>`:''}</td>
@@ -1792,7 +1921,7 @@ function ferCalHtml(){
   $('fer_corpo').innerHTML=`
     <div class="card" style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:end">${_ferFiltroObra()}
       <div class="form-group" style="margin:0"><label>Mês</label><input type="month" value="${_fer.mes}" onchange="_fer.mes=this.value;renderFolhaFerias()"></div>
-      <div style="font-size:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.keys(FER_STATUS).filter(k=>k!=='cancelada').map(k=>`<span><span style="display:inline-block;width:10px;height:10px;background:${FER_STATUS_COR[k]};border-radius:2px"></span> ${FER_STATUS[k]}</span>`).join('')}</div></div>
+      <div style="font-size:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.keys(FER_STATUS).filter(k=>!['cancelada','enviada_contabilidade','paga'].includes(k)).map(k=>`<span><span style="display:inline-block;width:10px;height:10px;background:${FER_STATUS_COR[k]};border-radius:2px"></span> ${FER_STATUS[k]}</span>`).join('')}</div></div>
     <div class="card" style="overflow-x:auto"><table style="table-layout:fixed;min-width:${180+ndias*22}px"><thead><tr><th style="width:180px">Funcionário</th>${cab}</tr></thead><tbody>${linhas||`<tr><td colspan="${ndias+1}" class="empty">Ninguém de férias em ${fopagCompLabel(_fer.mes)}.</td></tr>`}</tbody></table></div>`;
 }
 function ferRegrasHtml(){
@@ -1813,29 +1942,36 @@ function ferRegrasHtml(){
 
 /* ---- programar ---- */
 let _ferConf = null;
+/* 24/11/2026 (0117): DESCANSO. Sem abono aqui (o abono é do pagamento); até 3 por aquisitivo,
+   em datas diferentes e depois do pagamento; pode ficar vinculado a um pagamento já feito. */
 function ferProgForm(periodoId){
   if(!folhaEdita()) return;
   const s=DB.ferSaldos.find(x=>x.periodo_id===periodoId); if(!s) return;
-  const f=ferFunc(s.funcionario_id)||{};
-  showModal('Programar férias — '+(f.nome||''), `
-    <div class="alert info" style="font-size:12px">Aquisitivo ${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)} · concessivo até <b>${folhaData(s.concessivo_fim)}</b> · saldo <b>${ferNum(s.saldo)} dia(s)</b></div>
-    <div class="grid-3">
+  const f=ferFunc(s.funcionario_id)||{}, fd=ferFaltaDescansar(s);
+  const ds=ferDescansosDe(periodoId), pags=_folhaTemPagFerias?ferPagsDe(periodoId):[];
+  const pagSel=pags.length?`<div class="form-group"><label>Vinculado ao pagamento</label><select id="fpg_pag"><option value="">— nenhum (pagamento ainda vai ser feito) —</option>${pags.map((p,i)=>`<option value="${p.id}" ${i===pags.length-1?'selected':''}>pago ${folhaData(p.pago_em)} · ${p.dias_pagos} dia(s)${p.abono_dias?' + '+p.abono_dias+' abono':''}</option>`).join('')}</select></div>`:'';
+  showModal('Descanso (gozo) — '+(f.nome||''), `
+    <div class="alert info" style="font-size:12px">Aquisitivo ${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)} · concessivo até <b>${folhaData(s.concessivo_fim)}</b> · falta descansar <b>${ferNum(fd)} dia(s)</b> · descanso <b>${ds.length+1}º de até 3</b>${_folhaTemPagFerias?' · falta pagar '+ferNum(ferFaltaPagar(s))+' dia(s)':''}</div>
+    ${ds.length?`<div style="font-size:12px;margin-bottom:8px">Já marcados: ${ds.map(g=>folhaData(g.inicio)+' a '+folhaData(g.fim)+' ('+g.dias+'d)').join(' · ')}</div>`:''}
+    <div class="grid-2">
       <div class="form-group"><label>Início *</label><input id="fpg_ini" type="date" min="${plusDays(1,s.aquisitivo_fim)}" onchange="ferConferir(${periodoId})"></div>
-      <div class="form-group"><label>Dias de gozo *</label><input id="fpg_dias" type="number" min="1" max="30" value="${Math.min(30, Math.floor(Number(s.saldo)||0))}" onchange="ferConferir(${periodoId})"></div>
-      <div class="form-group"><label>Abono (dias vendidos)</label><input id="fpg_abono" type="number" min="0" max="10" value="0" onchange="ferConferir(${periodoId})"></div>
+      <div class="form-group"><label>Dias de descanso *</label><input id="fpg_dias" type="number" min="1" max="30" value="${Math.min(30, Math.max(0, Math.floor(fd)))}" onchange="ferConferir(${periodoId})"></div>
     </div>
+    ${pagSel}
     <div id="fpg_fim" style="font-size:13px;margin:-4px 0 8px"></div>
     <div id="fpg_conf" style="font-size:12px"></div>
     <div class="form-group"><label>Observação</label><input id="fpg_obs" maxlength="300"></div>
   `, async function(){
-    const ini=$('fpg_ini').value, dias=parseInt($('fpg_dias').value,10), ab=parseInt($('fpg_abono').value||'0',10)||0;
+    const ini=$('fpg_ini').value, dias=parseInt($('fpg_dias').value,10);
     if(!ini || !(dias>=1)){ toast('Informe início e dias.','err'); return false; }
     const c=await ferConferir(periodoId);
     if(c && c.some(x=>x.bloqueia)){ toast('Não dá para gravar: veja os itens em vermelho.','err'); return false; }
-    const {error}=await sb.from('folha_ferias_programacoes').insert({periodo_id:periodoId, inicio:ini, dias, abono_dias:ab, obs:$('fpg_obs').value.trim()});
+    const reg={periodo_id:periodoId, inicio:ini, dias, abono_dias:0, obs:$('fpg_obs').value.trim()};
+    if($('fpg_pag') && $('fpg_pag').value) reg.pagamento_id=Number($('fpg_pag').value);
+    const {error}=await sb.from('folha_ferias_programacoes').insert(reg);
     if(error){ toast('Erro: '+error.message,'err'); return false; }
-    await folhaLoad(true); toast('Férias programadas.'); renderFolhaFerias(); return true;
-  }, [], false, '', 'Programar');
+    await folhaLoad(true); toast('Descanso marcado.'); renderFolhaFerias(); return true;
+  }, [], false, '', 'Marcar descanso');
 }
 async function ferConferir(periodoId){
   const ini=$('fpg_ini') && $('fpg_ini').value, dias=parseInt(($('fpg_dias')||{}).value,10), ab=parseInt(($('fpg_abono')||{}).value||'0',10)||0;
@@ -1879,7 +2015,7 @@ function ferAjusteForm(periodoId){
     <div class="alert info" style="font-size:12px">Aquisitivo ${folhaData(s.aquisitivo_inicio)} a ${folhaData(s.aquisitivo_fim)} · saldo hoje <b>${ferNum(s.saldo)}</b> dia(s). Nada é apagado: cada ajuste fica no histórico com quem fez e a justificativa.</div>
     <div class="form-group"><label>Tipo</label><select id="faj_tipo" onchange="$('faj_saldo_box').style.display=this.value==='carga_inicial'?'block':'none';$('faj_dias_box').style.display=this.value==='ajuste'?'block':'none'">
       <option value="carga_inicial">Saldo conferido (carga inicial)</option><option value="ajuste">Ajuste (+/− dias)</option></select></div>
-    <div class="form-group" id="faj_saldo_box"><label>Saldo disponível hoje, conferido (dias) *</label><input id="faj_saldo" type="number" step="0.5" min="0" max="30"><div style="font-size:11px;color:var(--muted)">Já descontadas as férias programadas aqui. O sistema lança a diferença.</div></div>
+    <div class="form-group" id="faj_saldo_box"><label>Falta descansar hoje, conferido (dias) *</label><input id="faj_saldo" type="number" step="0.5" min="0" max="30"><div style="font-size:11px;color:var(--muted)">Dias de descanso que ainda faltam — já descontados os descansos marcados aqui e o abono pago. O sistema lança a diferença.</div></div>
     <div class="form-group" id="faj_dias_box" style="display:none"><label>Dias (ex.: −6 por faltas, art. 130)</label><input id="faj_dias" type="number" step="0.5"></div>
     <div class="form-group"><label>Justificativa / fonte *</label><input id="faj_just" maxlength="300" placeholder="ex.: planilha de saldos conferida pelo DP em 20/10/2026"></div>
   `, async function(){
@@ -1898,15 +2034,19 @@ function ferHist(periodoId){
   const f=ferFunc(s.funcionario_id)||{};
   const ev=[[s.aquisitivo_fim, 'Direito: '+ferNum(s.dias_direito)+' dias', '']];
   DB.ferAjustes.filter(a=>a.periodo_id===periodoId).forEach(a=>ev.push([a.em.slice(0,10), (a.tipo==='carga_inicial'?'Saldo conferido: '+ferNum(a.saldo_informado)+' (lançado '+(a.dias>0?'+':'')+ferNum(a.dias)+')':'Ajuste '+(a.dias>0?'+':'')+ferNum(a.dias)), a.por_nome+' · '+a.justificativa]));
+  ferPagsDe(periodoId, true).forEach(p=>{
+    ev.push([String(p.pago_em), 'Pagamento: '+p.dias_pagos+' dia(s)'+(p.abono_dias?' + abono '+p.abono_dias:'')+(p.valor!=null?' · '+folhaMoney(p.valor):''), (p.criado_por_nome||'')+(p.obs?' · '+p.obs:'')]);
+    if(p.cancelado_em) ev.push([String(p.cancelado_em).slice(0,10), 'Pagamento de '+folhaData(p.pago_em)+' cancelado', (p.cancelado_por_nome||'')+' · '+(p.cancelado_motivo||'')]);
+  });
   DB.ferProgs.filter(g=>g.periodo_id===periodoId).forEach(g=>{
-    ev.push([g.programado_em.slice(0,10), 'Programadas '+g.dias+' dia(s)'+(g.abono_dias?' + abono '+g.abono_dias:'')+' ('+folhaData(g.inicio)+' a '+folhaData(g.fim)+')', g.programado_por_nome]);
+    ev.push([g.programado_em.slice(0,10), 'Descanso marcado: '+g.dias+' dia(s)'+(g.abono_dias?' + abono '+g.abono_dias:'')+' ('+folhaData(g.inicio)+' a '+folhaData(g.fim)+')', g.programado_por_nome]);
     [['aprovado_em','Aprovada','aprovado_por_nome'],['enviado_em','Enviada à contabilidade','enviado_por_nome'],['realizado_em','Realizada','realizado_por_nome'],['cancelado_em','Cancelada — saldo devolvido','cancelado_por_nome']].forEach(([c,r,q])=>{ if(g[c]) ev.push([String(g[c]).slice(0,10), r, g[q]+(c==='cancelado_em'?' · '+g.cancelado_motivo:'')]); });
     if(g.pago_em) ev.push([g.pago_em, 'Paga', g.pago_por_nome]);
   });
   ev.sort((a,b)=>a[0].localeCompare(b[0]));
   showModal('Histórico — '+(f.nome||'')+' · '+folhaData(s.aquisitivo_inicio)+' a '+folhaData(s.aquisitivo_fim), `
     <table><thead><tr><th>Data</th><th>O quê</th><th>Quem / por quê</th></tr></thead><tbody>${ev.map(e=>`<tr><td>${folhaData(e[0])}</td><td>${escapeHtml(e[1])}</td><td style="font-size:12px">${escapeHtml(e[2]||'')}</td></tr>`).join('')}</tbody></table>
-    <div style="margin-top:8px;font-weight:700">Saldo hoje: ${ferNum(s.saldo)} dia(s)</div>`, null, [], true, 'lg');
+    <div style="margin-top:8px;font-weight:700">Falta pagar: ${ferNum(ferFaltaPagar(s))} dia(s) · Falta descansar: ${ferNum(ferFaltaDescansar(s))} dia(s)</div>`, null, [], true, 'lg');
 }
 /* carga em lote: CPF · início do aquisitivo · saldo conferido · justificativa */
 let _ferCarga=null;
@@ -2722,6 +2862,7 @@ function folhaDocs(id){
   const f=DB.folhaFuncs.find(x=>x.id===id); if(!f) return;
   const tipoOpts=Object.keys(FOLHA_DOC_TIPOS).map(k=>`<option value="${k}">${FOLHA_DOC_TIPOS[k]}</option>`).join('');
   showModal('Documentos — '+f.nome, `
+    ${folhaEdita()?`<div style="margin-bottom:10px"><button type="button" class="btn btn-secondary btn-sm" onclick="folhaDocIaForm(${id})">🤖 Completar o cadastro pelos documentos (IA)</button></div>`:''}
     <div id="folha_docs_list">${folhaDocsListHtml(DB.folhaDocs.filter(d=>d.funcionario_id===id))}</div>
     <hr style="margin:14px 0;border:none;border-top:1px solid var(--border)">
     <div style="font-weight:600;margin-bottom:6px">Anexar documento</div>
@@ -3546,7 +3687,7 @@ async function folhaCCDel(id){
 function folhaLib(url){ return _efmLoad(url); }
 
 /* ---- montagem de relatórios: retorna {titulo, colunas, linhas} ---- */
-function folhaRelBuild(tipo, de, ate, comp){
+function folhaRelBuild(tipo, de, ate, comp, cc){
   const ativos=DB.folhaFuncs.filter(f=>f.ativo!==false);
   const tc=(f)=>FOLHA_TIPO_CONTRATO[f.tipo_contrato]||f.tipo_contrato||'';
   if((tipo==='custo_cc' || tipo==='custo_cargo') && comp && _folhaTemVigencias){
@@ -3580,15 +3721,19 @@ function folhaRelBuild(tipo, de, ate, comp){
       .map(f=>[new Date(f.nascimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), f.nome||'', f.cargo||'']);
     return {titulo:'Aniversariantes do mês', colunas:['Data','Nome','Cargo'], linhas:linhas};
   }
-  if(tipo==='experiencia' && _folhaTemExpAcomp){
-    const linhas=folhaExpItens().filter(i=>i.sit.cod!=='decidido' || (i.acomp && i.acomp.decisao_em && i.acomp.decisao_em>=plusDays(-60))).map(i=>[folhaData(i.fim), i.f.nome||'', i.periodo+'º período', i.f.cargo||'', i.sit.rot, (i.acomp&&i.acomp.responsavel_nome)||'', i.acomp&&i.acomp.decisao?(FOLHA_EXP_DECISAO[i.acomp.decisao]||'').split(' (')[0]:'']);
-    return {titulo:'Experiência — a decidir e decididos (60 dias)', colunas:['Fim','Nome','Período','Cargo','Situação','Responsável','Decisão'], linhas:linhas};
-  }
   if(tipo==='experiencia'){
-    const today=new Date(); today.setHours(0,0,0,0); const lim=new Date(today.getTime()+60*86400000); const linhas=[];
-    ativos.forEach(f=>['exp1_fim','exp2_fim'].forEach(function(k){ if(f[k]){ const d=new Date(f[k]+'T00:00:00'); if(d>=today&&d<=lim) linhas.push([folhaData(f[k]), f.nome||'', k==='exp1_fim'?'1º período':'2º período', f.cargo||'']); } }));
-    linhas.sort((a,b)=>a[0].localeCompare(b[0]));
-    return {titulo:'Experiência vencendo (60 dias)', colunas:['Vence','Nome','Período','Cargo'], linhas:linhas};
+    /* 24/11/2026: quem esteve em experiência no período (admissão até o fim do 2º cruza De–Até),
+       com filtro de obra. Situação de hoje: no 1º / no 2º período, efetivado, desligado na experiência. */
+    const linhas=[];
+    DB.folhaFuncs.slice().sort((a,b)=>(a.data_admissao||'').localeCompare(b.data_admissao||'')||(a.nome||'').localeCompare(b.nome||'')).forEach(function(f){
+      const d=folhaExpDatas(f); if(!d) return;
+      if(cc && String(f.centro_custo_id||'')!==String(cc)) return;
+      if((ate && f.data_admissao>ate) || (de && d.fimTotal<de)) return;
+      const sit=folhaExpSituacao(f);
+      linhas.push([f.nome||'', folhaCCNome(f.centro_custo_id)||'', f.funcao||f.cargo||'', folhaData(f.data_admissao), folhaData(d.fim1), d.fim2?folhaData(d.fim2):'-', sit?sit.rot:'']);
+    });
+    const obra=cc?(' · '+(folhaCCNome(Number(cc)||cc)||'obra')):'';
+    return {titulo:'Experiência — '+(de?folhaData(de):'início')+' a '+(ate?folhaData(ate):'hoje')+obra, colunas:['Nome','Obra','Função','Admissão','Fim do 1º período','Fim do 2º período','Situação'], linhas:linhas};
   }
   if(tipo==='docs_vencendo'){
     const today=new Date(); today.setHours(0,0,0,0); const lim=new Date(today.getTime()+60*86400000); const linhas=[];
@@ -3627,15 +3772,16 @@ async function renderFolhaRel(){
   const main=document.getElementById('main'); const ok=await folhaLoad();
   if(!ok){ main.innerHTML='<div class="empty">Rode a <b>migration-folha-interna.sql</b> no Supabase e recarregue.</div>'; return; }
   const now=new Date(), ym1=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
-  const reps=[['relacao','Relação de funcionários'],['custo_cc','Custo por centro de custo'],['custo_cargo','Custo por cargo'],['admitidos','Admitidos no período'],['demitidos','Demitidos no período'],['aniversariantes','Aniversariantes do mês'],['experiencia','Experiência (situação e decisões)'],['docs_vencendo','Documentos vencendo (60d)'],['cadastro','Cadastro completo (todas as colunas — Excel)']];
+  const reps=[['relacao','Relação de funcionários'],['custo_cc','Custo por centro de custo'],['custo_cargo','Custo por cargo'],['admitidos','Admitidos no período'],['demitidos','Demitidos no período'],['aniversariantes','Aniversariantes do mês'],['experiencia','Experiência (por período e obra)'],['docs_vencendo','Documentos vencendo (60d)'],['cadastro','Cadastro completo (todas as colunas — Excel)']];
   main.innerHTML=`
     <div class="page-header"><div><div class="page-title">📑 Relatórios — Folha Interna</div><div class="page-sub">Gere e exporte em PDF ou Excel</div></div></div>
     <div class="card" style="margin-bottom:12px">
       <div class="grid-3" style="align-items:end">
         <div class="form-group" style="margin:0"><label>Relatório</label><select id="fr_tipo" onchange="folhaRelShow()">${reps.map(r=>`<option value="${r[0]}">${r[1]}</option>`).join('')}</select></div>
-        <div class="form-group" style="margin:0"><label>De (admitidos/demitidos)</label><input id="fr_de" type="date" value="${ym1}" onchange="folhaRelShow()"></div>
+        <div class="form-group" style="margin:0"><label>De</label><input id="fr_de" type="date" value="${ym1}" onchange="folhaRelShow()"></div>
         ${_folhaTemVigencias?'<div class="form-group" style="margin:0"><label>Competência (custos; vazio = hoje)</label><input id="fr_comp" type="month" onchange="folhaRelShow()"></div>':''}
-        <div class="form-group" style="margin:0"><label>Até (admitidos/demitidos)</label><input id="fr_ate" type="date" value="${hoje()}" onchange="folhaRelShow()"></div>
+        <div class="form-group" style="margin:0"><label>Até</label><input id="fr_ate" type="date" value="${hoje()}" onchange="folhaRelShow()"></div>
+        <div class="form-group" style="margin:0;display:none" id="fr_cc_box"><label>Obra (centro de custo)</label><select id="fr_cc" onchange="folhaRelShow()"><option value="">Todas</option>${DB.folhaCC.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>`<option value="${c.id}">${escapeHtml(c.nome||'')}</option>`).join('')}</select></div>
       </div>
       ${PODE.exportar?'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-secondary" id="fr_btn_pdf" onclick="folhaRelPdf()">📄 PDF</button><button class="btn btn-secondary" onclick="folhaRelExcel()">📊 Excel</button></div>':'<div style="font-size:12px;color:var(--muted);margin-top:10px">Exportar (PDF/Excel) não está liberado para o seu perfil.</div>'}
     </div>
@@ -3646,11 +3792,13 @@ function folhaRelShow(){
   const tipo=document.getElementById('fr_tipo')?.value||'relacao';
   const de=document.getElementById('fr_de')?.value||''; const ate=document.getElementById('fr_ate')?.value||'';
   const comp=document.getElementById('fr_comp')?.value||'';
+  const ccBox=document.getElementById('fr_cc_box'); if(ccBox) ccBox.style.display = tipo==='experiencia' ? '' : 'none';
+  const cc = tipo==='experiencia' ? (document.getElementById('fr_cc')?.value||'') : '';
   if(comp && _folhaTemVigencias && compStatus(comp)==='fechada' && (tipo==='custo_cc'||tipo==='custo_cargo')){
     const r=DB.comps.find(x=>x.competencia===comp);
     if(r && !_fotosCache[comp+'#'+r.versao_foto]){ compFotos(comp).then(()=>folhaRelShow()); }
   }
-  const rep=folhaRelBuild(tipo, de, ate, comp); _folha.lastRep=rep;
+  const rep=folhaRelBuild(tipo, de, ate, comp, cc); _folha.lastRep=rep;
   const bp=document.getElementById('fr_btn_pdf');   // dezenas de colunas não cabem numa folha A4
   if(bp){ bp.disabled = rep.colunas.length>FOLHA_PDF_MAXCOL; bp.title = bp.disabled ? 'Colunas demais para PDF — use o Excel (ou "Imprimir ficha" na ficha de cada funcionário)' : ''; }
   const prev=document.getElementById('fr_preview'); if(!prev) return;
@@ -4106,10 +4254,10 @@ function folhaImportPrevia(){
 /* 3) gravar e 4) relatório */
 async function folhaImportGravar(){
   const I=_imp; if(!I) return false;
-  if(!PODE.importar){ toast('Seu perfil não importa planilha da folha.','err'); return false; }
+  if(I.origem==='documentos' ? !folhaEdita() : !PODE.importar){ toast(I.origem==='documentos'?'Seu perfil não edita a Folha.':'Seu perfil não importa planilha da folha.','err'); return false; }
   const agora=new Date().toISOString();
   const rel=[];   // [aba, linha, nome, resultado, detalhe]
-  const motivo='Importação de planilha ('+I.arquivo+')';
+  const motivo=I.origem==='documentos' ? 'Cadastro a partir de documentos (lido pela IA e conferido)' : 'Importação de planilha ('+I.arquivo+')';
   /* centros de custo novos (só os das linhas que vão entrar) */
   const vaoGravar=I.linhas.filter(L=>L.situacao==='novo'||L.situacao==='atualiza');
   const novosCC=[...new Map(vaoGravar.filter(L=>L.ccNovo).map(L=>[_impNorm(L.ccNovo), L.ccNovo])).values()];
@@ -4185,11 +4333,354 @@ async function folhaImportGravar(){
     }
   }
   await folhaLoad(true);
-  _imp.relatorio=rel;
+  _imp.relatorio=rel; _imp.idPorLinha=idPorLinha;
+  if(I.origem==='documentos') return rel;   // cadastro por documentos: quem chamou mostra o resultado
   folhaImportRelatorio();
   if(currentPage==='folha_func') folhaFuncFilter();
   return false;
 }
+/* ==========================================================================
+   CADASTRO A PARTIR DE DOCUMENTOS (24/11/2026)
+   --------------------------------------------------------------------------
+   Pedido do dono: anexar contrato, ficha de registro, RG, CPF, CTPS e comprovante
+   de endereço (PDF, foto ou Excel) e a IA preencher o cadastro.
+   • Cada arquivo vai para a edge folha-ler-documentos (lê UM por vez e não grava).
+   • Aqui: junta as leituras e escolhe o valor de cada campo — o DOCUMENTO vale mais
+     que a ficha de registro (RG/CNH para nome e filiação, CTPS para PIS, comprovante
+     para endereço, contrato para admissão/função/salário); a divergência aparece.
+   • Conferência antes de gravar: origem de cada campo; AMARELO = dúvida da IA,
+     divergência entre documentos, valor completado (CEP/rua pelos Correios) ou
+     aviso; VERMELHO = obrigatório vazio (PIS incluído). Nada é gravado sem o botão.
+   • Grava pela MESMA rotina da importação de planilha (folhaImportGravar, origem
+     "documentos"): mesma conversão, mesmas travas, histórico de salário/cargo/obra.
+   • Os arquivos vão para a pasta do funcionário (folha_documentos) — menos os de
+     outro empregador (a edge marca; dá para desmarcar/marcar na conferência).
+   • Completar cadastro existente (ou CPF que já existe): só os campos vazios ou
+     diferentes na ficha, cada um aprovado à parte (vazio vem marcado; diferente não).
+   ========================================================================== */
+const FDI_OBRIG = ['nome','cpf','pis','nascimento','data_admissao','cargo','salario_base','__cc','cep','rua','numero','bairro','cidade','estado'];
+const FDI_TIPOS = {contrato:'Contrato de trabalho', ficha_registro:'Ficha de registro', rg:'RG', cpf:'CPF', ctps:'CTPS', comprovante_residencia:'Comprovante de endereço',
+  cnh:'CNH', titulo_eleitor:'Título de eleitor', reservista:'Reservista', certidao:'Certidão', aso:'ASO', outro:'Outro'};
+const FDI_DOC_TIPO = {outro:'outros'};   // tipo lido → tipo da pasta (os demais têm o mesmo nome)
+const FDI_ENDERECO = ['cep','rua','numero','complemento','bairro','cidade','estado'];
+const FDI_VINCULO = ['data_admissao','data_demissao','cargo','funcao','salario_base','empresa','__cc','__turno','departamento','tipo_contrato','exp_regra','matricula','tipo_pagamento','banco','agencia','conta'];
+let _fdi = null;
+/* campos que a IA procura (o catálogo da importação, menos os calculados/internos) */
+function _fdiCampos(){
+  return FOLHA_IMP_CAMPOS.filter(c=>(_folhaTemDocsPessoais || !c[7]) && !['exp1_fim','exp2_fim','obs','__sind'].includes(c[1]));
+}
+function _fdiMeta(k){ return FOLHA_IMP_CAMPOS.find(c=>c[1]===k) || [k,k,'texto']; }
+/* quem manda em cada campo: posição na lista (menor = vale mais). Ficha de registro e
+   planilha ficam atrás dos documentos de origem — "vale o documento". */
+function _fdiPrio(campo, tipo){
+  const ordem = FDI_ENDERECO.includes(campo) ? ['comprovante_residencia','ficha_registro','contrato']
+    : (FDI_VINCULO.includes(campo) || /^ben_/.test(campo)) ? ['contrato','ficha_registro','ctps']
+    : /^rg_/.test(campo) ? ['rg','cnh','ficha_registro','contrato']
+    : /^ctps_/.test(campo) ? ['ctps','ficha_registro','contrato']
+    : /^titulo_/.test(campo) ? ['titulo_eleitor','ficha_registro']
+    : /^cnh_/.test(campo) ? ['cnh','ficha_registro']
+    : campo==='reservista_numero' ? ['reservista','ficha_registro']
+    : campo==='pis' ? ['ctps','cpf','ficha_registro','contrato']
+    : campo==='cpf' ? ['cpf','rg','cnh','ctps','contrato','ficha_registro']
+    : ['rg','cnh','certidao','cpf','ctps','titulo_eleitor','reservista','contrato','ficha_registro'];
+  const i = ordem.indexOf(tipo||'outro'); return i<0 ? 50 : i;
+}
+/* valor para mostrar no campo (o mesmo formato que a importação aceita de volta) */
+function _fdiMostra(k, v){
+  if(v==null || v==='') return '';
+  const t=_fdiMeta(k)[2];
+  if(t==='data') return folhaData(v);
+  if(t==='valor') return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(t==='simnao') return v===true?'Sim':v===false?'Não':String(v);
+  if(t==='contrato') return FOLHA_TIPO_CONTRATO[v]||String(v);
+  return String(v);
+}
+/* chave de comparação (mesmo valor escrito de jeitos diferentes = igual) */
+function _fdiChave(k, txt){
+  const r=_impCelula(_fdiMeta(k)[2], txt, k);
+  const v=(r.v===undefined || r.erro) ? txt : r.v;
+  return ['cpf','pis','cep','digitos'].includes(_fdiMeta(k)[2]) ? _soDig(v) : _impNorm(v);
+}
+/* obra (centro de custo) pelo nome: igual, contido, ou palavras em comum (≥ 60%) */
+function _fdiAcharCC(txt){
+  const n=_impNorm(txt); if(!n) return null;
+  const ccs=DB.folhaCC.filter(c=>c.ativo!==false);
+  let c=ccs.find(x=>_impNorm(x.nome)===n); if(c) return c;
+  c=ccs.find(x=>{ const m=_impNorm(x.nome); return m.length>=4 && (n.includes(m) || m.includes(n)); }); if(c) return c;
+  const pal=s=>new Set(_impNorm(s).split(' ').filter(w=>w.length>=3 && !['obra','hospital','rua','avenida','dos','das','del'].includes(w)));
+  const a=pal(txt); if(!a.size) return null;
+  let best=null, nota=0;
+  ccs.forEach(x=>{ const b=pal(x.nome); if(!b.size) return; let com=0; a.forEach(w=>{ if(b.has(w)) com++; }); const s=com/Math.min(a.size,b.size); if(s>nota){ nota=s; best=x; } });
+  return nota>=0.6 ? best : null;
+}
+function _fdiB64(file){
+  return new Promise((ok, no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]||''); r.onerror=()=>no(r.error); r.readAsDataURL(file); });
+}
+
+function folhaDocIaForm(alvoId){
+  if(!folhaEdita()) return;
+  const alvo = alvoId ? DB.folhaFuncs.find(f=>f.id===alvoId) : null;
+  _fdi = {alvoId: alvo?alvo.id:null, alvoPedido: alvo?alvo.id:null, arqs:[]};
+  showModal(alvo ? 'Completar o cadastro pelos documentos — '+alvo.nome : 'Cadastrar a partir de documentos', `
+    <div class="alert info" style="font-size:12px;line-height:1.5">Anexe <b>contrato, ficha de registro, RG, CPF, CTPS e comprovante de endereço</b> — PDF, foto ou Excel, tudo de uma vez.
+      A IA lê cada arquivo e você <b>confere antes de gravar</b>: nada é gravado sem a sua confirmação.
+      ${alvo?'Só aparecem os campos que estão <b>vazios ou diferentes</b> na ficha.':'Se o CPF já estiver cadastrado, vira "completar cadastro".'}
+      Documento de outro empregador não entra.</div>
+    <div class="form-group"><label>Arquivos (até 12)</label><input id="fdi_arqs" type="file" multiple accept="application/pdf,image/*,.xlsx,.xls,.csv" onchange="folhaDocIaLista()"></div>
+    <div id="fdi_lista" style="font-size:13px;line-height:1.7"></div>
+  `, ()=>folhaDocIaLer(), [], false, '', '🤖 Ler documentos');
+}
+function folhaDocIaLista(){
+  const fs_=Array.from(($('fdi_arqs')||{}).files||[]);
+  $('fdi_lista').innerHTML = fs_.map(f=>`<div>• ${escapeHtml(f.name)} <span style="color:var(--muted)">(${_mb(f.size||0)})</span></div>`).join('');
+}
+/* 1) ler — um arquivo por chamada, 3 de cada vez */
+async function folhaDocIaLer(){
+  const fs_=Array.from(($('fdi_arqs')||{}).files||[]);
+  if(!fs_.length){ toast('Escolha os arquivos.','err'); return false; }
+  if(fs_.length>12){ toast('Até 12 arquivos por vez.','err'); return false; }
+  _fdi.arqs = fs_.map(f=>({file:f, nome:f.name, st:'na fila'}));
+  const prog=()=>{ const el=$('fdi_lista'); if(el) el.innerHTML=_fdi.arqs.map(a=>`<div>• ${escapeHtml(a.nome)} — <span style="color:${a.erro?'#b91c1c':a.res?'#166534':'var(--muted)'}">${escapeHtml(a.erro||a.st)}</span></div>`).join(''); };
+  prog();
+  const campos=_fdiCampos().map(c=>[c[1], c[0], c[6]||'']);
+  const obras=DB.folhaCC.filter(c=>c.ativo!==false).map(c=>c.nome);
+  const um=async function(a){
+    try{
+      a.st='preparando…'; prog();
+      const corpo={nome:a.nome, campos, obras};
+      if(/\.(xlsx|xls|csv)$/i.test(a.nome)){
+        if(!window.XLSX) await folhaLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        const buf=a.file.arrayBuffer ? await a.file.arrayBuffer() : await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=()=>no(r.error); r.readAsArrayBuffer(a.file); });
+        const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+        corpo.texto=wb.SheetNames.map(n=>'## Aba: '+n+'\n'+XLSX.utils.sheet_to_csv(wb.Sheets[n],{FS:';'})).join('\n\n').slice(0,120000);
+        a.enviar=a.file;
+      } else {
+        a.enviar=await _otimizarParaUpload(a.file);
+        corpo.mime=String(a.enviar.type || (/\.pdf$/i.test(a.nome)?'application/pdf':/\.png$/i.test(a.nome)?'image/png':'image/jpeg')).toLowerCase();
+        corpo.base64=await _fdiB64(a.enviar);
+      }
+      a.st='lendo com a IA…'; prog();
+      const {data, error}=await sb.functions.invoke('folha-ler-documentos', {body:corpo});
+      let d=data;
+      if(error){ try{ d=error.context && await error.context.json(); }catch(_){ d=null; } }
+      if(!d || !d.ok) throw new Error((d && d.error) || (error && error.message) || 'sem resposta');
+      a.res=d; a.guardar=d.guardar!==false; a.tipo=d.tipo;
+      a.st='lido: '+(FDI_TIPOS[d.tipo]||d.tipo)+(d.guardar===false?' — de outro empregador, fica de fora':'');
+    }catch(e){ a.erro='não lido: '+(e && e.message || e); }
+    prog();
+  };
+  const fila=_fdi.arqs.slice();
+  await Promise.all([0,1,2].map(async function(){ while(fila.length){ await um(fila.shift()); } }));
+  if(!_fdi.arqs.some(a=>a.res)){ toast('Nenhum arquivo foi lido — veja o motivo na lista.','err'); return false; }
+  await folhaDocIaMontar();
+  folhaDocIaConferir();
+  return false;
+}
+/* 2) juntar: um valor por campo, com origem, dúvida e divergência */
+async function folhaDocIaMontar(){
+  const cand={}, deps=[];
+  _fdi.arqs.forEach(function(a){
+    const r=a.res; if(!r) return;
+    Object.entries(r.campos||{}).forEach(function([k, bruto]){
+      const m=_fdiMeta(k); if(!FOLHA_IMP_CAMPOS.some(c=>c[1]===k)) return;
+      const c=_impCelula(m[2], bruto, m[0]);
+      const duv=(r.duvidas||[]).find(x=>x.campo===k);
+      (cand[k]=cand[k]||[]).push({bruto:String(bruto), v:c.v, erro:c.erro||'', aviso:c.aviso||'', arq:a.nome, tipo:r.tipo, duvida:duv?duv.motivo:''});
+    });
+    (r.dependentes||[]).forEach(d=>deps.push(Object.assign({arq:a.nome}, d)));
+  });
+  const C={};
+  Object.keys(cand).forEach(function(k){
+    const L=cand[k].slice().sort((x,y)=>((x.erro?1:0)-(y.erro?1:0)) || (_fdiPrio(k,x.tipo)-_fdiPrio(k,y.tipo)));
+    const e=L[0], txt=e.erro ? e.bruto : _fdiMostra(k, e.v);
+    const chave=_fdiChave(k, txt), vistos=new Set([chave]);
+    const div=[];
+    L.slice(1).forEach(o=>{ const t=o.erro?o.bruto:_fdiMostra(k,o.v), ch=_fdiChave(k,t); if(!vistos.has(ch)){ vistos.add(ch); div.push((FDI_TIPOS[o.tipo]||o.tipo)+' ('+o.arq+'): '+t); } });
+    C[k]={texto:txt, origem:(FDI_TIPOS[e.tipo]||e.tipo)+' — '+e.arq, erro:e.erro, aviso:e.aviso, duvida:e.duvida, diverge:div};
+  });
+  /* cargo e função: o contrato costuma trazer só um dos dois */
+  if(!C.cargo && C.funcao) C.cargo=Object.assign({}, C.funcao, {diverge:[], completado:'igual à função'});
+  if(!C.funcao && C.cargo && !C.cargo.completado) C.funcao=Object.assign({}, C.cargo, {diverge:[], completado:'igual ao cargo'});
+  /* dependentes repetidos (ficha + certidão): junta pelo CPF ou pelo nome */
+  const D=[];
+  deps.forEach(function(d){
+    const c=_soDig(d.cpf), n=_impNorm(d.nome);
+    const ja=D.find(x=>(c.length===11 && _soDig(x.cpf)===c) || _impNorm(x.nome)===n);
+    if(ja){ ['cpf','nascimento','parentesco'].forEach(k=>{ if(!ja[k] && d[k]) ja[k]=d[k]; }); return; }
+    D.push(Object.assign({}, d));
+  });
+  _fdi.campos=C; _fdi.deps=D; _fdi.cepOpcoes=null; _fdi.achouPeloCpf=null;
+  /* CPF já cadastrado → completar a ficha que existe (a ativa, se houver duas) */
+  if(!_fdi.alvoId && C.cpf && !C.cpf.erro){
+    const c=_soDig(C.cpf.texto);
+    const ex=DB.folhaFuncs.filter(f=>_soDig(f.cpf)===c).sort((a,b)=>((a.ativo===false)?1:0)-((b.ativo===false)?1:0))[0];
+    if(ex){ _fdi.alvoId=ex.id; _fdi.achouPeloCpf=ex; }
+  }
+  /* pessoas diferentes nos documentos? (comprovante pode estar no nome de outro) */
+  const nomes=[...new Map(_fdi.arqs.filter(a=>a.res && a.res.usar_dados!==false && a.res.titular && a.res.tipo!=='comprovante_residencia')
+    .map(a=>{ const p=_impNorm(a.res.titular).split(' ').filter(Boolean); return [p[0]+' '+p[p.length-1], a.res.titular]; })).values()];
+  _fdi.pessoas = nomes.length>1 ? nomes : null;
+  await _fdiEndereco();
+}
+/* endereço incompleto: com CEP → rua/bairro/cidade/UF; sem CEP → CEP pela rua (Correios / ViaCEP) */
+async function _fdiEndereco(){
+  const C=_fdi.campos, val=k=>(C[k] && !C[k].erro) ? String(C[k].texto||'').trim() : '';
+  const put=(k, v, como)=>{ if(!v || val(k)) return; C[k]={texto:v, origem:'Correios (ViaCEP)', completado:como, diverge:[]}; };
+  try{
+    const cep=_soDig(val('cep'));
+    if(cep.length===8){
+      const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/'); const d=r.ok ? await r.json() : null;
+      if(d && !d.erro){
+        ['rua','bairro','cidade','estado'].forEach((k,i)=>put(k, [d.logradouro,d.bairro,d.localidade,d.uf][i], 'completado pelo CEP'));
+        if(C.cidade && C.cidade.origem!=='Correios (ViaCEP)' && d.localidade && _impNorm(val('cidade'))!==_impNorm(d.localidade)) C.cidade.diverge.push('Correios, pelo CEP: '+d.localidade);
+      } else if(d && d.erro) C.cep.aviso='CEP não encontrado nos Correios — confira';
+    } else if(val('rua').length>=3 && val('cidade').length>=3 && _UFS.includes(val('estado').toUpperCase())){
+      const rua=val('rua').replace(/,.*$/,'').replace(/^(rua|r\.|avenida|av\.?|travessa|tv\.?|alameda|al\.?|estrada|estr\.?|praça|pça\.?)\s+/i,'');
+      const r=await fetch('https://viacep.com.br/ws/'+val('estado').toUpperCase()+'/'+encodeURIComponent(val('cidade'))+'/'+encodeURIComponent(rua)+'/json/');
+      let L=r.ok ? await r.json() : []; if(!Array.isArray(L)) L=[];
+      if(val('bairro')){ const nb=_impNorm(val('bairro')), f=L.filter(x=>_impNorm(x.bairro)===nb); if(f.length) L=f; }
+      const ceps=[...new Set(L.map(x=>x.cep))];
+      if(ceps.length===1){ put('cep', ceps[0], 'completado pela rua — confira'); put('bairro', L[0].bairro, 'completado pela rua'); }
+      else if(ceps.length>1){
+        _fdi.cepOpcoes=L.slice(0,10).map(x=>({cep:x.cep, rot:x.cep+' — '+x.logradouro+(x.complemento?' ('+x.complemento+')':'')+', '+x.bairro}));
+        C.cep=C.cep||{texto:'', origem:'', diverge:[]}; C.cep.aviso=ceps.length+' CEPs possíveis para esta rua — escolha na lista';
+      }
+    }
+  }catch(e){ console.warn('[docs IA] ViaCEP', e); }
+}
+/* 3) conferência — nada gravado ainda */
+function folhaDocIaConferir(){
+  const C=_fdi.campos, alvo=_fdi.alvoId ? DB.folhaFuncs.find(f=>f.id===_fdi.alvoId) : null;
+  const naFicha=function(k){ if(!alvo) return ''; if(k==='__cc') return folhaCCNome(alvo.centro_custo_id)||''; if(k==='__turno') return alvo.turno||''; return _fdiMostra(k, alvo[k]); };
+  const linhas=[]; let nAm=0, nVm=0, nCampos=0;
+  _fdiCampos().forEach(function(c){
+    const k=c[1], x=C[k], tem=!!(x && String(x.texto||'').trim()), obrig=FDI_OBRIG.includes(k);
+    let marcado=true, hojeTxt='';
+    if(alvo){
+      if(!tem) return;
+      hojeTxt=naFicha(k);
+      const vazioHoje=!String(hojeTxt).trim();
+      if(!vazioHoje && (k==='__cc' ? _impNorm(hojeTxt)===_impNorm((_fdiAcharCC(x.texto)||{}).nome||x.texto) : _fdiChave(k, hojeTxt)===_fdiChave(k, x.texto))) return;
+      marcado=vazioHoje;
+    } else if(!tem && !obrig) return;
+    const notas=[];
+    if(x && x.erro) notas.push('<div style="color:#b91c1c">✖ '+escapeHtml(x.erro)+'</div>');
+    if(x && x.duvida) notas.push('<div>⚠️ leitura duvidosa: '+escapeHtml(x.duvida)+'</div>');
+    if(x && (x.diverge||[]).length) notas.push('<div>⚠️ diverge — '+x.diverge.map(escapeHtml).join('<br>')+'</div>');
+    if(x && x.completado) notas.push('<div>ℹ️ '+escapeHtml(x.completado)+'</div>');
+    if(x && x.aviso) notas.push('<div>⚠️ '+escapeHtml(x.aviso)+'</div>');
+    let input;
+    if(k==='__cc'){
+      const ach=tem ? _fdiAcharCC(x.texto) : null;
+      if(tem && !ach) notas.push('<div>⚠️ obra não cadastrada — escolha uma da lista ou deixe "criar"</div>');
+      else if(ach && _impNorm(ach.nome)!==_impNorm(x.texto)) notas.push('<div>ℹ️ lido "'+escapeHtml(x.texto)+'" → '+escapeHtml(ach.nome)+'</div>');
+      input=`<select id="fdi_v___cc" style="width:100%"><option value="">— escolha —</option>${DB.folhaCC.filter(o=>o.ativo!==false).slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(o=>`<option value="${o.id}" ${ach&&ach.id===o.id?'selected':''}>${escapeHtml(o.nome)}</option>`).join('')}${tem&&!ach?`<option value="novo:${escapeHtml(x.texto)}" selected>➕ criar: ${escapeHtml(x.texto)}</option>`:''}</select>`;
+    } else {
+      const lista=(k==='cep' && _fdi.cepOpcoes) ? `<datalist id="fdi_ceps">${_fdi.cepOpcoes.map(o=>`<option value="${o.cep}">${escapeHtml(o.rot)}</option>`).join('')}</datalist>` : '';
+      input=`<input id="fdi_v_${k}" value="${escapeHtml(tem?x.texto:'')}" ${lista?'list="fdi_ceps"':''} style="width:100%">${lista}`;
+    }
+    const amarelo=notas.length>0, vermelho=obrig && !tem;
+    if(vermelho) nVm++; else if(amarelo) nAm++; if(tem) nCampos++;
+    linhas.push(`<tr style="background:${vermelho?'#fee2e2':amarelo?'#fef3c7':'transparent'}">
+      ${alvo?`<td><input type="checkbox" class="fdi-ap" data-k="${k}" ${marcado?'checked':''} title="Aplicar este campo"></td>`:''}
+      <td style="white-space:nowrap"><b>${escapeHtml(c[0])}</b>${obrig?' <span style="color:#b91c1c">*</span>':''}</td>
+      ${alvo?`<td style="font-size:12px;color:var(--muted)">${escapeHtml(hojeTxt||'(vazio)')}</td>`:''}
+      <td style="min-width:190px">${input}</td>
+      <td style="font-size:11px;color:var(--muted)">${escapeHtml(x?x.origem:'— não veio em nenhum documento')}</td>
+      <td style="font-size:11px;max-width:300px">${notas.join('')||(vermelho?'<div style="color:#b91c1c">obrigatório vazio'+(k==='pis'?' — o PIS está na CTPS ou no cartão do PIS/NIS':'')+'</div>':'')}</td></tr>`);
+  });
+  const docs=_fdi.arqs.map(function(a, i){
+    const r=a.res, emp=r&&r.empregador;
+    return `<tr><td style="font-size:12px">${escapeHtml(a.nome)}</td>
+      <td>${r?`<select id="fdi_t_${i}" style="min-width:190px">${Object.keys(FDI_TIPOS).map(t=>`<option value="${t}" ${t===r.tipo?'selected':''}>${FDI_TIPOS[t]}</option>`).join('')}</select>`:'—'}</td>
+      <td style="font-size:12px">${emp?escapeHtml((emp.nome||'')+(emp.cnpj?' · '+emp.cnpj:''))+(r.da_bm===true?' <span class="status ok" style="font-size:10px">B&M</span>':r.da_bm===false?' <span class="status crit" style="font-size:10px">outro empregador</span>':''):'<span style="color:var(--muted)">pessoal</span>'}</td>
+      <td style="text-align:center">${a.enviar?`<input type="checkbox" class="fdi-g" data-i="${i}" ${a.guardar&&r?'checked':''}>`:''}</td>
+      <td style="font-size:11px">${a.erro?'<span style="color:#b91c1c">'+escapeHtml(a.erro)+'</span>':''}${r?escapeHtml(r.descricao||'')+(r.avisos||[]).map(t=>'<div style="color:#92400e">⚠️ '+escapeHtml(t)+'</div>').join('')+((r.ctps_empregadores||[]).length?'<div style="color:var(--muted)">CTPS: '+r.ctps_empregadores.map(e=>escapeHtml(e.nome+' ('+(e.admissao||'?')+(e.saida?' a '+e.saida:'')+')')).join('; ')+'</div>':''):''}</td></tr>`;
+  }).join('');
+  const deps=(_fdi.deps||[]).map(function(d, i){
+    const ja=alvo && DB.folhaDeps.some(x=>x.funcionario_id===alvo.id && ((_soDig(d.cpf).length===11 && _soDig(x.cpf)===_soDig(d.cpf)) || _impNorm(x.nome)===_impNorm(d.nome)));
+    return `<tr><td><input type="checkbox" class="fdi-dep" data-i="${i}" ${ja?'':'checked'}></td><td>${escapeHtml(d.nome)}</td><td>${escapeHtml(d.cpf||'')}</td><td>${escapeHtml(d.nascimento||'')}</td><td>${escapeHtml(d.parentesco||'Filho(a)')}</td><td style="font-size:11px;color:var(--muted)">${escapeHtml(d.arq)}${ja?' · <b>já está na ficha</b>':''}</td></tr>`;
+  }).join('');
+  const faltamFicha = alvo ? FDI_OBRIG.filter(k=>!(k==='__cc'?alvo.centro_custo_id:alvo[k]) && !(C[k] && String(C[k].texto||'').trim())).map(k=>_fdiMeta(k)[0]) : [];
+  showModal(alvo ? 'Conferir — completar a ficha de '+alvo.nome : 'Conferir o cadastro — nada foi gravado ainda', `
+    ${_fdi.achouPeloCpf?`<div class="alert" style="font-size:12px">Este CPF já está cadastrado: <b>${escapeHtml(_fdi.achouPeloCpf.nome)}</b>${_fdi.achouPeloCpf.ativo===false?' (desligado — para contrato novo, use Readmitir na lista)':''}. Mostrando só o que está <b>vazio ou diferente</b> na ficha.</div>`:''}
+    ${_fdi.pessoas?`<div class="alert" style="font-size:12px">⚠️ Os documentos parecem ser de <b>pessoas diferentes</b>: ${_fdi.pessoas.map(escapeHtml).join(' · ')}. Confira antes de gravar.</div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:12px">
+      <span class="pill">${nCampos} campo(s) lido(s)</span>
+      <span class="pill" style="background:#fef3c7;color:#92400e">Amarelo — dúvida, divergência ou completado: ${nAm}</span>
+      ${alvo?'':`<span class="pill" style="background:#fee2e2;color:#991b1b">Vermelho — obrigatório vazio: ${nVm}</span>`}
+    </div>
+    <div style="font-weight:700;color:var(--bm-blue);margin:4px 0">Documentos</div>
+    <div style="overflow-x:auto"><table style="font-size:13px;min-width:0"><thead><tr><th>Arquivo</th><th>O que é</th><th>Empregador</th><th>Vai para a pasta</th><th>Observação</th></tr></thead><tbody>${docs}</tbody></table></div>
+    <div style="font-weight:700;color:var(--bm-blue);margin:12px 0 4px">${alvo?'Campos para aprovar (vazio na ficha vem marcado; diferente, não)':'Cadastro'}</div>
+    ${linhas.length?`<div style="overflow-x:auto"><table style="font-size:13px;min-width:0"><thead><tr>${alvo?'<th>Aplicar</th>':''}<th>Campo</th>${alvo?'<th>Hoje na ficha</th>':''}<th>Valor (pode corrigir)</th><th>Origem</th><th>Conferir</th></tr></thead><tbody>${linhas.join('')}</tbody></table></div>`:'<div class="empty" style="padding:12px">Nada novo nos documentos para esta ficha.</div>'}
+    ${faltamFicha.length?`<div style="font-size:12px;color:#b91c1c;margin-top:6px">Ainda faltam na ficha (não vieram nos documentos): ${faltamFicha.map(escapeHtml).join(', ')}</div>`:''}
+    ${deps?`<div style="font-weight:700;color:var(--bm-blue);margin:12px 0 4px">Dependentes</div><table style="font-size:13px;min-width:0"><thead><tr><th></th><th>Nome</th><th>CPF</th><th>Nascimento</th><th>Parentesco</th><th>Origem</th></tr></thead><tbody>${deps}</tbody></table>`:''}
+  `, ()=>folhaDocIaGravar(), [{label:'⬅ Trocar arquivos', fn:()=>folhaDocIaForm(_fdi.alvoPedido)}], false, 'lg', alvo?'Aplicar o que está marcado':'Gravar cadastro');
+}
+/* 4) gravar — pela rotina da importação; depois os arquivos vão para a pasta */
+async function folhaDocIaGravar(){
+  if(!folhaEdita() || !_fdi) return false;
+  const alvo=_fdi.alvoId ? DB.folhaFuncs.find(f=>f.id===_fdi.alvoId) : null;
+  const dados={}, erros=[], avisos=[];
+  let cc=null, ccNovo='';
+  _fdiCampos().forEach(function(c){
+    const k=c[1], el=$('fdi_v_'+k); if(!el) return;
+    if(alvo){ const ap=document.querySelector('.fdi-ap[data-k="'+k+'"]'); if(!ap || !ap.checked) return; }
+    if(k==='__cc'){ const v=el.value||''; if(v.indexOf('novo:')===0){ ccNovo=v.slice(5); dados.__cc=ccNovo; } else if(v){ cc=DB.folhaCC.find(o=>String(o.id)===v)||null; if(cc) dados.__cc=cc.nome; } return; }
+    const r=_impCelula(c[2], el.value, c[0]);
+    el.style.borderColor = r.erro ? '#b91c1c' : '';
+    if(r.erro){ erros.push(r.erro); return; }
+    if(r.aviso) avisos.push(r.aviso);
+    if(r.v!==undefined) dados[k]=r.v;
+  });
+  const d=dados, ex=alvo||{};
+  const nasc=d.nascimento||ex.nascimento, adm=d.data_admissao||ex.data_admissao;
+  if(!alvo && !d.nome) erros.push('Nome vazio');
+  if(d.nascimento && d.nascimento>hoje()) erros.push('Nascimento no futuro');
+  if(nasc && adm && adm<nasc) erros.push('Admissão antes do nascimento');
+  if(FOLHA_IMP_CAMPOS.some(c=>c[7] && d[c[1]]!==undefined)){
+    const vd=folhaDocpValidar(Object.assign({}, d, {cnh_categoria:d.cnh_categoria||ex.cnh_categoria||'', cnh_numero:d.cnh_numero||''}), nasc||null);
+    vd.erros.forEach(e=>erros.push(e)); vd.avisos.forEach(e=>avisos.push(e));
+  }
+  if(erros.length){ toast('Corrija antes de gravar: '+erros.join(' · '),'err'); return false; }
+  const faltam=FDI_OBRIG.filter(k=>!(d[k]!==undefined && d[k]!=='') && !(k==='__cc' ? ex.centro_custo_id : ex[k])).map(k=>_fdiMeta(k)[0]);
+  const docs=Array.from(document.querySelectorAll('.fdi-g')).filter(ch=>ch.checked).map(ch=>{ const i=+ch.dataset.i; return {a:_fdi.arqs[i], tipo:($('fdi_t_'+i)||{}).value||_fdi.arqs[i].tipo||'outro'}; });
+  const depsSel=Array.from(document.querySelectorAll('.fdi-dep')).filter(ch=>ch.checked).map(ch=>_fdi.deps[+ch.dataset.i]);
+  if(alvo && !Object.keys(d).length && !docs.length && !depsSel.length){ toast('Nada marcado para aplicar.','warn'); return false; }
+  if(faltam.length && !confirm('Faltam: '+faltam.join(', ')+'.\n\nGravar assim mesmo? Dá para completar depois na ficha.')) return false;
+  if(!alvo && !_folhaTemExpRegra && d.data_admissao && !d.data_demissao && (d.tipo_contrato||'clt')==='clt'){ const r=folhaExpCalc(d.data_admissao,'45+45'); d.exp1_fim=r.e1; d.exp2_fim=r.e2; }
+  const L={n:1, dados:d, erros:[], avisos, cc, ccNovo:cc?'':ccNovo, turno:null, sind:null, existente:alvo, situacao:alvo?'atualiza':'novo', expManual:false};
+  if(d.__turno){ const t=DB.folhaTurnos.find(o=>_impNorm(o.nome)===_impNorm(d.__turno)); if(t) L.turno=t; }
+  const deps=depsSel.map((x,i)=>({n:i+1, dados:{nome:x.nome, cpf:folhaCpfValido(x.cpf)?folhaCpfFmt(x.cpf):'', nascimento:folhaImportData(x.nascimento)||null, parentesco:_PARENT[_impNorm(x.parentesco)]||'Filho(a)'},
+    erros:[], avisos:[], situacao:'novo', linhaFunc:alvo?null:L, funcExist:alvo}));
+  _imp={linhas:[L], deps, atualiza:!!alvo, arquivo:'documentos', origem:'documentos', sobrando:[], temAbaDep:true, docpSemBanco:[]};
+  const rel=await folhaImportGravar() || [];
+  const id=_imp.idPorLinha && _imp.idPorLinha[1];
+  if(!id){ const f=rel.find(r=>r[3]==='FALHOU'); toast('Não gravou: '+((f&&f[4])||'erro desconhecido'),'err'); return false; }
+  /* arquivos para a pasta do funcionário */
+  let ok=0; const falhou=[];
+  for(const x of docs){
+    try{
+      const arq=x.a.enviar||x.a.file, tipo=FDI_DOC_TIPO[x.tipo]||x.tipo;
+      const safe=String(arq.name||x.a.nome).replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80), path='folha/'+id+'/'+tipo+'_'+Date.now()+'_'+safe;
+      const up=await sb.storage.from('documentos').upload(path, arq, {contentType:arq.type||'application/pdf', upsert:true});
+      if(up.error) throw up.error;
+      const ins=await sb.from('folha_documentos').insert({funcionario_id:id, tipo, descricao:'Lido pela IA'+(x.a.res&&x.a.res.descricao?' · '+x.a.res.descricao:''), arquivo:x.a.nome, arquivo_path:path}).select().single();
+      if(ins.error) throw ins.error;
+      if(ins.data) DB.folhaDocs.push(ins.data);
+      ok++;
+    }catch(e){ falhou.push(x.a.nome+' ('+(e.message||e)+')'); }
+  }
+  const depsOk=rel.filter(r=>r[0]==='Dependentes' && r[3]==='Incluído').length, depsFalha=rel.filter(r=>r[0]==='Dependentes' && r[3]!=='Incluído');
+  toast((alvo?'Ficha atualizada':'Cadastro gravado')+' · '+ok+' documento(s) na pasta'+(depsOk?' · '+depsOk+' dependente(s)':''), (falhou.length||depsFalha.length)?'warn':'');
+  if(falhou.length) setTimeout(()=>toast('Não subiram: '+falhou.join('; '),'err'), 400);
+  if(depsFalha.length) setTimeout(()=>toast('Dependentes que não entraram: '+depsFalha.map(r=>r[2]+' ('+r[4]+')').join('; '),'err'), 800);
+  _fdi=null;
+  if(currentPage==='folha_func') folhaFuncFilter();
+  return true;
+}
+
 function folhaImportRelatorio(){
   const rel=(_imp&&_imp.relatorio)||[];
   const conta=(aba,res)=>rel.filter(r=>r[0]===aba && r[3]===res).length;
@@ -4313,7 +4804,7 @@ async function _sesmtListas(){
 }
 
 /* ---- guarda de leitura (igual ao Docs): perfil que só VÊ a folha ---- */
-const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^cus(ImportarSciForm|ImportarHeForm|RubricaSalvar|RubricasAprovarTodas|RateioForm|Gravar)\b|^comp(Mudar|FecharForm|Reabrir)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm)\b|^benef(Salvar|CopiarMesAnterior)\b/;
+const _ESCRITA_FOLHA = /^folha(CCForm|SindForm|TurnoForm|CCDel|SindDel|TurnoDel|DepAdd|DepDel|DocUpload|DocDel|DocIaForm|DocIaLer|DocIaGravar|Arquivar|Reativar|ParaSesmt|Import|ImportRun|ImportGravar|ExpPadraoForm|ExpRecalcular|ExpAcompForm|Excluir|Restaurar|Readmitir|DupDispensar)\b|^cus(ImportarSciForm|ImportarHeForm|RubricaSalvar|RubricasAprovarTodas|RateioForm|Gravar)\b|^comp(Mudar|FecharForm|Reabrir)\b|^fer(ProgForm|Passo|Cancelar|AjusteForm|CargaForm|CargaGravar|RegraForm|DesdeForm|PagForm|PagCancelar)\b|^benef(Salvar|CopiarMesAnterior)\b/;
 const _IMPORT_FOLHA = /^folhaImport(Run|Gravar)?\b/;
 const _EXPORT_FOLHA = /^(cusExcel|folhaRelExcel|folhaRelPdf|folhaFichaImprimir|benefExportar|folhaAcessosCsv)\b/;
 document.addEventListener('click', function(ev){
@@ -4353,7 +4844,7 @@ document.addEventListener('input', function(ev){
    NAVEGAÇÃO — abas no lugar do menu FOLHA INTERNA do Docs
    ============================================================================ */
 function abas(){
-  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_exp','Experiência'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],['folha_comp','Competências'],['folha_custos','Custos'],
+  const a = [['folha_dash','Painel'],['folha_func','Funcionários'],['folha_ferias','Férias'],['folha_benef','Benefícios'],['folha_rel','Relatórios'],['folha_comp','Competências'],['folha_custos','Custos'],
              ['folha_qualidade','Qualidade da base'],['folha_cc','Centros de custo'],['folha_sind','Sindicatos'],['folha_turnos','Turnos']];
   if(PODE.acessos) a.push(['folha_acessos','Acessos']);
   return a;
