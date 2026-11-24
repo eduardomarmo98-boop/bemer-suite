@@ -268,12 +268,15 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
   function telaResultado(d){
     var e=d.envio||{}, n=d.dados||{}, b=d.boleto||null;
     var cls=e.resultado==='coerente'?'ok':e.resultado==='divergente'?'div':'il';
-    var tit=e.resultado==='coerente'?'Nota e boleto conferidos':e.resultado==='divergente'?'Encontramos divergência':'Não consegui ler a nota';
+    /* 24/11/2026: IA instável (Google) — não é problema do arquivo: o sistema relê sozinho */
+    var pend=!!e.pendenteIa&&cls==='il';
+    var tit=e.resultado==='coerente'?'Nota e boleto conferidos':e.resultado==='divergente'?'Encontramos divergência':pend?'Leitura automática pendente':'Não consegui ler a nota';
     var ret=Object.keys(n.retencoes||{}).map(function(k){ return k.toUpperCase()+' '+brl(n.retencoes[k]); }).join(' · ');
     var quando=dataHora(e.criado_em||new Date().toISOString());
     var conf='<div class="confirma'+(cls==='ok'?'':' div')+'" id="confirma"><h1>✅ Recebemos sua nota fiscal e o boleto</h1>'+
       '<p class="sub">Envio registrado em '+esc(quando)+'. '+(cls==='ok'
         ?'O Financeiro da Brandão &amp; Marmo já foi avisado. Você receberá um e-mail quando a nota for aceita ou se precisar de correção.'
+        :pend?'Os arquivos chegaram, mas a leitura automática está instável agora. O sistema tenta de novo sozinho e o Financeiro confere. <b>Não precisa reenviar.</b>'
         :'O Financeiro foi avisado, mas a conferência apontou o que está abaixo. Se for o caso, corrija e envie de novo pelo quadro “Enviar a nota fiscal e o boleto”.')+'</p></div>';
     var h=conf+'<div class="card res" id="res"><span class="selo '+cls+'">'+(cls==='ok'?'✓ Coerente':cls==='div'?'✕ Divergente':'? Não lida')+'</span>'+
       '<h1 style="margin-top:8px">'+tit+'</h1>'+
@@ -287,7 +290,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 30px;color:var(--suave);font
       '</div>';
     document.getElementById('resultado').innerHTML=h;
     var envio=document.getElementById('envio');
-    if(envio&&cls==='ok'){
+    if(envio&&(cls==='ok'||pend)){
       envio.hidden=true;
       var de=document.createElement('p'); de.className='sub'; de.style.textAlign='center'; de.id='de-novo';
       de.innerHTML='<a href="#" id="link-de-novo">Precisa trocar a nota ou o boleto? Enviar outra vez</a>';
