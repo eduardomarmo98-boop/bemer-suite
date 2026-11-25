@@ -335,7 +335,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.25.1';
+var APP_VERSION = '2026.11.25.2';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -376,6 +376,9 @@ var CATS = [
   { c:'tec_orcamento',    n:'Orçamento, quantitativos e custos',     g:'t' },
   { c:'tec_normas',       n:'Normas, NRs e responsabilidade técnica', g:'t' },
   { c:'tec_execucao',     n:'Execução, materiais e qualidade',       g:'t' },
+  /* 25/11/2026 (0120): temas do Orçamentista */
+  { c:'tec_quantitativos', n:'Quantitativos e leitura de projeto',   g:'t' },
+  { c:'tec_composicao',    n:'Composições de custo e produtividade', g:'t' },
   /* 18/11/2026 (0110): conhecimentos de recrutamento e seleção (vaga Assistente de R&S) */
   { c:'tec_rs_triagem',     n:'Recrutamento, perfil da vaga e triagem', g:'u' },
   { c:'tec_rs_entrevista',  n:'Entrevista e técnicas de seleção',       g:'u' },
@@ -389,10 +392,17 @@ var CATS = [
   { c:'tec_co_contratos', n:'Contratos, aditivos e empreiteiras',   g:'v' },
   { c:'tec_co_cliente',   n:'Cliente, fiscalização e comunicação',  g:'v' },
   { c:'tec_co_sst',       n:'Segurança, qualidade e meio ambiente', g:'v' },
-  { c:'tec_co_entrega',   n:'Entrega, comissionamento e garantia',  g:'v' }
+  { c:'tec_co_entrega',   n:'Entrega, comissionamento e garantia',  g:'v' },
+  /* 25/11/2026 (0120): conhecimento de campo (vagas Mestre de Obras e Encarregado) */
+  { c:'tec_cp_projeto',    n:'Leitura de projeto e locação',           g:'w' },
+  { c:'tec_cp_alvenaria',  n:'Alvenaria, revestimentos e acabamentos', g:'w' },
+  { c:'tec_cp_estrutura',  n:'Concreto, forma e armação',              g:'w' },
+  { c:'tec_cp_seguranca',  n:'Segurança no canteiro',                  g:'w' },
+  { c:'tec_cp_producao',   n:'Produção, equipe e apontamento',         g:'w' },
+  { c:'tec_cp_qualidade',  n:'Qualidade e conferência de serviço',     g:'w' }
 ];
 /* título do bloco técnico no relatório: pelo grupo dos temas aplicados */
-var TITULO_TEC = { t:'Conhecimentos técnicos de engenharia', u:'Conhecimentos de recrutamento e seleção', v:'Conhecimentos de coordenação de obras' };
+var TITULO_TEC = { t:'Conhecimentos técnicos de engenharia', u:'Conhecimentos de recrutamento e seleção', v:'Conhecimentos de coordenação de obras', w:'Conhecimentos de campo (obra)' };
 function tituloTec(cats){
   var gs = {}; (cats || []).forEach(function(c){ var k = CATS.find(function(x){ return x.c === c; }); gs[k ? k.g : '?'] = 1; });
   var ks = Object.keys(gs);
@@ -1329,7 +1339,8 @@ function editarVaga(id){
     + '<tr><th>Situações de trabalho</th><th></th><th></th></tr>' + grade('s')
     + '<tr><th>Conhecimentos técnicos (engenharia)</th><th></th><th></th></tr>' + grade('t')
     + '<tr><th>Conhecimentos de recrutamento e seleção</th><th></th><th></th></tr>' + grade('u')
-    + '<tr><th>Conhecimentos de coordenação de obras</th><th></th><th></th></tr>' + grade('v') + '</table></div>'
+    + '<tr><th>Conhecimentos de coordenação de obras</th><th></th><th></th></tr>' + grade('v')
+    + '<tr><th>Conhecimentos de campo (mestre e encarregado)</th><th></th><th></th></tr>' + grade('w') + '</table></div>'
     + '<label class="marcar" style="margin-top:8px"><input type="checkbox" id="v-senior"' + (cfg.nivel_min >= 2 ? ' checked' : '') + '> Vaga técnica sênior: sem as questões fáceis, prioriza as difíceis e as sênior, e questão difícil vale mais na nota</label>'
     + '<p class="dica">Técnicas: conte cerca de 1,5 minuto por questão no tempo abaixo (sênior: 2 minutos).</p>'
     + '<div class="lado" style="margin-top:12px"><div class="campo"><label class="rot" for="v-tempo">Tempo das questões — raciocínio e técnicas (minutos)</label><input type="number" id="v-tempo" min="5" max="90" value="' + (cfg.tempo_cog_min || 20) + '"></div>'
