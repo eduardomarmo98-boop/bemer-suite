@@ -97,7 +97,13 @@ main{max-width:1000px;margin:0 auto;padding:16px 16px 96px}
 label.rot{display:block;font-size:12px;font-weight:600;color:var(--texto2);margin-bottom:5px}
 input,select,textarea{padding:9px 12px;border:1px solid var(--borda-forte);border-radius:9px;width:100%;background:#fff;min-height:42px}
 textarea{min-height:110px;resize:vertical;line-height:1.45}
-input[type=checkbox]{width:auto;min-height:0;accent-color:var(--azul);transform:scale(1.25)}
+input[type=checkbox],input[type=radio]{width:auto;min-height:0;padding:0;border:0;margin:0;flex:0 0 auto;accent-color:var(--azul);transform:scale(1.25)}
+/* 25/11/2026 (dono): "os botões O que é estão desproporcionais e falhando" — o rádio herdava a largura 100% e a borda do campo de texto */
+.opc-tipo{display:flex;gap:8px;flex-wrap:wrap}
+.opc-tipo .marcar{flex:1 1 210px;border:1px solid var(--borda-forte);border-radius:10px;padding:8px 12px;min-height:46px;background:#fff;font-weight:600}
+.opc-tipo .marcar:has(input:checked){border-color:var(--azul);background:#EEF3FB;box-shadow:0 0 0 2px rgba(0,41,107,.12)}
+.opc-tipo .marcar:has(input:disabled){opacity:.5;cursor:not-allowed}
+.opc-tipo .marcar .dica{display:block;font-weight:400;margin-top:1px}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(0,41,107,.12)}
 .lado{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .marcar{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;cursor:pointer}
@@ -280,7 +286,7 @@ td.n,th.n{text-align:right}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.23.1';
+var APP_VERSION = '2026.11.25.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -844,6 +850,7 @@ async function salvarChamado(c){
   var n = FOTOS.length ? await subirFotos(r.data.id, null) : 0;
   await recarregarChamado(r.data.id);
   toast('Chamado #' + r.data.numero + ' aberto' + (n ? ' com ' + n + ' anexo(s)' : '') + '.');
+  avisarEquipe(r.data.id, 'aberto');   /* 25/11/2026: triagem e o engenheiro da obra ficam sabendo da abertura */
   FILTRO.status = 'abertos'; desenhar(); abrirChamado(r.data.id);
   return 'manter';
 }
@@ -1334,12 +1341,12 @@ function formVisita(c){
   var podeResolver = PODE.atender || c.responsavel_id === EU.id || equipeDe(c).indexOf(EU.id) >= 0;
   var tipo = novo ? 'informacao' : (r['v-tipo'] || 'visita');
   limparFotos();
-  var opc = function(val, rot, dica){ return '<label class="marcar" style="min-height:36px"><input type="radio" name="v-tipo" value="' + val + '"' + (tipo === val ? ' checked' : '')
-    + (novo && val === 'visita' ? ' disabled' : '') + '> ' + rot + ' <span class="dica" style="font-weight:400">' + dica + '</span></label>'; };
+  var opc = function(val, rot, dica){ return '<label class="marcar"><input type="radio" name="v-tipo" value="' + val + '"' + (tipo === val ? ' checked' : '')
+    + (novo && val === 'visita' ? ' disabled' : '') + '><span>' + rot + '<span class="dica">' + dica + '</span></span></label>'; };
   var html =
       '<div class="dica" style="margin-bottom:10px">#' + c.numero + ' · ' + esc((obraDe(c.obra_id) || {}).nome || '') + '</div>'
-    + '<div class="campo"><span class="rot">O que é</span>' + opc('visita', 'Visita à obra', 'foi ao local')
-    + opc('informacao', 'Informação', 'contato, orçamento, aguardando fornecedor…')
+    + '<div class="campo"><span class="rot">O que é</span><div class="opc-tipo">' + opc('visita', 'Visita à obra', 'foi ao local')
+    + opc('informacao', 'Informação', 'contato, orçamento, aguardando fornecedor…') + '</div>'
     + (novo ? '<div class="dica">Visita só depois da triagem.</div>' : '') + '</div>'
     + '<div class="campo"><label class="rot" for="v-data">Data</label><input id="v-data" type="date" max="' + hoje() + '" value="' + esc(r['v-data'] || hoje()) + '"></div>'
     /* 05/11/2026 (pedido do dono): um campo de registro e um de fotos/arquivos */

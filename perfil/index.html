@@ -335,7 +335,7 @@ td.c,th.c{text-align:center}
 var SUPABASE_URL      = 'https://cupdrskggjmhbzdxiume.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1cGRyc2tnZ2ptaGJ6ZHhpdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MzM2MzcsImV4cCI6MjEwNTQwOTYzN30.EchdNikIkzkUjxuHWxUlyN0Sl_eO4NUrxni3UcQtB7g';
 /* AAAA.MM.DD.N — o publicar.js grava o version.json com este número. SUBA A CADA PUBLICAÇÃO. */
-var APP_VERSION = '2026.11.18.3';
+var APP_VERSION = '2026.11.25.1';
 var AMBIENTE    = 'homologação';
 /* ===================================================================== */
 
@@ -1184,7 +1184,7 @@ function abrirRelatorio(id){
       var nv = {};
       if(itens.length) itens.filter(function(i){ return ehTec(i.cat) === tec; }).forEach(function(i){ var k = String(i.n); nv[k] = nv[k] || { total:0, certas:0 }; nv[k].total++; if(i.s === 'c') nv[k].certas++; });
       else if(!gt.total) nv = g.niveis || {};
-      return ['1', '2', '3'].filter(function(k){ return nv[k]; }).map(function(k){ return ['', 'fácil', 'médio', 'difícil'][+k] + ' ' + nv[k].certas + '/' + nv[k].total; }).join(' · ');
+      return ['1', '2', '3', '4'].filter(function(k){ return nv[k]; }).map(function(k){ return ['', 'fácil', 'médio', 'difícil', 'sênior'][+k] + ' ' + nv[k].certas + '/' + nv[k].total; }).join(' · ');
     };
     var destaque = function(cs){
       var fortes = ordemCat(cs).filter(function(k){ return pctCat(g.categorias[k]) >= 70; }), fracos = ordemCat(cs).filter(function(k){ return pctCat(g.categorias[k]) < 40; });
@@ -1203,6 +1203,7 @@ function abrirRelatorio(id){
         + tabelaCats(gr.cats, 'Categoria')
         + '<p class="dica" style="margin-top:6px">' + (porNivel(false) ? 'Por nível: ' + porNivel(false) + '. ' : '')
         + (temSit ? 'Nas situações de trabalho (segurança, decisão, comunicação, liderança, conflitos) cada resposta vale de 0 a 3 pontos conforme a melhor conduta. ' : '')
+        + (g.peso_nivel ? 'Nota ponderada pelo nível (fácil e médio valem 1, difícil 2, sênior 3)' + (g.pct_simples != null ? ' — sem o peso seria ' + g.pct_simples + '%' : '') + '. ' : '')
         + 'Leitura: Domina ≥ 80% · Bom 60–79% · Parcial 40–59% · Fraco &lt; 40%.</p>'
         + '<p class="rel-p" style="margin-top:6px"><i>Resultado do desempenho observado neste questionário. Não é quociente de inteligência nem medida cognitiva validada.</i></p>';
       n++;
@@ -1211,7 +1212,7 @@ function abrirRelatorio(id){
       var tecItens = itens.filter(function(i){ return ehTec(i.cat); });
       var acertou = tecItens.filter(function(i){ return i.s === 'c'; }), errou = tecItens.filter(function(i){ return i.s !== 'c'; });
       var posCat = function(c){ return CATS.findIndex(function(k){ return k.c === c; }); };
-      var liAss = function(l){ return l.length ? l.slice().sort(function(x, y){ return posCat(x.cat) - posCat(y.cat) || x.n - y.n; }).map(function(i){ return '<li>' + esc(i.a || i.c) + ' <span class="dica">· ' + esc(nomeCat(i.cat).split(',')[0]) + ' · ' + ['', 'fácil', 'médio', 'difícil'][i.n] + (i.s === 'b' ? ' · em branco' : '') + '</span></li>'; }).join('') : '<li class="dica">Nenhum.</li>'; };
+      var liAss = function(l){ return l.length ? l.slice().sort(function(x, y){ return posCat(x.cat) - posCat(y.cat) || x.n - y.n; }).map(function(i){ return '<li>' + esc(i.a || i.c) + ' <span class="dica">· ' + esc(nomeCat(i.cat).split(',')[0]) + ' · ' + ['', 'fácil', 'médio', 'difícil', 'sênior'][i.n] + (i.s === 'b' ? ' · em branco' : '') + '</span></li>'; }).join('') : '<li class="dica">Nenhum.</li>'; };
       h += '<div class="rel-sec">' + n + '. ' + tituloTec(gt.cats) + '</div>'
         + '<p class="rel-p">' + totais(gt) + (gr.total ? '' : tempo) + '.</p>'
         + (destaque(gt.cats) ? '<p class="rel-p">' + esc(destaque(gt.cats)) + '</p>' : '')
@@ -1310,7 +1311,7 @@ async function telaVagas(){
     + (D.vagas.length ? '<div class="lista">' + D.vagas.map(function(v){
         var cog = (v.config || {}).cognitivo || {}, tot = Object.keys(cog).reduce(function(s, k){ return s + (+cog[k] || 0); }, 0);
         return '<button type="button" class="av' + (v.ativa ? '' : ' st-cancelada') + '" onclick="editarVaga(\'' + v.id + '\')"><div class="meio"><div class="nm">' + esc(v.nome) + '</div>'
-          + '<div class="sub">' + esc(AREAS[v.area]) + ' · ' + ((v.config || {}).comportamental !== false ? 'comportamental + ' : '') + tot + ' questões · ' + ((v.config || {}).tempo_cog_min || 0) + ' min</div></div>'
+          + '<div class="sub">' + esc(AREAS[v.area]) + ' · ' + ((v.config || {}).comportamental !== false ? 'comportamental + ' : '') + tot + ' questões · ' + ((v.config || {}).tempo_cog_min || 0) + ' min' + ((v.config || {}).nivel_min >= 2 ? ' · sênior' : '') + '</div></div>'
           + (v.ativa ? '' : '<span class="selo st-cancelada">Inativa</span>') + '</button>';
       }).join('') + '</div>' : '<div class="vazio">Nenhuma vaga.</div>');
 }
@@ -1329,10 +1330,11 @@ function editarVaga(id){
     + '<tr><th>Conhecimentos técnicos (engenharia)</th><th></th><th></th></tr>' + grade('t')
     + '<tr><th>Conhecimentos de recrutamento e seleção</th><th></th><th></th></tr>' + grade('u')
     + '<tr><th>Conhecimentos de coordenação de obras</th><th></th><th></th></tr>' + grade('v') + '</table></div>'
-    + '<p class="dica">Técnicas: conte cerca de 1,5 minuto por questão no tempo abaixo.</p>'
+    + '<label class="marcar" style="margin-top:8px"><input type="checkbox" id="v-senior"' + (cfg.nivel_min >= 2 ? ' checked' : '') + '> Vaga técnica sênior: sem as questões fáceis, prioriza as difíceis e as sênior, e questão difícil vale mais na nota</label>'
+    + '<p class="dica">Técnicas: conte cerca de 1,5 minuto por questão no tempo abaixo (sênior: 2 minutos).</p>'
     + '<div class="lado" style="margin-top:12px"><div class="campo"><label class="rot" for="v-tempo">Tempo das questões — raciocínio e técnicas (minutos)</label><input type="number" id="v-tempo" min="5" max="90" value="' + (cfg.tempo_cog_min || 20) + '"></div>'
     + '<div class="campo"><label class="rot">&nbsp;</label><label class="marcar"><input type="checkbox" id="v-ativa"' + (v.ativa ? ' checked' : '') + '> Vaga ativa</label></div></div>'
-    + '<p class="dica">As questões são sorteadas do banco, misturando os níveis fácil, médio e difícil, e aparecem da mais fácil para a mais difícil.</p>';
+    + '<p class="dica">As questões são sorteadas do banco, misturando os níveis (fácil, médio, difícil e sênior; na vaga sênior, a partir do médio), e aparecem da mais fácil para a mais difícil.</p>';
   abrirModal(id ? 'Editar vaga' : 'Nova vaga', html, [{ rotulo:'Cancelar' }, { rotulo:'Salvar', cls:'btn-primary', salvando:'Salvando…', fn:async function(){
     var nome = $('v-nome').value.trim(); if(nome.length < 2){ toast('Dê um nome à vaga.', 'err'); return false; }
     var c2 = {}; document.querySelectorAll('[data-cat]').forEach(function(i){ var n = Math.max(0, Math.min(30, parseInt(i.value, 10) || 0)); if(n) c2[i.getAttribute('data-cat')] = n; });
@@ -1341,7 +1343,9 @@ function editarVaga(id){
     var comp = $('v-comp').checked;
     if(!comp && !Object.keys(c2).length){ toast('A vaga precisa aplicar alguma coisa.', 'err'); return false; }
     var linha = { nome:nome, area:$('v-area').value, descricao:$('v-desc').value.trim() || null, ativa:$('v-ativa').checked,
-      config:{ comportamental:comp, cognitivo:c2, tempo_cog_min:Math.max(5, Math.min(90, parseInt($('v-tempo').value, 10) || 20)) } };
+      config:Object.assign({}, cfg, { comportamental:comp, cognitivo:c2, tempo_cog_min:Math.max(5, Math.min(90, parseInt($('v-tempo').value, 10) || 20)) }) };
+    /* 25/11/2026: vaga técnica sênior (0119) — sorteio a partir do nível médio, difíceis primeiro, peso por nível */
+    if($('v-senior').checked){ linha.config.nivel_min = 2; linha.config.peso_nivel = true; } else { delete linha.config.nivel_min; delete linha.config.peso_nivel; }
     var r = id ? await P().from('vagas').update(linha).eq('id', id) : await P().from('vagas').insert(linha);
     if(r.error) throw r.error;
     toast('Vaga salva.'); await carregar(); desenhar();
@@ -1354,7 +1358,7 @@ async function telaPerguntas(){
   $('main').innerHTML = '<div class="cab"><h1>Banco de perguntas</h1><button type="button" class="btn btn-primary" onclick="editarQuestao()">+ Nova pergunta</button></div>'
     + '<div class="busca"><input type="search" id="q-busca" placeholder="Buscar no texto ou código" value="' + esc(FQ.busca) + '">'
     + '<select id="q-cat"><option value="">Todas as categorias</option><option value="comp"' + (FQ.cat === 'comp' ? ' selected' : '') + '>Comportamental (itens)</option>' + CATS.map(function(k){ return '<option value="' + k.c + '"' + (FQ.cat === k.c ? ' selected' : '') + '>' + esc(k.n) + '</option>'; }).join('') + '</select>'
-    + '<select id="q-niv"><option value="">Todos os níveis</option><option value="1"' + (FQ.nivel === '1' ? ' selected' : '') + '>Fácil</option><option value="2"' + (FQ.nivel === '2' ? ' selected' : '') + '>Médio</option><option value="3"' + (FQ.nivel === '3' ? ' selected' : '') + '>Difícil</option></select>'
+    + '<select id="q-niv"><option value="">Todos os níveis</option><option value="1"' + (FQ.nivel === '1' ? ' selected' : '') + '>Fácil</option><option value="2"' + (FQ.nivel === '2' ? ' selected' : '') + '>Médio</option><option value="3"' + (FQ.nivel === '3' ? ' selected' : '') + '>Difícil</option><option value="4"' + (FQ.nivel === '4' ? ' selected' : '') + '>Sênior</option></select>'
     + '<select id="q-at"><option value="todas">Ativas e inativas</option><option value="ativas"' + (FQ.ativas === 'ativas' ? ' selected' : '') + '>Só ativas</option><option value="inativas"' + (FQ.ativas === 'inativas' ? ' selected' : '') + '>Só inativas</option></select></div>'
     + '<p class="dica" style="margin-bottom:8px">Pergunta já usada não se apaga: desative. A avaliação guarda o gabarito do dia em que foi aplicada.</p>'
     + '<div class="card" id="q-lista"></div>';
@@ -1391,7 +1395,7 @@ function desenharQuestoes(){
     return true;
   });
   alvo.innerHTML = '<div class="dica" style="margin-bottom:6px">' + qs.length + ' pergunta(s)</div>' + (qs.length ? qs.map(function(q){
-    return '<div class="q-item' + (q.ativa ? '' : ' inativa') + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>' + esc(q.codigo) + '</b> <span class="selo">' + esc(nomeCat(q.categoria)) + '</span> <span class="selo cinza">' + ['', 'fácil', 'médio', 'difícil'][q.nivel] + '</span>' + (q.origem === 'rh' ? ' <span class="selo cinza">criada pelo RH</span>' : '') + '</div>'
+    return '<div class="q-item' + (q.ativa ? '' : ' inativa') + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>' + esc(q.codigo) + '</b> <span class="selo">' + esc(nomeCat(q.categoria)) + '</span> <span class="selo cinza">' + ['', 'fácil', 'médio', 'difícil', 'sênior'][q.nivel] + '</span>' + (q.origem === 'rh' ? ' <span class="selo cinza">criada pelo RH</span>' : '') + '</div>'
       + '<button type="button" class="btn btn-sm btn-secondary" onclick="editarQuestao(\'' + q.id + '\')">Editar</button></div>'
       + (q.assunto ? '<div class="dica" style="margin-top:4px">Assunto no relatório: <b>' + esc(q.assunto) + '</b></div>' : '')
       + '<div class="pre" style="margin:6px 0">' + esc(q.enunciado) + '</div>'
@@ -1403,7 +1407,7 @@ function editarQuestao(id){
   var q = id ? D.questoes.find(function(x){ return x.id === id; }) : { categoria:'numerico', nivel:1, enunciado:'', opcoes:['', '', '', ''], correta:0, pontos:null, explicacao:'', ativa:true };
   var sit = function(cat){ var k = CATS.find(function(x){ return x.c === cat; }); return k && k.g === 's'; };
   var html = '<div class="lado"><div class="campo"><label class="rot" for="e-cat">Categoria</label><select id="e-cat"' + (id ? ' disabled' : '') + '>' + CATS.map(function(k){ return '<option value="' + k.c + '"' + (q.categoria === k.c ? ' selected' : '') + '>' + esc(k.n) + '</option>'; }).join('') + '</select></div>'
-    + '<div class="campo"><label class="rot" for="e-niv">Nível</label><select id="e-niv"' + (id ? ' disabled' : '') + '><option value="1">Fácil</option><option value="2">Médio</option><option value="3">Difícil</option></select></div></div>'
+    + '<div class="campo"><label class="rot" for="e-niv">Nível</label><select id="e-niv"' + (id ? ' disabled' : '') + '><option value="1">Fácil</option><option value="2">Médio</option><option value="3">Difícil</option><option value="4">Sênior</option></select></div></div>'
     + '<div class="campo"><label class="rot" for="e-enun">Enunciado *</label><textarea id="e-enun" maxlength="3000">' + esc(q.enunciado) + '</textarea></div>'
     + '<div class="campo"><label class="rot" for="e-ass">Assunto (aparece no relatório, sem o gabarito)</label><input id="e-ass" maxlength="120" placeholder="Ex.: Cura do concreto" value="' + esc(q.assunto || '') + '"></div>'
     + '<div id="e-ops"></div>'
